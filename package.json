@@ -1,0 +1,46 @@
+{
+  "name": "poketmon-idle",
+  "version": "1.0.0",
+  "description": "A cute desktop pixel art pet with pomodoro timer and todo list",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"npm run vite\" \"npm run electron:dev\"",
+    "vite": "vite",
+    "electron:dev": "wait-on http://localhost:5173 && electron .",
+    "build": "vite build && electron-builder",
+    "postbuild": "rm -rf 'release/mac-arm64/poketmon-idle.app/Contents/Frameworks/Electron Framework.framework' && cp -R 'node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Framework.framework' 'release/mac-arm64/poketmon-idle.app/Contents/Frameworks/' && xattr -cr 'release/mac-arm64/poketmon-idle.app' && codesign --force --sign - 'release/mac-arm64/poketmon-idle.app'",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "electron-store": "^8.1.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zustand": "^4.4.7"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "electron": "^40.7.0",
+    "electron-builder": "^26.8.1",
+    "vite": "^5.0.10",
+    "wait-on": "^7.2.0"
+  },
+  "build": {
+    "productName": "포켓몬키우기",
+    "executableName": "poketmon-idle",
+    "appId": "com.poketmonidle.app",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": false,
+      "target": [{ "target": "dir", "arch": ["arm64"] }]
+    }
+  }
+}
