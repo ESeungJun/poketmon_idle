@@ -8,7 +8,7 @@
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && electron .",
     "build": "vite build && electron-builder",
-    "postbuild": "rm -rf 'release/mac-arm64/poketmon-idle.app/Contents/Frameworks/Electron Framework.framework' && cp -R 'node_modules/electron/dist/Electron.app/Contents/Frameworks/Electron Framework.framework' 'release/mac-arm64/poketmon-idle.app/Contents/Frameworks/' && xattr -cr 'release/mac-arm64/poketmon-idle.app' && codesign --force --sign - 'release/mac-arm64/poketmon-idle.app'",
+    "postbuild": "node scripts/fix-app-bundle.js",
     "preview": "vite preview"
   },
   "dependencies": {
