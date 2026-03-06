@@ -2,6 +2,11 @@
 // electron-builder가 바이너리를 수정해서 크래시가 발생하므로
 // node_modules의 원본 Electron.app 전체를 기반으로 앱 번들을 재구성한다.
 
+if (process.platform !== 'darwin') {
+  console.log('macOS 전용 번들 픽스 스킵 (현재 플랫폼:', process.platform + ')');
+  process.exit(0);
+}
+
 const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');

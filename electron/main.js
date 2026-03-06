@@ -131,14 +131,18 @@ function createPetWindow() {
   })
 
   // macOS: visibleOnFullScreen 옵션으로 풀스크린 앱 위에서도 펫이 보이게 함
-  petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (process.platform !== 'win32') {
+    petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  }
   petWindow.setBackgroundColor('#00000000')
 }
 
 function showPetWindow() {
   if (!petWindow) return
   petWindow.show()
-  petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (process.platform !== 'win32') {
+    petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  }
   petWindow.setBackgroundColor('#00000000')
   // 창이 완전히 그려지기 전에 배회를 시작하면 초기 위치가 잘못될 수 있으므로 1초 딜레이
   // 중복 호출 시 이전 타이머를 취소하고 재설정
@@ -269,7 +273,9 @@ ipcMain.handle('start-drag', (_, { offsetX, offsetY }) => {
   dragOffsetX = offsetX
   dragOffsetY = offsetY
   stopWandering()
-  petWindow.setVisibleOnAllWorkspaces(false)
+  if (process.platform !== 'win32') {
+    petWindow.setVisibleOnAllWorkspaces(false)
+  }
 
   if (dragInterval) clearInterval(dragInterval)
   dragInterval = setInterval(() => {
@@ -288,7 +294,9 @@ ipcMain.handle('stop-drag', () => {
     dragInterval = null
   }
   cachedDisplay = null  // 다른 디스플레이로 이동했을 수 있으므로 캐시 초기화
-  petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  if (process.platform !== 'win32') {
+    petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  }
   petWindow.setBackgroundColor('#00000000')
   // macOS 버그: 보조 디스플레이에서 visibleOnAllWorkspaces 토글 시
   // GPU 컴포지팅 레이어가 흰색으로 리셋됨
