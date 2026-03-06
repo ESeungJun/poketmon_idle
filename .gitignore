@@ -11,6 +11,8 @@ release/
 !.claude/
 !.claude/agents/
 !.claude/agents/**
+!.claude/skills/
+!.claude/skills/**
 !.claude/commands/
 !.claude/commands/**
 !.claude/approved-pokemon-names.json
