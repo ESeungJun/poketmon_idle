@@ -1,17 +1,18 @@
 import { useState, useEffect, useRef } from 'react'
 import useStore from '../../store/useStore'
 
-const WORK_TIME = 25 * 60
-const BREAK_TIME = 5 * 60
+const DEFAULT_MINUTES = 25
+const MIN_MINUTES = 1
+const MAX_MINUTES = 120
 
 export default function PomodoroTimer() {
-  const [timeLeft, setTimeLeft] = useState(WORK_TIME)
+  const [workMinutes, setWorkMinutes] = useState(DEFAULT_MINUTES)
+  const [timeLeft, setTimeLeft] = useState(DEFAULT_MINUTES * 60)
   const [isRunning, setIsRunning] = useState(false)
-  const [isBreak, setIsBreak] = useState(false)
 
   const intervalRef      = useRef(null)
   const endTimeRef       = useRef(null)   // wall-clock 기준 종료 시각
-  const timeLeftRef      = useRef(WORK_TIME)
+  const timeLeftRef      = useRef(DEFAULT_MINUTES * 60)
   const tickStartRef     = useRef(null)   // 현재 실행 시작 시각
   const totalActiveMsRef = useRef(0)      // 누적 실제 작업 시간(ms)
   const awardedMinRef    = useRef(0)      // 이미 지급한 분(min)
@@ -37,13 +38,8 @@ export default function PomodoroTimer() {
     endTimeRef.current  = Date.now() + timeLeftRef.current * 1000
     tickStartRef.current = Date.now()
 
-    if (isBreak) {
-      setPetState('idle')
-      window.electronAPI?.startWandering()
-    } else {
-      setPetState('sleeping')
-      window.electronAPI?.stopWandering()
-    }
+    setPetState('sleeping')
+    window.electronAPI?.stopWandering()
 
     // 200ms마다 체크 → 스로틀링 되더라도 실제 경과 시간 반영
     intervalRef.current = setInterval(() => {
@@ -53,7 +49,7 @@ export default function PomodoroTimer() {
       setTimeLeft(remaining)
 
       // 실제 활성 시간 기준으로 분당 포인트 지급
-      if (!isBreak && tickStartRef.current) {
+      if (tickStartRef.current) {
         const activeMs       = totalActiveMsRef.current + (now - tickStartRef.current)
         const elapsedMinutes = Math.floor(activeMs / 60000)
         while (awardedMinRef.current < elapsedMinutes) {
@@ -68,27 +64,17 @@ export default function PomodoroTimer() {
           totalActiveMsRef.current += now - tickStartRef.current
           tickStartRef.current = null
         }
+        addPomodoroSession()
+        totalActiveMsRef.current = 0
+        awardedMinRef.current    = 0
+        timeLeftRef.current = workMinutes * 60
+        setTimeLeft(workMinutes * 60)
         setIsRunning(false)
-        if (!isBreak) {
-          addPomodoroSession()
-          totalActiveMsRef.current = 0
-          awardedMinRef.current    = 0
-          setIsBreak(true)
-          timeLeftRef.current = BREAK_TIME
-          setTimeLeft(BREAK_TIME)
-        } else {
-          totalActiveMsRef.current = 0
-          awardedMinRef.current    = 0
-          setIsBreak(false)
-          timeLeftRef.current = WORK_TIME
-          setTimeLeft(WORK_TIME)
-          setPetState('idle')
-        }
       }
     }, 200)
 
     return () => clearInterval(intervalRef.current)
-  }, [isRunning, isBreak])
+  }, [isRunning])
 
   // 패널이 다시 보일 때 즉시 시간 갱신
   useEffect(() => {
@@ -103,14 +89,21 @@ export default function PomodoroTimer() {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [isRunning])
 
+  const changeMinutes = (delta) => {
+    if (isRunning) return
+    const next = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, workMinutes + delta))
+    setWorkMinutes(next)
+    timeLeftRef.current = next * 60
+    setTimeLeft(next * 60)
+  }
+
   const toggle = () => setIsRunning(r => !r)
 
   const reset = () => {
     clearInterval(intervalRef.current)
     setIsRunning(false)
-    setIsBreak(false)
-    timeLeftRef.current      = WORK_TIME
-    setTimeLeft(WORK_TIME)
+    timeLeftRef.current      = workMinutes * 60
+    setTimeLeft(workMinutes * 60)
     endTimeRef.current       = null
     tickStartRef.current     = null
     totalActiveMsRef.current = 0
@@ -122,14 +115,14 @@ export default function PomodoroTimer() {
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
   const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  const progress = isBreak ? 1 - timeLeft / BREAK_TIME : 1 - timeLeft / WORK_TIME
+  const progress = 1 - timeLeft / (workMinutes * 60)
   const circumference = 2 * Math.PI * 45
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <span style={styles.title}>⏱ 집중모드</span>
-        <span style={styles.mode}>{isRunning && !isBreak ? '집중 중' : isBreak ? '휴식 중' : '대기 중'}</span>
+        <span style={styles.mode}>{isRunning ? '집중 중' : '대기 중'}</span>
       </div>
 
       <div style={styles.timerWrapper}>
@@ -137,7 +130,7 @@ export default function PomodoroTimer() {
           <circle cx="60" cy="60" r="45" stroke="#2a2a3e" strokeWidth="8" fill="none" />
           <circle
             cx="60" cy="60" r="45"
-            stroke={isBreak ? '#4CAF50' : '#FF6B6B'}
+            stroke="#FF6B6B"
             strokeWidth="8"
             fill="none"
             strokeDasharray={circumference}
@@ -149,13 +142,22 @@ export default function PomodoroTimer() {
         </svg>
         <div style={styles.timeDisplay}>
           <span style={styles.time}>{timeStr}</span>
-          {isBreak && <span style={styles.breakLabel}>휴식</span>}
         </div>
       </div>
 
+      {!isRunning && (
+        <div style={styles.timeSetRow}>
+          <button onClick={() => changeMinutes(-5)} style={styles.stepBtn}>−5</button>
+          <button onClick={() => changeMinutes(-1)} style={styles.stepBtn}>−1</button>
+          <span style={styles.minuteLabel}>{workMinutes}분</span>
+          <button onClick={() => changeMinutes(1)} style={styles.stepBtn}>+1</button>
+          <button onClick={() => changeMinutes(5)} style={styles.stepBtn}>+5</button>
+        </div>
+      )}
+
       <div style={styles.controls}>
         <button onClick={reset} style={styles.resetBtn}>↺</button>
-        <button onClick={toggle} style={{ ...styles.playBtn, background: isBreak ? '#4CAF50' : '#FF6B6B' }}>
+        <button onClick={toggle} style={styles.playBtn}>
           {isRunning ? '⏸' : '▶'}
         </button>
       </div>
@@ -215,10 +217,6 @@ const styles = {
     fontFamily: 'Courier New, monospace',
     letterSpacing: '2px',
   },
-  breakLabel: {
-    fontSize: '10px',
-    color: '#4CAF50',
-  },
   controls: {
     display: 'flex',
     justifyContent: 'center',
@@ -240,6 +238,7 @@ const styles = {
     height: '56px',
     borderRadius: '50%',
     border: 'none',
+    background: '#FF6B6B',
     color: '#FFFFFF',
     fontSize: '22px',
     cursor: 'pointer',
@@ -249,5 +248,27 @@ const styles = {
     textAlign: 'center',
     fontSize: '11px',
     color: '#555',
+  },
+  timeSetRow: {
+    display: 'flex',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: '6px',
+    marginBottom: '10px',
+  },
+  stepBtn: {
+    padding: '2px 8px',
+    borderRadius: '6px',
+    border: 'none',
+    background: '#2a2a3e',
+    color: '#aaa',
+    fontSize: '12px',
+    cursor: 'pointer',
+  },
+  minuteLabel: {
+    fontSize: '13px',
+    color: '#ccc',
+    minWidth: '36px',
+    textAlign: 'center',
   },
 }
