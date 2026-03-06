@@ -32,18 +32,18 @@
 
 ## 필수 규칙
 
-### 앱 실행
+### 빌드
+코드를 수정한 뒤에는 **반드시** 빌드 후 앱을 실행한다.
+```bash
+npm run build
+```
+빌드 결과물: `release/mac-universal/poketmon-idle.app`
+
 앱을 실행할 때는 기존 프로세스를 먼저 종료한다.
 ```bash
 pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"
 ```
 
-### 빌드
-코드를 수정한 뒤에는 **반드시** 빌드를 실행한다.
-```bash
-npm run build
-```
-빌드 결과물: `release/mac-universal/poketmon-idle.app`
 
 ### 창 구성
 - Pet 창: 100×100px, `transparent: true`, `backgroundColor: '#00000000'`, `roundedCorners: false`
