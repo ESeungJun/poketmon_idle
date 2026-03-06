@@ -41,6 +41,9 @@
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
       "target": [{ "target": "dir", "arch": ["universal"] }]
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }]
     }
   }
 }
