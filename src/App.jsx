@@ -9,7 +9,6 @@ function PetView() {
   const equippedItems = useStore(s => s.equippedItems)
   const initialize = useStore(s => s.initialize)
   const syncFromOtherWindow = useStore(s => s.syncFromOtherWindow)
-  const checkSleepState = useStore(s => s.checkSleepState)
   const initialized = useStore(s => s.initialized)
   const petSpeciesId = useStore(s => s.petSpeciesId)
   const confirmEvolution = useStore(s => s.confirmEvolution)
@@ -28,8 +27,6 @@ function PetView() {
       window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1))
     }
 
-    const sleepCheck = setInterval(checkSleepState, 60000)
-
     const handleMouseUp = () => {
       if (!dragging.current) return
       dragging.current = false
@@ -43,7 +40,6 @@ function PetView() {
 
     window.addEventListener('mouseup', handleMouseUp)
     return () => {
-      clearInterval(sleepCheck)
       window.removeEventListener('mouseup', handleMouseUp)
     }
   }, [])
