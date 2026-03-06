@@ -30,6 +30,14 @@
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
 | `src/components/Shop/items.js` | 아이템 카탈로그 |
 
+## 크로스플랫폼 원칙
+이 프로젝트는 **macOS와 Windows 두 환경을 동시에 지원**한다. 코드 작성 시 항상 양쪽을 고려한다.
+
+- macOS 전용 Electron API(`setVisibleOnAllWorkspaces`, `roundedCorners` 등)는 `process.platform !== 'win32'` 가드 필수
+- macOS 전용 shell 명령어(`codesign`, `PlistBuddy`, `pkill`, `open` 등)는 `process.platform !== 'darwin'` 가드 또는 플랫폼 분기 처리
+- 경로 구분자는 `path.join()`/`path.sep` 사용 (하드코딩 금지)
+- hooks·스크립트의 node 경로: `PATH="$PATH:/c/Program Files/nodejs:/usr/local/bin:/opt/homebrew/bin" node`
+
 ## 필수 규칙
 
 ### 빌드
@@ -93,6 +101,54 @@ PetCanvas 렌더링 분기:
 ```bash
 bash scripts/new-feature.sh <feature-name>
 ```
+
+## 포켓몬 한국어 공식 명칭
+
+포켓몬 이름·기술·아이템을 추가하거나 수정할 때는 **반드시 공식 한국어 명칭**을 사용한다.
+
+- 기준: PokeAPI (`https://pokeapi.co/api/v2/move/{move-slug}`) names 배열의 `"ko"` 항목
+- 불확실한 경우: `pokemon-expert` 에이전트를 호출하거나 `/verify-pokemon-ko` 스킬을 사용해 검증
+- 직역·영어 음차 사용 금지 (예: `보디슬램` ❌ → `누르기` ✓, `헥스` ❌ → `병상첨병` ✓)
+
+주요 수정 이력 (과거 오류 → 공식명):
+
+| 잘못된 이름 | 공식 한국어명 | 영어명 |
+|-------------|---------------|--------|
+| 보디슬램 | 누르기 | Body Slam |
+| 회오리 | 바람일으키기 | Gust |
+| 물뿜기 | 거품광선 | Bubble Beam |
+| 귀여운부탁 | 애교부리기 | Charm |
+| 통증나누기 | 아픔나누기 | Pain Split |
+| 고함치기 | 울부짖기 | Roar |
+| 헥스 | 병상첨병 | Hex |
+| 자화자찬 | 뽐내기 | Swagger |
+| 집중펀치 | 힘껏펀치 | Focus Punch |
+| 스톤엣지 | 스톤에지 | Stone Edge |
+| 폭발 | 대폭발 | Explosion |
+| 암석깨기 | 바위깨기 | Rock Smash |
+| 진흙폭탄 | 오물폭탄 | Sludge Bomb |
+| 검은 철구 | 검은진흙 | Black Sludge |
+| 잠자기가루 | 수면가루 | Sleep Powder |
+| 전기충격 | 전기쇼크 | Thunder Shock |
+| 조개껍질방어 | 껍질에숨기 | Withdraw |
+| 모래공격 | 모래뿌리기 | Sand Attack |
+| 퀵어택 | 전광석화 | Quick Attack |
+| 베어물기 | 물기 | Bite |
+| 독독 | 맹독 | Toxic |
+| 목숨구슬 | 생명의구슬 | Life Orb |
+| 선택 안경 | 구애안경 | Choice Specs |
+| 선택 스카프 | 구애스카프 | Choice Scarf |
+| 남은음식 | 먹다남은음식 | Leftovers |
+| 껍질방울 | 조개껍질방울 | Shell Bell |
+| 기력의 조각 | 기합의띠 | Focus Sash |
+| 현명한 안경 | 박식안경 | Wise Glasses |
+| 저주 부적 | 저주의부적 | Spell Tag |
+| HP UP | 맥스업 | HP Up |
+| 단백질 | 타우린 | Protein |
+| 철 | 사포닌 | Iron |
+| 칼슘 | 리보플라빈 | Calcium |
+| 아연 | 키토산 | Zinc |
+| 탄산 | 알칼로이드 | Carbos |
 
 ## 로드맵
 작업 전 `ROADMAP.md`를 확인하고, 완료된 항목은 `- [ ]` → `- [x]` 로 업데이트한다.
