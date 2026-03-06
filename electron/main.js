@@ -5,8 +5,19 @@ const Store = require('electron-store')
 const store = new Store()
 const isDev = process.env.NODE_ENV === 'development' || (!app.isPackaged && process.env.NODE_ENV !== 'production')
 
-// 펫 창 크기(px). 픽셀아트 scale=5 × 그리드 20 = 100
+// 펫 창 기본 크기(px)
 const WIN_SIZE = 100
+
+// 진화 단계별 윈도우 크기 (stage2 = 1.5×, stage3 = 1.5²×)
+const STAGE2_SPECIES = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
+const STAGE3_SPECIES = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
+function getWinSizeForSpecies(speciesId) {
+  if (STAGE3_SPECIES.has(speciesId)) return 160
+  if (STAGE2_SPECIES.has(speciesId)) return 120
+  return WIN_SIZE
+}
+
+let currentWinSize = WIN_SIZE
 
 let petWindow = null
 let panelWindow = null
@@ -52,7 +63,7 @@ function startWandering() {
     const { x: dX, y: dY, width, height } = display.workArea
 
     // Y축 고정: 작업 영역 하단 2% 위에 고정
-    const fixedY = dY + height - WIN_SIZE - Math.round(height * 0.02)
+    const fixedY = dY + height - currentWinSize - Math.round(height * 0.02)
 
     // 3% 확률로 랜덤 가속도를 더해 자연스러운 방향 전환 유도
     if (Math.random() < 0.03) {
@@ -66,7 +77,7 @@ function startWandering() {
 
     // 화면 우측 1/3 구간 내에서 바운스
     const wanderMinX = dX + Math.round(width * 2 / 3)
-    const wanderMaxX = dX + width - WIN_SIZE
+    const wanderMaxX = dX + width - currentWinSize
     if (newX <= wanderMinX) {
       wanderVx = Math.abs(wanderVx)   // 오른쪽으로 반전
       newX = wanderMinX
@@ -95,12 +106,14 @@ function stopWandering() {
 
 function createPetWindow() {
   const { width, height } = screen.getPrimaryDisplay().workAreaSize
+  const initSize = getWinSizeForSpecies(store.get('petSpeciesId'))
+  currentWinSize = initSize
 
   petWindow = new BrowserWindow({
-    width: WIN_SIZE,
-    height: WIN_SIZE,
-    x: width - WIN_SIZE - 20,
-    y: height - WIN_SIZE - 20,
+    width: initSize,
+    height: initSize,
+    x: width - initSize - 20,
+    y: height - initSize - 20,
     transparent: true,
     backgroundColor: '#00000000',  // 완전 투명 (macOS GPU 레이어 초기화 방지용으로 중복 설정)
     frame: false,
@@ -332,6 +345,17 @@ ipcMain.handle('stop-wandering', () => {
 
 ipcMain.handle('close-panel', () => {
   if (panelWindow) panelWindow.hide()
+})
+
+ipcMain.handle('resize-pet-window', (_, newSize) => {
+  if (!petWindow || currentWinSize === newSize) return
+  currentWinSize = newSize
+  const [x, y] = petWindow.getPosition()
+  const display = screen.getDisplayNearestPoint({ x, y })
+  const { x: dX, y: dY, width, height } = display.workArea
+  petWindow.setSize(newSize, newSize)
+  const newY = dY + height - newSize - Math.round(height * 0.02)
+  petWindow.setPosition(x, Math.round(newY))
 })
 
 ipcMain.handle('quit-app', () => {

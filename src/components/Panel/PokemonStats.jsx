@@ -3,13 +3,26 @@ import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from '../Shop/items'
 import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel } from '../../data/pokemon'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
-import * as squirtleData from '../Pet/squirtle-anims'
-import * as charmanderData from '../Pet/charmander-anims'
-import * as bulbasaurData from '../Pet/bulbasaur-anims'
+import { spriteUrl } from '../../data/pokemon'
+import * as squirtleData from '../Pet/7-anims'
+import * as charmanderData from '../Pet/4-anims'
+import * as bulbasaurData from '../Pet/1-anims'
+import * as ivysaurData from '../Pet/2-anims'
+import * as venusaurData from '../Pet/3-anims'
+import * as charmeleonData from '../Pet/5-anims'
+import * as charizardData from '../Pet/6-anims'
+import * as wartortleData from '../Pet/8-anims'
+import * as blastoiseData from '../Pet/9-anims'
+import { getWinSize } from '../Pet/PetCanvas'
 
-const PIXEL_ART = { squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData }
+const PIXEL_ART = {
+  squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData,
+  ivysaur: ivysaurData, venusaur: venusaurData,
+  charmeleon: charmeleonData, charizard: charizardData,
+  wartortle: wartortleData, blastoise: blastoiseData,
+}
 
-function StaticPixelArt({ speciesId, size = 56 }) {
+function StaticPixelArt({ speciesId, dexNum, size = 56 }) {
   const canvasRef = useRef(null)
   const data = PIXEL_ART[speciesId]
   useEffect(() => {
@@ -24,11 +37,16 @@ function StaticPixelArt({ speciesId, size = 56 }) {
     const frame = DEFAULT_ANIMATIONS.idle.frames[0]
     drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
   }, [speciesId, size])
-  if (!data) return null
-  const rows = data.BASE_BODY.length
-  const cols = data.BASE_BODY[0]?.length ?? rows
-  const scale = Math.floor(size / Math.max(rows, cols))
-  return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
+  if (data) {
+    const rows = data.BASE_BODY.length
+    const cols = data.BASE_BODY[0]?.length ?? rows
+    const scale = Math.floor(size / Math.max(rows, cols))
+    return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
+  }
+  if (dexNum) {
+    return <img src={spriteUrl(dexNum)} alt={speciesId} draggable={false} style={{ width: size, height: size, imageRendering: 'pixelated', objectFit: 'contain', display: 'block' }} />
+  }
+  return null
 }
 
 const STAT_KEYS = ['HP', '공격', '방어', '특수공격', '특수방어', '스피드']
@@ -164,7 +182,7 @@ export default function PokemonStats() {
       <div style={s.header}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
           <div style={s.headerSprite}>
-            <StaticPixelArt speciesId={petSpeciesId} size={56} />
+            <StaticPixelArt speciesId={petSpeciesId} dexNum={pokemon.dexNum} size={Math.round(getWinSize(petSpeciesId) * 0.56)} />
           </div>
           <div style={{ flex: 1 }}>
             {editing ? (

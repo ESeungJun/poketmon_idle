@@ -55,13 +55,13 @@ def nearest_color(c, palette):
 def rgb_to_hex(r, g, b):
     return f'#{r:02X}{g:02X}{b:02X}'
 
-def convert(filepath, pokemon_name, grid_size=20):
+def convert(filepath, pokemon_name, grid_size=20, force_dot=None):
     img = Image.open(filepath).convert('RGBA')
     w, h = img.size
     arr = img.load()
 
-    # 픽셀 크기 감지
-    dot = max(1, min(w, h) // grid_size)
+    # 픽셀 크기 감지 (force_dot 지정 시 그 값 사용)
+    dot = force_dot if force_dot else max(1, min(w, h) // grid_size)
     print(f"이미지 크기: {w}x{h}, 도트 크기: ~{dot}px")
 
     # 실제 그리드 크기 계산
@@ -174,7 +174,7 @@ const _ = null
 {js_grid}"""
 
     out_file = filepath.replace('.png', '-anims.js')
-    with open(out_file, 'w') as f:
+    with open(out_file, 'w', encoding='utf-8') as f:
         f.write(output)
     print(f"저장 완료: {out_file}")
     print("\n=== COLORS ===")
@@ -183,6 +183,8 @@ const _ = null
 
 if __name__ == '__main__':
     if len(sys.argv) < 3:
-        print("사용법: python3 convert.py <파일.png> <이름>")
+        print("사용법: python3 convert.py <파일.png> <이름> [grid_size=20]")
         sys.exit(1)
-    convert(sys.argv[1], sys.argv[2])
+    grid_size = int(sys.argv[3]) if len(sys.argv) > 3 else 20
+    force_dot = int(sys.argv[4]) if len(sys.argv) > 4 else None
+    convert(sys.argv[1], sys.argv[2], grid_size, force_dot)

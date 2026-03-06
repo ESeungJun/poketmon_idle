@@ -98,7 +98,7 @@ const useStore = create((set, get) => ({
       const pokemon = getPokemon(state.petSpeciesId)
       if (pokemon) {
         // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
-        if (pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
+        if (pokemon.evolveAt && prevLevel < pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
           update.petState = 'evolving'
         }
         const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
@@ -160,17 +160,20 @@ const useStore = create((set, get) => ({
   },
 
   // 진화 확정: App.jsx에서 evolving 상태 3초 후 호출
-  // 새 종 ID로 교체하고 petStats를 null로 초기화 (PokemonStats에서 새 스탯 생성)
+  // 새 종 ID로 교체하고 petStats의 speciesId만 갱신 (성격·특성·개체값은 유지)
   confirmEvolution: () => {
-    const { petSpeciesId } = get()
+    const { petSpeciesId, petStats } = get()
     const pokemon = getPokemon(petSpeciesId)
     if (!pokemon || !pokemon.evolveTo) return
     const newSpeciesId = pokemon.evolveTo
-    set({ petSpeciesId: newSpeciesId, petStats: null, petState: 'happy' })
+    const newPetStats = petStats
+      ? { ...petStats, speciesId: newSpeciesId }
+      : null
+    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy' })
     saveToStore('petSpeciesId', newSpeciesId)
-    saveToStore('petStats', null)
+    saveToStore('petStats', newPetStats)
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId })
+      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy' })
     }
     setTimeout(() => {
       set(s => {
