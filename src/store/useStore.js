@@ -322,13 +322,6 @@ const useStore = create((set, get) => ({
     }
   },
 
-  checkSleepState: () => {
-    const { lastActiveTime, petState } = get()
-    const thirtyMinutes = 30 * 60 * 1000
-    if (Date.now() - lastActiveTime > thirtyMinutes && petState !== 'sleeping') {
-      set({ petState: 'sleeping' })
-    }
-  },
 
   syncFromOtherWindow: (data) => {
     set(state => ({ ...state, ...data }))
