@@ -21,10 +21,11 @@ function PetView() {
   useEffect(() => {
     initialize()
 
+    const cleanups = []
     if (window.electronAPI) {
-      window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
-      window.electronAPI.onWanderDirection(dir => setFlipX(dir > 0))
-      window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1))
+      cleanups.push(window.electronAPI.onStateSync(data => syncFromOtherWindow(data)))
+      cleanups.push(window.electronAPI.onWanderDirection(dir => setFlipX(dir > 0)))
+      cleanups.push(window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1)))
     }
 
     const handleMouseUp = () => {
@@ -41,6 +42,7 @@ function PetView() {
     window.addEventListener('mouseup', handleMouseUp)
     return () => {
       window.removeEventListener('mouseup', handleMouseUp)
+      cleanups.forEach(fn => fn?.())
     }
   }, [])
 
@@ -104,7 +106,8 @@ function PanelView() {
   useEffect(() => {
     initialize()
     if (window.electronAPI) {
-      window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
+      const cleanup = window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
+      return () => cleanup?.()
     }
   }, [])
 
@@ -115,12 +118,8 @@ export default function App() {
   const [view, setView] = useState(null)
 
   useEffect(() => {
-    if (window.electronAPI) {
-      setView(window.electronAPI.getQueryParam('view') || 'pet')
-    } else {
-      const params = new URLSearchParams(window.location.search)
-      setView(params.get('view') || 'pet')
-    }
+    const params = new URLSearchParams(window.location.search)
+    setView(params.get('view') || 'pet')
   }, [])
 
   if (!view) return null
