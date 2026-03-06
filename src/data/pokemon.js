@@ -88,7 +88,7 @@ export const POKEMON_DB = {
     ],
     baseMoves: [
       { name: '할퀴기', type: '노말', category: '물리', power: 40, learnAt: 1 },
-      { name: '불꽃뿜기', type: '불꽃', category: '특수', power: 40, learnAt: 9 },
+      { name: '불꽃세례', type: '불꽃', category: '특수', power: 40, learnAt: 9 },
       { name: '도깨비불', type: '불꽃', category: '변화', power: null, learnAt: 15 },
       { name: '불꽃엄니', type: '불꽃', category: '물리', power: 65, learnAt: 28 },
       { name: '화염방사', type: '불꽃', category: '특수', power: 90, learnAt: 33 },
@@ -106,7 +106,7 @@ export const POKEMON_DB = {
     ],
     baseMoves: [
       { name: '할퀴기', type: '노말', category: '물리', power: 40, learnAt: 1 },
-      { name: '불꽃뿜기', type: '불꽃', category: '특수', power: 40, learnAt: 9 },
+      { name: '불꽃세례', type: '불꽃', category: '특수', power: 40, learnAt: 9 },
       { name: '도깨비불', type: '불꽃', category: '변화', power: null, learnAt: 15 },
       { name: '불꽃엄니', type: '불꽃', category: '물리', power: 65, learnAt: 32 },
       { name: '화염방사', type: '불꽃', category: '특수', power: 90, learnAt: 38 },
@@ -167,7 +167,7 @@ export const POKEMON_DB = {
       { name: '껍질에숨기', type: '물', category: '변화', power: null, learnAt: 13 },
       { name: '거품광선', type: '물', category: '특수', power: 65, learnAt: 22 },
       { name: '방어', type: '노말', category: '변화', power: null, learnAt: 42 },
-      { name: '얼음빔', type: '얼음', category: '특수', power: 90, learnAt: 44 },
+      { name: '냉동빔', type: '얼음', category: '특수', power: 90, learnAt: 44 },
       { name: '파도타기', type: '물', category: '특수', power: 90, learnAt: 52 },
     ],
     learnableTMs: ['tm13', 'tm14', 'tm17', 'tm18', 'tm26', 'tm44', 'tm80', 'tm87', 'tm90', 'tm91'],
@@ -184,7 +184,7 @@ export const POKEMON_DB = {
     baseMoves: [
       { name: '물대포', type: '물', category: '특수', power: 40, learnAt: 1 },
       { name: '껍질에숨기', type: '물', category: '변화', power: null, learnAt: 13 },
-      { name: '물뿜기', type: '물', category: '특수', power: 65, learnAt: 22 },
+      { name: '거품광선', type: '물', category: '특수', power: 65, learnAt: 22 },
       { name: '방어', type: '노말', category: '변화', power: null, learnAt: 42 },
       { name: '파도타기', type: '물', category: '특수', power: 90, learnAt: 52 },
       { name: '눈보라', type: '얼음', category: '특수', power: 110, learnAt: 58 },
