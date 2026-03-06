@@ -1,6 +1,62 @@
-import { useState } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import useStore from '../../store/useStore'
-import { STARTERS, getPokemon, spriteUrl } from '../../data/pokemon'
+import { STARTERS, getPokemon } from '../../data/pokemon'
+
+import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
+import * as squirtleData from '../Pet/squirtle-anims'
+import * as charmanderData from '../Pet/charmander-anims'
+import * as bulbasaurData from '../Pet/bulbasaur-anims'
+
+const PIXEL_ART = {
+  squirtle: squirtleData,
+  charmander: charmanderData,
+  bulbasaur: bulbasaurData,
+}
+
+function PixelArtPreview({ speciesId, size = 56 }) {
+  const canvasRef = useRef(null)
+  const animRef = useRef(null)
+  const frameRef = useRef(0)
+  const data = PIXEL_ART[speciesId]
+
+  useEffect(() => {
+    if (!data) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { alpha: true })
+    ctx.imageSmoothingEnabled = false
+
+    const rows = data.BASE_BODY.length
+    const cols = data.BASE_BODY[0]?.length ?? rows
+    const scale = Math.floor(size / Math.max(rows, cols))
+
+    const { frames, fps } = DEFAULT_ANIMATIONS.idle
+    const interval = 1000 / fps
+
+    const animate = () => {
+      const frame = frames[frameRef.current % frames.length]
+      drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
+      frameRef.current = (frameRef.current + 1) % frames.length
+      animRef.current = setTimeout(animate, interval)
+    }
+    animate()
+    return () => { if (animRef.current) clearTimeout(animRef.current) }
+  }, [speciesId, size])
+
+  if (!data) return null
+  const rows = data.BASE_BODY.length
+  const cols = data.BASE_BODY[0]?.length ?? rows
+  const scale = Math.floor(size / Math.max(rows, cols))
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={cols * scale}
+      height={rows * scale}
+      style={{ imageRendering: 'pixelated', display: 'block' }}
+    />
+  )
+}
 
 const TYPE_COLOR = {
   풀: '#3a8a30', 독: '#A040A0', 불꽃: '#c05010', 물: '#3868c8',
@@ -42,12 +98,7 @@ export default function StarterSelect() {
               onMouseLeave={() => setHovered(null)}
             >
               <div style={s.spriteWrap}>
-                <img
-                  src={spriteUrl(pokemon.dexNum)}
-                  alt={pokemon.speciesName}
-                  style={s.sprite}
-                  draggable={false}
-                />
+                <PixelArtPreview speciesId={pokemon.id} size={56} />
               </div>
               <div style={s.name}>{pokemon.speciesName}</div>
               <div style={s.dex}>#{String(pokemon.dexNum).padStart(3, '0')}</div>

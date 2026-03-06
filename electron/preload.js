@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getAllStore: () => ipcRenderer.invoke('get-all-store'),
   clearStore: () => ipcRenderer.invoke('clear-store'),
   notifyStarterSelected: () => ipcRenderer.invoke('starter-selected'),
+  quitApp: () => ipcRenderer.invoke('quit-app'),
 
   onStateSync: (callback) => {
     ipcRenderer.on('state-sync', (_, data) => callback(data))

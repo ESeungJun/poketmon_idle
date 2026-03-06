@@ -4,9 +4,9 @@
 
 - [x] 진입 시 패널 창만 표시, 펫 창은 포켓몬 선택 후 등장
 - [x] 스타터를 꼬부기 · 파이리 · 이상해씨 3종으로 교체 (겐가르 제거)
-- [ ] 꼬부기 도트 애니메이션 제작 (idle / happy / working / sleeping)
-- [ ] 파이리 도트 애니메이션 제작 (idle / happy / working / sleeping)
-- [ ] 이상해씨 도트 애니메이션 제작 (idle / happy / working / sleeping)
+- [x] 꼬부기 도트 애니메이션 제작 (idle / happy / working / sleeping)
+- [x] 파이리 도트 애니메이션 제작 (idle / happy / working / sleeping)
+- [x] 이상해씨 도트 애니메이션 제작 (idle / happy / working / sleeping)
 - [ ] 각 스타터 진화형 도트 제작 (거북왕, 리자몽, 이상해꽃 라인)
 
 ## Week 2 — 야생 포켓몬 조우 시스템

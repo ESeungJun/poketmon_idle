@@ -76,6 +76,7 @@ function PetView() {
   }
 
   if (!initialized) return null
+  if (!petSpeciesId) return null
 
   const pokemon = getPokemon(petSpeciesId)
   const dexNum = pokemon ? pokemon.dexNum : null
@@ -94,6 +95,7 @@ function PetView() {
         scale={5}
         flipX={flipX}
         dexNum={dexNum}
+        speciesId={petSpeciesId}
       />
     </div>
   )
