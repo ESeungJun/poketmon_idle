@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from '../Shop/items'
-import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel, getUpcomingMoves } from '../../data/pokemon'
+import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel } from '../../data/pokemon'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
 import * as squirtleData from '../Pet/squirtle-anims'
 import * as charmanderData from '../Pet/charmander-anims'
@@ -271,24 +271,6 @@ export default function PokemonStats() {
         ))}
       </div>
 
-      {/* 배울 기술 */}
-      {(() => {
-        const upcoming = getUpcomingMoves(pokemon, currentLevel)
-        if (upcoming.length === 0) return null
-        return (
-          <>
-            <div style={{ ...s.sectionTitle, marginTop: '10px' }}>배울 기술</div>
-            {upcoming.map(m => (
-              <div key={m.name} style={s.upcomingRow}>
-                <span style={s.upcomingLevel}>Lv.{m.learnAt}</span>
-                <span style={{ ...s.typeBadge, background: TYPE_COLOR[m.type] || '#555', fontSize: '10px' }}>{m.type}</span>
-                <span style={s.upcomingName}>{m.name}</span>
-                <span style={s.upcomingPower}>{m.power ? `위력 ${m.power}` : '변화기'}</span>
-              </div>
-            ))}
-          </>
-        )
-      })()}
 
       {/* 교체 피커 */}
       {swapSlot !== null && (
@@ -411,8 +393,4 @@ const s = {
   tmUseBtn: { background: '#667eea', border: 'none', borderRadius: '6px', color: '#fff', fontSize: '11px', padding: '4px 10px', cursor: 'pointer' },
   tmBadgeLearned: { fontSize: '10px', color: '#4CAF50' },
   tmBadgeNo: { fontSize: '10px', color: '#FF6B6B' },
-  upcomingRow: { display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', borderBottom: '1px solid #1a1a2e' },
-  upcomingLevel: { fontSize: '10px', color: '#667eea', width: '32px', flexShrink: 0, fontWeight: 'bold' },
-  upcomingName: { fontSize: '12px', color: '#888', flex: 1 },
-  upcomingPower: { fontSize: '11px', color: '#444' },
 }
