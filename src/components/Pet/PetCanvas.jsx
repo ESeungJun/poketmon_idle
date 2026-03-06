@@ -1,8 +1,14 @@
 import { useEffect, useRef } from 'react'
 import { drawPokemon, DEFAULT_ANIMATIONS } from './pokemonDraw'
-import * as squirtleData from './squirtle-anims'
-import * as charmanderData from './charmander-anims'
-import * as bulbasaurData from './bulbasaur-anims'
+import * as squirtleData from './7-anims'
+import * as charmanderData from './4-anims'
+import * as bulbasaurData from './1-anims'
+import * as ivysaurData from './2-anims'
+import * as charmeleonData from './5-anims'
+import * as venusaurData from './3-anims'
+import * as charizardData from './6-anims'
+import * as wartortleData from './8-anims'
+import * as blastoiseData from './9-anims'
 import { spriteUrl } from '../../data/pokemon'
 
 // 커스텀 도트 데이터가 있는 포켓몬 목록
@@ -11,6 +17,21 @@ const PIXEL_ART = {
   squirtle:   squirtleData,
   charmander: charmanderData,
   bulbasaur:  bulbasaurData,
+  ivysaur:    ivysaurData,
+  charmeleon: charmeleonData,
+  venusaur:   venusaurData,
+  charizard:  charizardData,
+  wartortle:  wartortleData,
+  blastoise:  blastoiseData,
+}
+
+// 진화 단계별 펫 창 크기 (stage2 = 1.5×, stage3 = 2.25×)
+const STAGE2 = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
+const STAGE3 = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
+export function getWinSize(speciesId) {
+  if (STAGE3.has(speciesId)) return 160
+  if (STAGE2.has(speciesId)) return 120
+  return 100
 }
 
 // CSS 애니메이션 키프레임을 DOM에 한 번만 주입
@@ -25,8 +46,14 @@ function injectStyles() {
       50% { transform: translateY(-10px); }
     }
     @keyframes petEvolve {
-      0%, 100% { filter: brightness(1); opacity: 1; }
-      50% { filter: brightness(8) saturate(0); opacity: 0.6; }
+      0%   { filter: brightness(1) saturate(1); }
+      10%  { filter: brightness(30) saturate(0); }
+      22%  { filter: brightness(1) saturate(1); }
+      37%  { filter: brightness(30) saturate(0); }
+      49%  { filter: brightness(1) saturate(1); }
+      64%  { filter: brightness(30) saturate(0); }
+      76%  { filter: brightness(1) saturate(1); }
+      100% { filter: brightness(30) saturate(0); }
     }
     @keyframes petSleep {
       0%, 100% { opacity: 0.6; }
@@ -40,7 +67,7 @@ function injectStyles() {
 function getSpriteStyle(state) {
   switch (state) {
     case 'happy':    return { animation: 'petBounce 0.5s ease-in-out infinite' }
-    case 'evolving': return { animation: 'petEvolve 0.4s ease-in-out infinite' }
+    case 'evolving': return { animation: 'petEvolve 3s ease-in-out 1 forwards' }
     case 'sleeping': return { animation: 'petSleep 2s ease-in-out infinite', filter: 'grayscale(40%)' }
     case 'working':  return { opacity: 0.9 }
     default:         return {}
@@ -54,13 +81,15 @@ function getSpriteStyle(state) {
 export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 5, flipX = false, dexNum = null, speciesId = null }) {
   injectStyles()
 
+  const winSize = getWinSize(speciesId)
+
   if (speciesId && PIXEL_ART[speciesId]) {
     const pokemonData = PIXEL_ART[speciesId]
-    return <PixelArtCanvas pokemonData={pokemonData} state={state} scale={scale} flipX={flipX} />
+    return <PixelArtCanvas pokemonData={pokemonData} state={state} winSize={winSize} flipX={flipX} />
   }
 
   if (dexNum) {
-    const size = 20 * scale
+    const size = winSize
     return (
       <div style={{
         width: size,
@@ -96,7 +125,7 @@ export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 
 // - state가 'sleeping'이고 SLEEP_BODY가 있으면 수면 전용 도트 + 색상 사용
 // - canvas 크기는 그리드 크기에서 자동 계산 (100px 창에 맞게 scale 조정)
 // - setTimeout 기반 애니메이션 루프: state나 pokemonData가 바뀌면 useEffect가 재실행되어 루프 재시작
-function PixelArtCanvas({ pokemonData, state, flipX }) {
+function PixelArtCanvas({ pokemonData, state, winSize = 100, flipX }) {
   const canvasRef = useRef(null)
   const frameRef  = useRef(0)
   const animRef   = useRef(null)
@@ -109,7 +138,7 @@ function PixelArtCanvas({ pokemonData, state, flipX }) {
   // 캔버스 크기: 그리드의 행/열 중 큰 쪽을 기준으로 100px에 맞는 scale 계산
   const rows  = body.length
   const cols  = body[0]?.length ?? rows
-  const scale = Math.floor(100 / Math.max(rows, cols))
+  const scale = Math.floor(winSize / Math.max(rows, cols))
 
   // 애니메이션 중 가장 많이 위로 올라가는 양(px)만큼 캔버스 상단에 여유 공간 추가
   // 이 값을 baseYOffset으로 drawPokemon에 전달해 전체 그리기 위치를 아래로 내림
@@ -150,6 +179,7 @@ function PixelArtCanvas({ pokemonData, state, flipX }) {
         display: 'block',
         background: 'transparent',
         transform: flipX ? 'scaleX(-1)' : 'none',
+        ...(state === 'evolving' ? { animation: 'petEvolve 3s ease-in-out 1 forwards' } : {}),
       }}
     />
   )
