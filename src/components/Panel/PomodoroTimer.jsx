@@ -37,8 +37,13 @@ export default function PomodoroTimer() {
     endTimeRef.current  = Date.now() + timeLeftRef.current * 1000
     tickStartRef.current = Date.now()
 
-    setPetState(isBreak ? 'idle' : 'sleeping')
-    window.electronAPI?.stopWandering()
+    if (isBreak) {
+      setPetState('idle')
+      window.electronAPI?.startWandering()
+    } else {
+      setPetState('sleeping')
+      window.electronAPI?.stopWandering()
+    }
 
     // 200ms마다 체크 → 스로틀링 되더라도 실제 경과 시간 반영
     intervalRef.current = setInterval(() => {
