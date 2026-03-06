@@ -30,6 +30,14 @@
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
 | `src/components/Shop/items.js` | 아이템 카탈로그 |
 
+## 크로스플랫폼 원칙
+이 프로젝트는 **macOS와 Windows 두 환경을 동시에 지원**한다. 코드 작성 시 항상 양쪽을 고려한다.
+
+- macOS 전용 Electron API(`setVisibleOnAllWorkspaces`, `roundedCorners` 등)는 `process.platform !== 'win32'` 가드 필수
+- macOS 전용 shell 명령어(`codesign`, `PlistBuddy`, `pkill`, `open` 등)는 `process.platform !== 'darwin'` 가드 또는 플랫폼 분기 처리
+- 경로 구분자는 `path.join()`/`path.sep` 사용 (하드코딩 금지)
+- hooks·스크립트의 node 경로: `PATH="$PATH:/c/Program Files/nodejs:/usr/local/bin:/opt/homebrew/bin" node`
+
 ## 필수 규칙
 
 ### 빌드
