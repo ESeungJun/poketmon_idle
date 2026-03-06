@@ -286,6 +286,14 @@ const useStore = create((set, get) => ({
     saveToStore('petStats', newStats)
   },
 
+  resetAllData: async () => {
+    if (window.electronAPI) await window.electronAPI.clearStore()
+    set({ ...DEFAULT_STATE, initialized: true })
+    if (window.electronAPI) {
+      window.electronAPI.sendStateUpdate({ ...DEFAULT_STATE })
+    }
+  },
+
   checkSleepState: () => {
     const { lastActiveTime, petState } = get()
     const thirtyMinutes = 30 * 60 * 1000

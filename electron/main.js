@@ -3,7 +3,7 @@ const path = require('path')
 const Store = require('electron-store')
 
 const store = new Store()
-const isDev = process.env.NODE_ENV === 'development' || !app.isPackaged
+const isDev = process.env.NODE_ENV === 'development' || (!app.isPackaged && process.env.NODE_ENV !== 'production')
 
 const WIN_SIZE = 100  // half of original 200
 
@@ -200,6 +200,7 @@ ipcMain.handle('get-store', (_, key) => store.get(key))
 ipcMain.handle('set-store', (_, key, value) => store.set(key, value))
 ipcMain.on('set-store-sync', (event, key, value) => { store.set(key, value); event.returnValue = true })
 ipcMain.handle('get-all-store', () => store.store)
+ipcMain.handle('clear-store', () => store.clear())
 
 // Drag: poll cursor in main process so it works even when cursor leaves the window.
 // visibleOnAllWorkspaces is disabled during drag — macOS otherwise blocks
