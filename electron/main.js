@@ -21,6 +21,10 @@ let wanderVx = Math.random() > 0.5 ? 1.0 : -1.0
 const WANDER_SPEED = 1.0
 let lastWanderDir = wanderVx > 0 ? 1 : -1
 let wanderingLocked = false
+let cachedDisplay = null  // 디스플레이 캐시
+
+// --- showPetWindow 타이머 ---
+let showPetTimer = null
 
 function startWandering() {
   if (wanderInterval) return
@@ -29,8 +33,16 @@ function startWandering() {
 
     const [x, y] = petWindow.getPosition()
 
-    // Get the display the pet is currently on
-    const display = screen.getDisplayNearestPoint({ x, y })
+    // 디스플레이 캐싱: 경계 부근(±20px)에서만 재계산
+    if (!cachedDisplay) {
+      cachedDisplay = screen.getDisplayNearestPoint({ x, y })
+    } else {
+      const { x: dX, width } = cachedDisplay.workArea
+      if (x < dX - 20 || x > dX + width + 20) {
+        cachedDisplay = screen.getDisplayNearestPoint({ x, y })
+      }
+    }
+    const display = cachedDisplay
     const { x: dX, y: dY, width, height } = display.workArea
 
     // Fixed Y: bottom 5% of the current display's work area
@@ -124,7 +136,8 @@ function showPetWindow() {
   petWindow.show()
   petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   petWindow.setBackgroundColor('#00000000')
-  setTimeout(() => { if (!wanderingLocked) startWandering() }, 1000)
+  if (showPetTimer) clearTimeout(showPetTimer)
+  showPetTimer = setTimeout(() => { showPetTimer = null; if (!wanderingLocked) startWandering() }, 1000)
 }
 
 function createPanelWindow() {
@@ -211,9 +224,20 @@ ipcMain.handle('toggle-panel', () => {
   }
 })
 
-ipcMain.handle('get-store', (_, key) => store.get(key))
-ipcMain.handle('set-store', (_, key, value) => store.set(key, value))
-ipcMain.on('set-store-sync', (event, key, value) => { store.set(key, value); event.returnValue = true })
+const ALLOWED_STORE_KEYS = new Set([
+  'points', 'totalPointsEarned', 'purchasedItems', 'equippedItems',
+  'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
+  'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+])
+
+ipcMain.handle('get-store', (_, key) => {
+  if (!ALLOWED_STORE_KEYS.has(key)) return undefined
+  return store.get(key)
+})
+ipcMain.handle('set-store', (_, key, value) => {
+  if (!ALLOWED_STORE_KEYS.has(key)) return
+  store.set(key, value)
+})
 ipcMain.handle('get-all-store', () => store.store)
 ipcMain.handle('clear-store', () => {
   store.clear()
@@ -252,6 +276,7 @@ ipcMain.handle('stop-drag', () => {
     clearInterval(dragInterval)
     dragInterval = null
   }
+  cachedDisplay = null  // 드래그 후 디스플레이 재계산
   petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
   petWindow.setBackgroundColor('#00000000')
   // On secondary displays, macOS resets the window compositing layer as white.
