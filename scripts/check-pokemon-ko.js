@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// PostToolUse 훅: pokemon.js / items.js 편집 후 기술명이 공식 한국어인지 검사
+// PostToolUse 훅: pokemon.js / items.js 편집 후 기술명·아이템명이 공식 한국어인지 검사
 // 승인 목록에 없는 새 이름만 stderr에 경고 출력
 
 const fs = require('fs')
@@ -18,7 +18,7 @@ process.stdin.on('end', () => {
 
   const content = fs.readFileSync(filePath.replace(/\//g, path.sep), 'utf8')
 
-  // 기술명 추출 패턴
+  // 기술명·아이템명 추출
   const moveNames = new Set()
   if (isPokemonJs) {
     // baseMoves 안의 { name: '...' } 엔트리만 (type 필드가 함께 있음)
@@ -27,8 +27,13 @@ process.stdin.on('end', () => {
     }
   }
   if (isItemsJs) {
+    // TM 기술명
     for (const m of content.matchAll(/moveName:\s*'([^']+)'/g)) {
       moveNames.add(m[1])
+    }
+    // 도구·비타민 아이템명 (category: 'tool' 또는 'vitamin')
+    for (const m of content.matchAll(/category:\s*'(?:tool|vitamin)'[^}]*name:\s*'([^']+)'|name:\s*'([^']+)'[^}]*category:\s*'(?:tool|vitamin)'/g)) {
+      moveNames.add(m[1] || m[2])
     }
   }
 

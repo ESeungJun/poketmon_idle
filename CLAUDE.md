@@ -135,6 +135,20 @@ bash scripts/new-feature.sh <feature-name>
 | 퀵어택 | 전광석화 | Quick Attack |
 | 베어물기 | 물기 | Bite |
 | 독독 | 맹독 | Toxic |
+| 목숨구슬 | 생명의구슬 | Life Orb |
+| 선택 안경 | 구애안경 | Choice Specs |
+| 선택 스카프 | 구애스카프 | Choice Scarf |
+| 남은음식 | 먹다남은음식 | Leftovers |
+| 껍질방울 | 조개껍질방울 | Shell Bell |
+| 기력의 조각 | 기합의띠 | Focus Sash |
+| 현명한 안경 | 박식안경 | Wise Glasses |
+| 저주 부적 | 저주의부적 | Spell Tag |
+| HP UP | 맥스업 | HP Up |
+| 단백질 | 타우린 | Protein |
+| 철 | 사포닌 | Iron |
+| 칼슘 | 리보플라빈 | Calcium |
+| 아연 | 키토산 | Zinc |
+| 탄산 | 알칼로이드 | Carbos |
 
 ## 로드맵
 작업 전 `ROADMAP.md`를 확인하고, 완료된 항목은 `- [ ]` → `- [x]` 로 업데이트한다.

@@ -15,8 +15,9 @@
 
 4. 불일치 항목이 있으면 수정 여부를 사용자에게 묻고, 승인 시 파일을 수정한다.
 
-5. 아이템(지니기 아이템, 비타민)도 동일한 방법으로 검증한다.
+5. 도구(지니기 아이템)·비타민도 동일한 방법으로 검증한다.
    - 아이템 API: `https://pokeapi.co/api/v2/item/{slug}`
+   - 아래 "아이템 슬러그 매핑" 참고
 
 ## 자주 쓰는 슬러그 매핑
 
@@ -84,3 +85,24 @@
 | 고드름침 | icicle-spear |
 | 바위깨기 | rock-smash |
 | 비바라기 | rain-dance |
+
+## 아이템 슬러그 매핑
+
+| 한국어명 | 영어 슬러그 |
+|----------|-------------|
+| 생명의구슬 | life-orb |
+| 구애안경 | choice-specs |
+| 구애스카프 | choice-scarf |
+| 먹다남은음식 | leftovers |
+| 조개껍질방울 | shell-bell |
+| 기합의띠 | focus-sash |
+| 검은진흙 | black-sludge |
+| 박식안경 | wise-glasses |
+| 저주의부적 | spell-tag |
+| 독바늘 | poison-barb |
+| 맥스업 | hp-up |
+| 타우린 | protein |
+| 사포닌 | iron |
+| 리보플라빈 | calcium |
+| 키토산 | zinc |
+| 알칼로이드 | carbos |
