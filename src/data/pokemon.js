@@ -15,7 +15,7 @@ export function calcLevel(totalPointsEarned) {
 }
 
 // Selectable base Pokémon (no pre-evolution)
-export const STARTERS = ['bulbasaur', 'charmander', 'squirtle', 'pidgey', 'pikachu', 'gastly', 'eevee', 'snorlax', 'mew']
+export const STARTERS = ['bulbasaur', 'charmander', 'squirtle']
 
 export const POKEMON_DB = {
   // ── 이상해씨 계열 ───────────────────────────────────────────────────

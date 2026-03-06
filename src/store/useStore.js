@@ -110,6 +110,7 @@ const useStore = create((set, get) => ({
     saveToStore('petStats', null)
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: speciesId })
+      window.electronAPI.notifyStarterSelected()
     }
   },
 
