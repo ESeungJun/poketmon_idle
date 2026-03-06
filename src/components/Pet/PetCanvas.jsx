@@ -1,5 +1,4 @@
 import { useEffect, useRef } from 'react'
-import { ANIMATIONS, drawFrame } from './animations'
 import { drawPokemon, DEFAULT_ANIMATIONS } from './pokemonDraw'
 import * as squirtleData from './squirtle-anims'
 import * as charmanderData from './charmander-anims'
@@ -51,10 +50,6 @@ function getSpriteStyle(state) {
 }
 
 export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 5, flipX = false, dexNum = null, speciesId = null }) {
-  const canvasRef = useRef(null)
-  const frameRef = useRef(0)
-  const animRef = useRef(null)
-
   injectStyles()
 
   // Pixel-art canvas rendering for starters with custom dot art
@@ -94,8 +89,7 @@ export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 
     )
   }
 
-  // Legacy Gengar pixel-art canvas rendering
-  return <GengarCanvas state={state} equippedItems={equippedItems} scale={scale} flipX={flipX} canvasRef={canvasRef} frameRef={frameRef} animRef={animRef} />
+  return null
 }
 
 function PixelArtCanvas({ pokemonData, state, flipX }) {
@@ -147,37 +141,3 @@ function PixelArtCanvas({ pokemonData, state, flipX }) {
   )
 }
 
-function GengarCanvas({ state, equippedItems, scale, flipX, canvasRef, frameRef, animRef }) {
-  useEffect(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-
-    const ctx = canvas.getContext('2d', { alpha: true })
-    ctx.imageSmoothingEnabled = false
-
-    const animation = ANIMATIONS[state] || ANIMATIONS.idle
-    const { frames, fps } = animation
-    const interval = 1000 / fps
-    frameRef.current = 0
-
-    const animate = () => {
-      const frame = frames[frameRef.current % frames.length]
-      drawFrame(ctx, frame, scale, equippedItems)
-      frameRef.current = (frameRef.current + 1) % frames.length
-      animRef.current = setTimeout(animate, interval)
-    }
-
-    animate()
-    return () => { if (animRef.current) clearTimeout(animRef.current) }
-  }, [state, equippedItems, scale])
-
-  const size = 20 * scale
-  return (
-    <canvas
-      ref={canvasRef}
-      width={size}
-      height={size}
-      style={{ imageRendering: 'pixelated', display: 'block', background: 'transparent', transform: flipX ? 'scaleX(-1)' : 'none' }}
-    />
-  )
-}
