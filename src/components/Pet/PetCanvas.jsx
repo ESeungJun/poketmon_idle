@@ -101,13 +101,22 @@ function PixelArtCanvas({ pokemonData, state, flipX }) {
   const frameRef  = useRef(0)
   const animRef   = useRef(null)
 
+  const isSleeping = state === 'sleeping' && pokemonData.SLEEP_BODY
+  const body      = isSleeping ? pokemonData.SLEEP_BODY   : pokemonData.BASE_BODY
+  const colors    = isSleeping ? pokemonData.SLEEP_COLORS : pokemonData.COLORS
+  const animation = DEFAULT_ANIMATIONS[isSleeping ? 'sleeping' : state] || DEFAULT_ANIMATIONS.idle
+
   // 캔버스 크기: 그리드의 행/열 중 큰 쪽을 기준으로 100px에 맞는 scale 계산
-  const activeBody = (state === 'sleeping' && pokemonData.SLEEP_BODY) ? pokemonData.SLEEP_BODY : pokemonData.BASE_BODY
-  const rows  = activeBody.length
-  const cols  = activeBody[0]?.length ?? rows
+  const rows  = body.length
+  const cols  = body[0]?.length ?? rows
   const scale = Math.floor(100 / Math.max(rows, cols))
+
+  // 애니메이션 중 가장 많이 위로 올라가는 양(px)만큼 캔버스 상단에 여유 공간 추가
+  // 이 값을 baseYOffset으로 drawPokemon에 전달해 전체 그리기 위치를 아래로 내림
+  const maxUpOffset = Math.abs(Math.min(0, ...animation.frames.map(f => f.yOffset ?? 0)))
+
   const canvasW = cols * scale
-  const canvasH = rows * scale
+  const canvasH = (rows + maxUpOffset) * scale  // 상단 여유 공간 포함
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -116,18 +125,13 @@ function PixelArtCanvas({ pokemonData, state, flipX }) {
     const ctx = canvas.getContext('2d', { alpha: true })
     ctx.imageSmoothingEnabled = false  // 픽셀아트 선명도 유지
 
-    const isSleeping = state === 'sleeping' && pokemonData.SLEEP_BODY
-    const body   = isSleeping ? pokemonData.SLEEP_BODY   : pokemonData.BASE_BODY
-    const colors = isSleeping ? pokemonData.SLEEP_COLORS : pokemonData.COLORS
-
-    const animation = DEFAULT_ANIMATIONS[isSleeping ? 'sleeping' : state] || DEFAULT_ANIMATIONS.idle
     const { frames, fps } = animation
     const interval = 1000 / fps
     frameRef.current = 0
 
     const animate = () => {
       const frame = frames[frameRef.current % frames.length]
-      drawPokemon(ctx, body, colors, frame, scale)
+      drawPokemon(ctx, body, colors, frame, scale, maxUpOffset)
       frameRef.current = (frameRef.current + 1) % frames.length
       animRef.current  = setTimeout(animate, interval)
     }
