@@ -45,11 +45,18 @@
 ```bash
 npm run build
 ```
-빌드 결과물: `release/mac-universal/poketmon-idle.app`
+빌드 결과물: `release/mac-universal/poketmon-idle.app` (macOS) / `release/win-unpacked/` (Windows)
 
 앱을 실행할 때는 기존 프로세스를 먼저 종료한다.
+
+**macOS**
 ```bash
 pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"
+```
+
+**Windows**
+```bash
+powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && npm run build && start "" "release/win-unpacked/poketmon-idle.exe"
 ```
 
 
