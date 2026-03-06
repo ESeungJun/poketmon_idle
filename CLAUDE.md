@@ -22,9 +22,9 @@
 | `src/data/pokemon.js` | 포켓몬 종 데이터 (스탯, 기술, 진화 정보) |
 | `src/components/Pet/pokemonDraw.js` | `drawPokemon`, `DEFAULT_ANIMATIONS` |
 | `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 (PixelArtCanvas / sprite img 분기) |
-| `src/components/Pet/bulbasaur-anims.js` | 이상해씨 픽셀 데이터 (BASE_BODY, COLORS, SLEEP_BODY, SLEEP_COLORS) |
-| `src/components/Pet/charmander-anims.js` | 파이리 픽셀 데이터 |
-| `src/components/Pet/squirtle-anims.js` | 꼬부기 픽셀 데이터 |
+| `src/components/Pet/1-anims.js` | 이상해씨 픽셀 데이터 (BASE_BODY, COLORS, SLEEP_BODY, SLEEP_COLORS) |
+| `src/components/Pet/4-anims.js` | 파이리 픽셀 데이터 |
+| `src/components/Pet/7-anims.js` | 꼬부기 픽셀 데이터 |
 | `src/components/Panel/PomodoroTimer.jsx` | 집중모드 타이머 (wall-clock 기반) |
 | `src/components/Panel/StarterSelect.jsx` | 스타터 포켓몬 선택 UI |
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
@@ -98,6 +98,129 @@ PetCanvas 렌더링 분기:
 3. 둘 다 없으면 → `null`
 
 > `animations.js` (겐가르 레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 파일 추가 후 `PIXEL_ART` 맵에 등록.
+
+#### 픽셀 데이터 작성 규칙
+- **outline 색상**: 반드시 `'#191919'` 고정 (모든 anims 파일 통일)
+- **외곽 픽셀**: 스프라이트 가장자리(null과 맞닿는 픽셀)는 `'body'` 대신 `'outline'` 사용
+- **그리드 크기**: stage1/2는 20×20 내외, stage3는 32열 고정 (rows는 스프라이트에 맞게 조정)
+  - 6-anims.js (리자몽): 32×27
+  - 3-anims.js (이상해꽃): 32×25
+  - 9-anims.js (거북왕): 32×29
+
+#### 픽셀아트 미리보기 서버
+```bash
+cd pixel-art-source
+node generate-preview.js
+# → http://localhost:3131
+```
+- anims 파일 수정 후 F5 새로고침하면 즉시 반영
+- 픽셀 hover 시 [row, col] 좌표 + 색상키 표시, 클릭하면 클립보드 복사
+- Normal / Sleep 모드 전환, 그리드 오버레이, 스케일 슬라이더 지원
+
+## 새 포켓몬 픽셀아트 추가 절차
+
+포켓몬(특히 진화체)의 커스텀 도트를 추가할 때 따르는 전체 과정.
+
+### 1. PNG 준비
+- `pixel-art-source/normal/{dexNum}.png` — 일반 상태
+- `pixel-art-source/sleep/{dexNum}.png` — 수면 상태
+- 파일명은 포켓몬 이름 대신 **도감 번호**로 저장 (예: `2.png`, `5.png`)
+
+### 2. convert.py로 변환
+```bash
+cd pixel-art-source
+python convert.py normal/{dexNum}.png normal/{dexNum}-anims.js [grid_size] [force_dot]
+python convert.py sleep/{dexNum}.png sleep/{dexNum}-anims.js [grid_size] [force_dot]
+```
+- `grid_size` (3번째 인자, 기본값 20): 픽셀 셀 크기(픽셀 단위)
+- `force_dot` (4번째 인자): 열 수를 강제 지정. 예: `python convert.py 6.png 6-anims.js 20 31` → 32열(0~31) 고정
+- 출력 파일에는 `COLORS` + `BASE_BODY`만 포함됨 (SLEEP_* 없음)
+- Windows cp949 환경 대응: convert.py의 파일 쓰기에 `encoding='utf-8'` 필수
+
+### 3. anims 파일 합치기
+`src/components/Pet/{dexNum}-anims.js` 를 새로 만들어 두 출력을 합침:
+
+```js
+// normal/{dexNum}-anims.js 의 COLORS → export const COLORS
+// normal/{dexNum}-anims.js 의 BASE_BODY → export const BASE_BODY
+// sleep/{dexNum}-anims.js  의 COLORS → export const SLEEP_COLORS
+// sleep/{dexNum}-anims.js  의 BASE_BODY → export const SLEEP_BODY
+```
+
+### 4. PetCanvas.jsx + PokemonStats.jsx 동시 등록
+
+> ⚠️ **두 파일 모두** 업데이트해야 함. 하나라도 빠지면 스탯창 이미지가 안 나옴.
+
+
+**`src/components/Pet/PetCanvas.jsx`**
+```js
+import * as newPokemonData from './{dexNum}-anims'
+
+const PIXEL_ART = {
+  // 기존 항목들...
+  newPokemon: newPokemonData,
+}
+```
+
+**`src/components/Panel/PokemonStats.jsx`** (스탯창 정적 이미지용 — 반드시 함께 업데이트)
+```js
+import * as newPokemonData from '../Pet/{dexNum}-anims'
+
+const PIXEL_ART = {
+  // 기존 항목들...
+  newPokemon: newPokemonData,
+}
+```
+
+### 5. 진화 단계 등록 (stage2/3만 해당)
+수정 위치 2곳:
+
+**`src/components/Pet/PetCanvas.jsx`**
+```js
+const STAGE2 = new Set([..., 'newPokemon'])  // stage2면
+const STAGE3 = new Set([..., 'newPokemon'])  // stage3면
+```
+
+**`electron/main.js`**
+```js
+const STAGE2_SPECIES = new Set([..., 'newPokemon'])
+const STAGE3_SPECIES = new Set([..., 'newPokemon'])
+```
+
+### 현재 창 크기 기준
+| 단계 | 창 크기 | 배율 |
+|------|---------|------|
+| stage1 (스타터) | 100px | 1× |
+| stage2 | 120px | 1.2× |
+| stage3 | 160px | 1.6× |
+
+진화 시 `petSpeciesId` 변경 → `App.jsx`의 `resizePetWindow` useEffect가 자동으로 창 크기 조정.
+
+#### 진화 시 petStats 보존
+`confirmEvolution` (useStore.js)은 `petStats`의 `speciesId`만 교체하고 나머지는 유지한다:
+- **유지**: `natureName`, `abilityName`, `ivs`, `moves`, `learnedPool`
+- **교체**: `speciesId` → `newSpeciesId`
+- 포켓몬 게임과 동일하게 진화해도 성격·특성·개체값은 바뀌지 않음
+
+#### PokemonStats 스탯창 이미지 크기
+스탯창의 픽셀아트 미리보기는 진화 단계에 비례해 크기 조정:
+```js
+size={Math.round(getWinSize(petSpeciesId) * 0.56)}
+// stage1 → 56px, stage2 → 67px, stage3 → 90px
+```
+
+### 현재 등록된 포켓몬
+| speciesId | 파일 | 단계 |
+|-----------|------|------|
+| bulbasaur | 1-anims.js | stage1 |
+| charmander | 4-anims.js | stage1 |
+| squirtle | 7-anims.js | stage1 |
+| ivysaur | 2-anims.js | stage2 |
+| charmeleon | 5-anims.js | stage2 |
+| wartortle | 8-anims.js | stage2 |
+| venusaur | 3-anims.js | stage3 |
+| charizard | 6-anims.js | stage3 |
+| blastoise | 9-anims.js | stage3 |
 
 ## 브랜치 전략
 - `master` — 프로덕션. 직접 push 불가

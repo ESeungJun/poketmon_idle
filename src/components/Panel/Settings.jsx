@@ -1,9 +1,22 @@
 import { useState } from 'react'
 import useStore from '../../store/useStore'
+import { getPokemon } from '../../data/pokemon'
 
 export default function Settings() {
   const resetAllData = useStore(s => s.resetAllData)
+  const addPoints = useStore(s => s.addPoints)
+  const setPetState = useStore(s => s.setPetState)
+  const petSpeciesId = useStore(s => s.petSpeciesId)
   const [confirm, setConfirm] = useState(false)
+  const [devOpen, setDevOpen] = useState(false)
+
+  const pokemon = getPokemon(petSpeciesId)
+  const canEvolve = pokemon?.evolveTo != null
+
+  const handleForceEvolve = () => {
+    if (!canEvolve) return
+    setPetState('evolving')
+  }
 
   const handleReset = async () => {
     await resetAllData()
@@ -33,6 +46,31 @@ export default function Settings() {
         <button style={styles.quitBtn} onClick={() => window.electronAPI.quitApp()}>
           앱 종료
         </button>
+      </div>
+      <div style={styles.section}>
+        <button style={styles.devToggle} onClick={() => setDevOpen(v => !v)}>
+          🛠 개발자 모드 {devOpen ? '▲' : '▼'}
+        </button>
+        {devOpen && (
+          <div style={styles.devContent}>
+            <div style={styles.devLabel}>포인트 추가</div>
+            <div style={styles.devRow}>
+              {[100, 500, 1000, 5000].map(n => (
+                <button key={n} style={styles.devBtn} onClick={() => addPoints(n, false)}>
+                  +{n.toLocaleString()}
+                </button>
+              ))}
+            </div>
+            <div style={styles.devLabel}>진화</div>
+            <button
+              style={{ ...styles.devBtn, opacity: canEvolve ? 1 : 0.4, cursor: canEvolve ? 'pointer' : 'default' }}
+              onClick={handleForceEvolve}
+              disabled={!canEvolve}
+            >
+              강제 진화 {canEvolve ? `→ ${getPokemon(pokemon.evolveTo)?.speciesName ?? pokemon.evolveTo}` : '(최종 진화형)'}
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
@@ -110,5 +148,41 @@ const styles = {
     fontSize: '14px',
     cursor: 'pointer',
     width: '100%',
+  },
+  devToggle: {
+    background: 'none',
+    border: 'none',
+    color: '#666',
+    fontSize: '12px',
+    cursor: 'pointer',
+    padding: 0,
+    width: '100%',
+    textAlign: 'left',
+  },
+  devContent: {
+    marginTop: '12px',
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '8px',
+  },
+  devLabel: {
+    color: '#666',
+    fontSize: '11px',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+  },
+  devRow: {
+    display: 'flex',
+    gap: '6px',
+  },
+  devBtn: {
+    flex: 1,
+    background: '#2a2a3e',
+    border: '1px solid #3a3a5e',
+    color: '#aaa',
+    borderRadius: '6px',
+    padding: '6px 4px',
+    fontSize: '12px',
+    cursor: 'pointer',
   },
 }

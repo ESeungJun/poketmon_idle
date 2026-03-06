@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef, useLayoutEffect } from 'react'
-import PetCanvas from './components/Pet/PetCanvas'
+import PetCanvas, { getWinSize } from './components/Pet/PetCanvas'
 import Panel from './components/Panel/Panel'
 import useStore from './store/useStore'
 import { getPokemon } from './data/pokemon'
@@ -58,6 +58,12 @@ function PetView() {
     const timer = setTimeout(() => confirmEvolution(), 3000)
     return () => clearTimeout(timer)
   }, [petState])
+
+  // 진화 단계에 따라 Electron 창 크기 조정
+  useEffect(() => {
+    if (!petSpeciesId || !window.electronAPI) return
+    window.electronAPI.resizePetWindow(getWinSize(petSpeciesId))
+  }, [petSpeciesId])
 
   const handleMouseDown = (e) => {
     if (e.button === 2) return
@@ -155,8 +161,8 @@ const HEARTS = [
 
 const styles = {
   petContainer: {
-    width: '100px',
-    height: '100px',
+    width: '100vw',
+    height: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
