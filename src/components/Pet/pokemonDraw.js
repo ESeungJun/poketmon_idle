@@ -1,6 +1,8 @@
 // 픽셀아트 렌더러: BASE_BODY 그리드를 ctx에 그림
 // yOffset: 애니메이션 프레임마다 픽셀 단위로 상하 이동해 호버 효과를 만듦
-export function drawPokemon(ctx, BASE_BODY, COLORS, frameData, scale = 5) {
+// baseYOffset: 캔버스 상단에 추가된 여유 공간만큼 전체 그리기 위치를 아래로 내림
+//   (yOffset이 음수일 때 캔버스 밖으로 잘리지 않도록 PixelArtCanvas에서 계산해 전달)
+export function drawPokemon(ctx, BASE_BODY, COLORS, frameData, scale = 5, baseYOffset = 0) {
   const { yOffset = 0 } = frameData
   const rows = BASE_BODY.length
   const cols = BASE_BODY[0]?.length ?? 0
@@ -12,7 +14,7 @@ export function drawPokemon(ctx, BASE_BODY, COLORS, frameData, scale = 5) {
       const color = COLORS[colorKey]
       if (!color) continue
       ctx.fillStyle = color
-      ctx.fillRect(col * scale, (row + yOffset) * scale, scale, scale)
+      ctx.fillRect(col * scale, (row + baseYOffset + yOffset) * scale, scale, scale)
     }
   }
 }
