@@ -117,11 +117,14 @@ function createPetWindow() {
 
   // Force fully transparent background (belt-and-suspenders for macOS)
   petWindow.setBackgroundColor('#00000000')
+}
 
-  // Start wandering after window is ready
-  petWindow.webContents.once('did-finish-load', () => {
-    setTimeout(() => { if (!wanderingLocked) startWandering() }, 1000)
-  })
+function showPetWindow() {
+  if (!petWindow) return
+  petWindow.show()
+  petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
+  petWindow.setBackgroundColor('#00000000')
+  setTimeout(() => { if (!wanderingLocked) startWandering() }, 1000)
 }
 
 function createPanelWindow() {
@@ -159,6 +162,17 @@ function createPanelWindow() {
 app.whenReady().then(() => {
   createPetWindow()
   createPanelWindow()
+
+  // 스타터 선택 여부에 따라 펫 창 표시
+  const hasPet = !!store.get('petSpeciesId')
+  if (hasPet) {
+    showPetWindow()
+  }
+  // 스타터 미선택이면 패널만 표시
+  panelWindow.webContents.once('did-finish-load', () => {
+    panelWindow.show()
+    panelWindow.focus()
+  })
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -200,7 +214,15 @@ ipcMain.handle('get-store', (_, key) => store.get(key))
 ipcMain.handle('set-store', (_, key, value) => store.set(key, value))
 ipcMain.on('set-store-sync', (event, key, value) => { store.set(key, value); event.returnValue = true })
 ipcMain.handle('get-all-store', () => store.store)
-ipcMain.handle('clear-store', () => store.clear())
+ipcMain.handle('clear-store', () => {
+  store.clear()
+  if (petWindow) petWindow.hide()
+  stopWandering()
+})
+
+ipcMain.handle('starter-selected', () => {
+  showPetWindow()
+})
 
 // Drag: poll cursor in main process so it works even when cursor leaves the window.
 // visibleOnAllWorkspaces is disabled during drag — macOS otherwise blocks
