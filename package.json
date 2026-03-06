@@ -40,7 +40,7 @@
     "mac": {
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
-      "target": [{ "target": "dir", "arch": ["arm64"] }]
+      "target": [{ "target": "dir", "arch": ["universal"] }]
     }
   }
 }

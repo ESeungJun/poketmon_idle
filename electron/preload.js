@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   setStore: (key, value) => ipcRenderer.invoke('set-store', key, value),
   setStoreSync: (key, value) => ipcRenderer.sendSync('set-store-sync', key, value),
   getAllStore: () => ipcRenderer.invoke('get-all-store'),
+  clearStore: () => ipcRenderer.invoke('clear-store'),
 
   onStateSync: (callback) => {
     ipcRenderer.on('state-sync', (_, data) => callback(data))

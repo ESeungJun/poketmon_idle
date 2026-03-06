@@ -5,9 +5,10 @@ import PointDisplay from './PointDisplay'
 import Shop from '../Shop/Shop'
 import PokemonStats from './PokemonStats'
 import StarterSelect from './StarterSelect'
+import Settings from './Settings'
 import useStore from '../../store/useStore'
 
-const TABS = ['홈', '샵', '스탯']
+const TABS = ['홈', '샵', '스탯', '설정']
 
 export default function Panel() {
   const [tab, setTab] = useState(0)
@@ -55,6 +56,7 @@ export default function Panel() {
             )}
             {tab === 1 && <Shop />}
             {tab === 2 && <PokemonStats />}
+            {tab === 3 && <Settings />}
           </div>
         </>
       )}

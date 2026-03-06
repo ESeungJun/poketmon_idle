@@ -2,18 +2,19 @@
 // electron-builder가 바이너리를 수정해서 크래시가 발생하므로
 // node_modules의 원본 Electron.app 전체를 기반으로 앱 번들을 재구성한다.
 
-const { execSync } = require('child_process');
+const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const os = require('os');
 
-const APP = path.resolve('release/mac-arm64/poketmon-idle.app');
+const APP = path.resolve('release/mac-universal/poketmon-idle.app');
 const NODE_ELECTRON = path.resolve('node_modules/electron/dist/Electron.app');
 const ENTITLEMENTS = path.resolve('entitlements.plist');
 
 // electron-builder가 생성한 app.asar 저장
 const asarSrc = path.join(APP, 'Contents/Resources/app.asar');
-const asarTmp = path.resolve('release/mac-arm64/_app.asar.tmp');
+const asarTmp = path.resolve('release/mac-universal/_app.asar.tmp');
 fs.copyFileSync(asarSrc, asarTmp);
 
 // 기존 앱 번들 제거 후 원본 Electron.app 복사
@@ -51,8 +52,6 @@ const asarHash = crypto.createHash('sha256')
 
 const set = (key, val) =>
   execSync(`/usr/libexec/PlistBuddy -c "Set :${key} ${val}" "${plistPath}"`);
-const add = (key, type, val) =>
-  execSync(`/usr/libexec/PlistBuddy -c "Add :${key} ${type} ${val}" "${plistPath}"`);
 
 set('CFBundleIdentifier', 'com.poketmonidle.app');
 set('CFBundleName', '포켓몬키우기');
@@ -70,15 +69,53 @@ execSync(`/usr/libexec/PlistBuddy -c "Add :ElectronAsarIntegrity:'Resources/app.
 execSync(`/usr/libexec/PlistBuddy -c "Add :ElectronAsarIntegrity:'Resources/app.asar':algorithm string SHA256" "${plistPath}"`);
 execSync(`/usr/libexec/PlistBuddy -c "Add :ElectronAsarIntegrity:'Resources/app.asar':hash string ${asarHash}" "${plistPath}"`);
 
-// 서명 (--deep 사용 시 SIGBUS 발생하므로 주요 컴포넌트 개별 서명)
+// macOS 26에서 앱 번들 내부 경로의 바이너리는 직접 서명이 안 됨.
+// /tmp에 복사 후 서명하고 다시 이동하는 방식으로 우회.
+function signBinary(binaryPath) {
+  const tmp = path.join(os.tmpdir(), `sign_tmp_${Date.now()}_${path.basename(binaryPath)}`);
+  fs.copyFileSync(binaryPath, tmp);
+  execSync(`xattr -cr "${tmp}"`);
+  spawnSync('codesign', ['--remove-signature', tmp], { stdio: 'ignore' });
+  execSync(`codesign --force --sign - "${tmp}"`);
+  fs.copyFileSync(tmp, binaryPath);
+  fs.unlinkSync(tmp);
+}
+
 execSync(`xattr -cr "${APP}"`);
+
+// chrome_crashpad_handler 서명
+const crashpadHandler = path.join(APP, 'Contents/Frameworks/Electron Framework.framework/Versions/A/Helpers/chrome_crashpad_handler');
+if (fs.existsSync(crashpadHandler)) {
+  signBinary(crashpadHandler);
+}
+
+// Electron Framework 서명
 execSync(`codesign --force --sign - "${path.join(APP, 'Contents/Frameworks/Electron Framework.framework')}"`);
+
+// 나머지 프레임워크 서명 (Mantle, ReactiveObjC, Squirrel 등)
+for (const fw of ['Mantle.framework', 'ReactiveObjC.framework', 'Squirrel.framework']) {
+  const fwPath = path.join(APP, 'Contents/Frameworks', fw);
+  if (fs.existsSync(fwPath)) {
+    execSync(`codesign --force --sign - "${fwPath}"`);
+  }
+}
+
+// 헬퍼 앱 서명
 for (const suffix of ['', ' (GPU)', ' (Renderer)', ' (Plugin)']) {
   const helperApp = path.join(APP, `Contents/Frameworks/포켓몬키우기 Helper${suffix}.app`);
   if (fs.existsSync(helperApp)) {
+    const helperBinary = path.join(helperApp, `Contents/MacOS/포켓몬키우기 Helper${suffix}`);
+    if (fs.existsSync(helperBinary)) {
+      signBinary(helperBinary);
+    }
     execSync(`codesign --force --sign - --entitlements "${ENTITLEMENTS}" "${helperApp}"`);
   }
 }
+
+// 메인 실행파일 서명
+signBinary(path.join(APP, 'Contents/MacOS/poketmon-idle'));
+
+// 메인 앱 서명
 execSync(`codesign --force --sign - --entitlements "${ENTITLEMENTS}" "${APP}"`);
 
 console.log('✓ 앱 번들 수정 완료');
