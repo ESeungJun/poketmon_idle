@@ -20,9 +20,9 @@
 | `src/App.jsx` | 라우팅: `?view=pet` / `?view=panel` |
 | `src/store/useStore.js` | Zustand: points, items, todos, petState |
 | `src/data/pokemon.js` | 포켓몬 종 데이터 (스탯, 기술, 진화 정보) |
-| `src/components/Pet/pokemonDraw.js` | 포켓몬별 픽셀 그리기, DEFAULT_ANIMATIONS |
-| `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 |
-| `src/components/Pet/bulbasaur-anims.js` | 이상해씨 픽셀 데이터 (BASE_BODY, SLEEP_BODY 등) |
+| `src/components/Pet/pokemonDraw.js` | `drawPokemon`, `DEFAULT_ANIMATIONS` |
+| `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 (PixelArtCanvas / sprite img 분기) |
+| `src/components/Pet/bulbasaur-anims.js` | 이상해씨 픽셀 데이터 (BASE_BODY, COLORS, SLEEP_BODY, SLEEP_COLORS) |
 | `src/components/Pet/charmander-anims.js` | 파이리 픽셀 데이터 |
 | `src/components/Pet/squirtle-anims.js` | 꼬부기 픽셀 데이터 |
 | `src/components/Panel/PomodoroTimer.jsx` | 집중모드 타이머 (wall-clock 기반) |
@@ -32,18 +32,18 @@
 
 ## 필수 규칙
 
-### 앱 실행
+### 빌드
+코드를 수정한 뒤에는 **반드시** 빌드 후 앱을 실행한다.
+```bash
+npm run build
+```
+빌드 결과물: `release/mac-universal/poketmon-idle.app`
+
 앱을 실행할 때는 기존 프로세스를 먼저 종료한다.
 ```bash
 pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"
 ```
 
-### 빌드
-코드를 수정한 뒤에는 **반드시** 빌드를 실행한다.
-```bash
-npm run build
-```
-빌드 결과물: `release/mac-universal/poketmon-idle.app`
 
 ### 창 구성
 - Pet 창: 100×100px, `transparent: true`, `backgroundColor: '#00000000'`, `roundedCorners: false`
@@ -76,6 +76,13 @@ npm run build
 - `COLORS` / `SLEEP_COLORS` — 색상 팔레트
 - `BASE_BODY` — 기본 상태 픽셀 그리드
 - `SLEEP_BODY` — 수면(집중모드) 상태 픽셀 그리드
+
+PetCanvas 렌더링 분기:
+1. `speciesId`가 `PIXEL_ART` 맵에 있으면 → `PixelArtCanvas` (커스텀 도트)
+2. `dexNum`이 있으면 → PokeAPI CDN 스프라이트 img 태그
+3. 둘 다 없으면 → `null`
+
+> `animations.js` (겐가르 레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 파일 추가 후 `PIXEL_ART` 맵에 등록.
 
 ## 브랜치 전략
 - `master` — 프로덕션. 직접 push 불가
