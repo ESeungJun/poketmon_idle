@@ -119,73 +119,7 @@ node generate-preview.js
 
 ## 새 포켓몬 픽셀아트 추가 절차
 
-포켓몬(특히 진화체)의 커스텀 도트를 추가할 때 따르는 전체 과정.
-
-### 1. PNG 준비
-- `pixel-art-source/normal/{dexNum}.png` — 일반 상태
-- `pixel-art-source/sleep/{dexNum}.png` — 수면 상태
-- 파일명은 포켓몬 이름 대신 **도감 번호**로 저장 (예: `2.png`, `5.png`)
-
-### 2. convert.py로 변환
-```bash
-cd pixel-art-source
-python convert.py normal/{dexNum}.png normal/{dexNum}-anims.js [grid_size] [force_dot]
-python convert.py sleep/{dexNum}.png sleep/{dexNum}-anims.js [grid_size] [force_dot]
-```
-- `grid_size` (3번째 인자, 기본값 20): 픽셀 셀 크기(픽셀 단위)
-- `force_dot` (4번째 인자): 열 수를 강제 지정. 예: `python convert.py 6.png 6-anims.js 20 31` → 32열(0~31) 고정
-- 출력 파일에는 `COLORS` + `BASE_BODY`만 포함됨 (SLEEP_* 없음)
-- Windows cp949 환경 대응: convert.py의 파일 쓰기에 `encoding='utf-8'` 필수
-
-### 3. anims 파일 합치기
-`src/components/Pet/{dexNum}-anims.js` 를 새로 만들어 두 출력을 합침:
-
-```js
-// normal/{dexNum}-anims.js 의 COLORS → export const COLORS
-// normal/{dexNum}-anims.js 의 BASE_BODY → export const BASE_BODY
-// sleep/{dexNum}-anims.js  의 COLORS → export const SLEEP_COLORS
-// sleep/{dexNum}-anims.js  의 BASE_BODY → export const SLEEP_BODY
-```
-
-### 4. PetCanvas.jsx + PokemonStats.jsx 동시 등록
-
-> ⚠️ **두 파일 모두** 업데이트해야 함. 하나라도 빠지면 스탯창 이미지가 안 나옴.
-
-
-**`src/components/Pet/PetCanvas.jsx`**
-```js
-import * as newPokemonData from './{dexNum}-anims'
-
-const PIXEL_ART = {
-  // 기존 항목들...
-  newPokemon: newPokemonData,
-}
-```
-
-**`src/components/Panel/PokemonStats.jsx`** (스탯창 정적 이미지용 — 반드시 함께 업데이트)
-```js
-import * as newPokemonData from '../Pet/{dexNum}-anims'
-
-const PIXEL_ART = {
-  // 기존 항목들...
-  newPokemon: newPokemonData,
-}
-```
-
-### 5. 진화 단계 등록 (stage2/3만 해당)
-수정 위치 2곳:
-
-**`src/components/Pet/PetCanvas.jsx`**
-```js
-const STAGE2 = new Set([..., 'newPokemon'])  // stage2면
-const STAGE3 = new Set([..., 'newPokemon'])  // stage3면
-```
-
-**`electron/main.js`**
-```js
-const STAGE2_SPECIES = new Set([..., 'newPokemon'])
-const STAGE3_SPECIES = new Set([..., 'newPokemon'])
-```
+전체 과정은 `/add-pokemon-sprite` 스킬로 진행한다.
 
 ### 현재 창 크기 기준
 | 단계 | 창 크기 | 배율 |
