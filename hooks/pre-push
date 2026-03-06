@@ -1,0 +1,14 @@
+#!/bin/sh
+BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
+
+if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "dev" ]; then
+  echo ""
+  echo "  [pre-push] '$BRANCH' 브랜치에 직접 push할 수 없습니다."
+  echo "  feature/ 브랜치를 만들고 PR을 통해 merge 하세요."
+  echo ""
+  echo "    git checkout dev"
+  echo "    git checkout -b feature/기능명"
+  echo ""
+  exit 1
+fi
+exit 0
