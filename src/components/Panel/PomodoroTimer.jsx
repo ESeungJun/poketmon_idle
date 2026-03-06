@@ -163,7 +163,7 @@ export default function PomodoroTimer() {
       </div>
 
       <div style={styles.hint}>
-        완료 시 +50pt · 작업 1분마다 +1pt
+        완료 시 +75pt · 작업 1분마다 +2pt
       </div>
     </div>
   )

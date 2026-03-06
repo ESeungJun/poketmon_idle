@@ -232,7 +232,7 @@ const useStore = create((set, get) => ({
     set({ todos: newTodos, lastActiveTime: Date.now() })
     saveToStore('todos', newTodos)
     if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
-    addPoints(20)
+    addPoints(30)
   },
 
   deleteTodo: (id) => {
@@ -254,16 +254,16 @@ const useStore = create((set, get) => ({
     const newHistory = [...pomodoroHistory, session].slice(-100)
     set({ pomodoroHistory: newHistory, lastActiveTime: Date.now() })
     saveToStore('pomodoroHistory', newHistory)
-    addPoints(50)
+    addPoints(75)
   },
 
-  // 집중 타이머 실행 중 1분마다 호출 (happy 애니메이션 없이 조용히 +1pt)
+  // 집중 타이머 실행 중 1분마다 호출 (happy 애니메이션 없이 조용히 +2pt)
   addWorkMinute: () => {
     const { totalWorkMinutes, addPoints } = get()
     const newTotal = totalWorkMinutes + 1
     set({ totalWorkMinutes: newTotal, lastActiveTime: Date.now() })
     saveToStore('totalWorkMinutes', newTotal)
-    addPoints(1, false)
+    addPoints(2, false)
   },
 
   // petState 변경 + 다른 창에 동기화
