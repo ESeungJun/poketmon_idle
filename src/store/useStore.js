@@ -25,7 +25,7 @@ const DEFAULT_STATE = {
   equippedItems: [],
   todos: [],
   pomodoroHistory: [],
-  petState: 'idle', // idle | happy | working | sleeping | evolving
+  petState: 'idle', // idle | happy | sleeping | evolving
   lastActiveTime: Date.now(),
   totalWorkMinutes: 0,
   petSpeciesId: null,
@@ -75,10 +75,6 @@ const useStore = create((set, get) => ({
     saveToStore('points', newPoints)
     saveToStore('totalPointsEarned', newTotalEarned)
 
-    if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ points: newPoints, totalPointsEarned: newTotalEarned })
-    }
-
     const update = {
       points: newPoints,
       totalPointsEarned: newTotalEarned,
@@ -103,6 +99,13 @@ const useStore = create((set, get) => ({
 
     set(update)
 
+    if (window.electronAPI) {
+      const syncData = { points: newPoints, totalPointsEarned: newTotalEarned }
+      if (update.petState) syncData.petState = update.petState
+      if (update.petStats) syncData.petStats = update.petStats
+      window.electronAPI.sendStateUpdate(syncData)
+    }
+
     // Reset happy state after 2s (unless evolving)
     if (showHappy && update.petState !== 'evolving') {
       setTimeout(() => {
@@ -112,6 +115,9 @@ const useStore = create((set, get) => ({
           }
           return {}
         })
+        if (window.electronAPI) {
+          window.electronAPI.sendStateUpdate({ petState: prevState === 'happy' ? 'idle' : prevState })
+        }
       }, 2000)
     }
   },
@@ -226,7 +232,7 @@ const useStore = create((set, get) => ({
       completedAt: Date.now(),
       durationMinutes: 25,
     }
-    const newHistory = [...pomodoroHistory, session]
+    const newHistory = [...pomodoroHistory, session].slice(-100)
     set({ pomodoroHistory: newHistory, lastActiveTime: Date.now() })
     saveToStore('pomodoroHistory', newHistory)
     addPoints(50)
@@ -324,7 +330,7 @@ const useStore = create((set, get) => ({
 
 
   syncFromOtherWindow: (data) => {
-    set(state => ({ ...state, ...data }))
+    set(data)
   },
 }))
 
