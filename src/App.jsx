@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
 import PetCanvas from './components/Pet/PetCanvas'
 import Panel from './components/Panel/Panel'
 import useStore from './store/useStore'
@@ -17,6 +17,12 @@ function PetView() {
   const dragMoved = useRef(false)
   const [flipX, setFlipX] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
+  const [heartKey, setHeartKey] = useState(0)  // 매번 새 key로 애니메이션 재트리거
+
+  // happy 상태가 될 때마다 key를 올려 하트 애니메이션을 새로 시작
+  useLayoutEffect(() => {
+    if (petState === 'happy') setHeartKey(k => k + 1)
+  }, [petState])
 
   useEffect(() => {
     initialize()
@@ -95,6 +101,18 @@ function PetView() {
         dexNum={dexNum}
         speciesId={petSpeciesId}
       />
+      {petState === 'happy' && HEARTS.map((h, i) => (
+        <div
+          key={`${heartKey}-${i}`}
+          style={{
+            ...styles.heart,
+            left: `calc(50% + ${flipX ? h.dx : -h.dx}px)`,
+            top: h.top,
+            fontSize: h.size,
+            animationDelay: h.delay,
+          }}
+        >❤</div>
+      ))}
     </div>
   )
 }
@@ -127,6 +145,14 @@ export default function App() {
   return <PetView />
 }
 
+// 하트 3개: 캐릭터 앞쪽으로 퍼지며 시차를 두고 떠오름
+// dx: 중심에서 앞쪽(flipX 방향)으로 벌어지는 거리
+const HEARTS = [
+  { dx: 22, top: '10px', size: '22px', delay: '0s'    },
+  { dx: 34, top: '18px', size: '18px', delay: '0.18s' },
+  { dx: 14, top: '20px', size: '16px', delay: '0.32s' },
+]
+
 const styles = {
   petContainer: {
     width: '100px',
@@ -137,5 +163,24 @@ const styles = {
     cursor: 'grab',
     userSelect: 'none',
     background: 'transparent',
+    position: 'relative',
   },
+  heart: {
+    position: 'absolute',
+    color: '#FF4D6D',
+    pointerEvents: 'none',
+    animation: 'heartFloat 1.8s ease-out forwards',
+  },
+}
+
+// 하트 플로팅 애니메이션 (위로 올라가며 사라짐)
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes heartFloat {
+      0%   { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-30px); }
+    }
+  `
+  document.head.appendChild(style)
 }
