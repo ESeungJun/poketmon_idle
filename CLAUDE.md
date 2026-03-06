@@ -149,6 +149,11 @@ bash scripts/new-feature.sh <feature-name>
 | 칼슘 | 리보플라빈 | Calcium |
 | 아연 | 키토산 | Zinc |
 | 탄산 | 알칼로이드 | Carbos |
+| 얼음빔 | 냉동빔 | Ice Beam |
+| 모래폭풍 | 모래바람 | Sandstorm |
+| 물뿜기 (blastoise) | 거품광선 | Bubble Beam |
+| 불꽃뿜기 | 불꽃세례 | Ember |
+| 대체 | 대타출동 | Substitute |
 
 ## 로드맵
 작업 전 `ROADMAP.md`를 확인하고, 완료된 항목은 `- [ ]` → `- [x]` 로 업데이트한다.
