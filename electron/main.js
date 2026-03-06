@@ -27,10 +27,10 @@ function startWandering() {
   wanderInterval = setInterval(() => {
     if (!petWindow || dragInterval) return
 
-    const [x] = petWindow.getPosition()
+    const [x, y] = petWindow.getPosition()
 
     // Get the display the pet is currently on
-    const display = screen.getDisplayNearestPoint({ x, y: petWindow.getPosition()[1] })
+    const display = screen.getDisplayNearestPoint({ x, y })
     const { x: dX, y: dY, width, height } = display.workArea
 
     // Fixed Y: bottom 5% of the current display's work area
@@ -194,15 +194,16 @@ ipcMain.handle('toggle-panel', () => {
   if (panelWindow.isVisible()) {
     panelWindow.hide()
   } else {
-    // Position panel near the pet
     if (petWindow) {
       const [px, py] = petWindow.getPosition()
-      const { width, height } = screen.getPrimaryDisplay().workAreaSize
+      const display = screen.getDisplayNearestPoint({ x: px, y: py })
+      const { x: dX, y: dY, width, height } = display.workArea
       let panelX = px - 390
       let panelY = py - 480
-      if (panelX < 0) panelX = px + WIN_SIZE + 10
-      if (panelY < 0) panelY = 10
-      if (panelY + 580 > height) panelY = height - 590
+      if (panelX < dX) panelX = px + WIN_SIZE + 10
+      if (panelX + 380 > dX + width) panelX = dX + width - 390
+      if (panelY < dY) panelY = dY + 10
+      if (panelY + 580 > dY + height) panelY = dY + height - 590
       panelWindow.setPosition(Math.round(panelX), Math.round(panelY))
     }
     panelWindow.show()
