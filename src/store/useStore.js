@@ -124,13 +124,14 @@ const useStore = create((set, get) => ({
       setTimeout(() => {
         set(s => {
           if (s.petState === 'happy') {
-            return { petState: prevState === 'happy' ? 'idle' : prevState }
+            const nextState = prevState === 'happy' ? 'idle' : prevState
+            if (window.electronAPI) {
+              window.electronAPI.sendStateUpdate({ petState: nextState })
+            }
+            return { petState: nextState }
           }
           return {}
         })
-        if (window.electronAPI) {
-          window.electronAPI.sendStateUpdate({ petState: prevState === 'happy' ? 'idle' : prevState })
-        }
       }, 2000)
     }
   },
