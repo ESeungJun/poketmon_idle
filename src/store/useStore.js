@@ -48,11 +48,9 @@ async function loadFromStore() {
 
 function saveToStore(key, value) {
   if (!window.electronAPI) return
-  try {
-    window.electronAPI.setStoreSync(key, value)
-  } catch (e) {
+  window.electronAPI.setStoreAsync(key, value).catch(e => {
     console.error('Failed to save to store:', e)
-  }
+  })
 }
 
 const useStore = create((set, get) => ({
@@ -203,6 +201,7 @@ const useStore = create((set, get) => ({
     const newTodos = [...todos, newTodo]
     set({ todos: newTodos })
     saveToStore('todos', newTodos)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
   },
 
   completeTodo: (id) => {
@@ -215,6 +214,7 @@ const useStore = create((set, get) => ({
     )
     set({ todos: newTodos, lastActiveTime: Date.now() })
     saveToStore('todos', newTodos)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
     addPoints(20)
   },
 
@@ -223,6 +223,7 @@ const useStore = create((set, get) => ({
     const newTodos = todos.filter(t => t.id !== id)
     set({ todos: newTodos })
     saveToStore('todos', newTodos)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
   },
 
   addPomodoroSession: () => {
@@ -262,11 +263,13 @@ const useStore = create((set, get) => ({
   setPetStats: (stats) => {
     set({ petStats: stats })
     saveToStore('petStats', stats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: stats })
   },
 
   setPetName: (name) => {
     set({ petName: name })
     saveToStore('petName', name)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petName: name })
   },
 
   applyVitamin: (stat, cost) => {
@@ -308,6 +311,7 @@ const useStore = create((set, get) => ({
     const newStats = { ...petStats, learnedPool: [...pool, moveName] }
     set({ petStats: newStats })
     saveToStore('petStats', newStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
   },
 
   swapMove: (activeIdx, newMoveName) => {
@@ -318,6 +322,7 @@ const useStore = create((set, get) => ({
     const newStats = { ...petStats, moves: newMoves }
     set({ petStats: newStats })
     saveToStore('petStats', newStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
   },
 
   resetAllData: async () => {
@@ -330,7 +335,13 @@ const useStore = create((set, get) => ({
 
 
   syncFromOtherWindow: (data) => {
-    set(data)
+    const allowed = [
+      'points', 'totalPointsEarned', 'purchasedItems', 'equippedItems',
+      'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
+      'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+    ]
+    const safe = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
+    if (Object.keys(safe).length > 0) set(safe)
   },
 }))
 

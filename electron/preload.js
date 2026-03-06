@@ -6,24 +6,30 @@ contextBridge.exposeInMainWorld('electronAPI', {
 
   getStore: (key) => ipcRenderer.invoke('get-store', key),
   setStore: (key, value) => ipcRenderer.invoke('set-store', key, value),
-  setStoreSync: (key, value) => ipcRenderer.sendSync('set-store-sync', key, value),
+  setStoreAsync: (key, value) => ipcRenderer.invoke('set-store', key, value),
   getAllStore: () => ipcRenderer.invoke('get-all-store'),
   clearStore: () => ipcRenderer.invoke('clear-store'),
   notifyStarterSelected: () => ipcRenderer.invoke('starter-selected'),
   quitApp: () => ipcRenderer.invoke('quit-app'),
 
   onStateSync: (callback) => {
-    ipcRenderer.on('state-sync', (_, data) => callback(data))
+    const handler = (_, data) => callback(data)
+    ipcRenderer.on('state-sync', handler)
+    return () => ipcRenderer.removeListener('state-sync', handler)
   },
   sendStateUpdate: (data) => {
     ipcRenderer.send('state-update', data)
   },
 
   onWanderDirection: (callback) => {
-    ipcRenderer.on('wander-direction', (_, dir) => callback(dir))
+    const handler = (_, dir) => callback(dir)
+    ipcRenderer.on('wander-direction', handler)
+    return () => ipcRenderer.removeListener('wander-direction', handler)
   },
   onForceRemount: (callback) => {
-    ipcRenderer.on('force-remount', () => callback())
+    const handler = () => callback()
+    ipcRenderer.on('force-remount', handler)
+    return () => ipcRenderer.removeListener('force-remount', handler)
   },
 
   startWandering: () => ipcRenderer.invoke('start-wandering'),
@@ -32,9 +38,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   startDrag: (offset) => ipcRenderer.invoke('start-drag', offset),
   stopDrag: () => ipcRenderer.invoke('stop-drag'),
   showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
-
-  getQueryParam: (param) => {
-    const url = new URL(window.location.href)
-    return url.searchParams.get(param)
-  },
 })
