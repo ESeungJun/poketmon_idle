@@ -6,5 +6,8 @@ release/
 .DS_Store
 **/.DS_Store
 
-# Claude Code 작업 디렉토리
+# Claude Code 작업 디렉토리 (.claude/agents/ 는 포함)
 .claude/
+!.claude/
+!.claude/agents/
+!.claude/agents/**
