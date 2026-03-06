@@ -128,6 +128,13 @@ bash scripts/new-feature.sh <feature-name>
 | 암석깨기 | 바위깨기 | Rock Smash |
 | 진흙폭탄 | 오물폭탄 | Sludge Bomb |
 | 검은 철구 | 검은진흙 | Black Sludge |
+| 잠자기가루 | 수면가루 | Sleep Powder |
+| 전기충격 | 전기쇼크 | Thunder Shock |
+| 조개껍질방어 | 껍질에숨기 | Withdraw |
+| 모래공격 | 모래뿌리기 | Sand Attack |
+| 퀵어택 | 전광석화 | Quick Attack |
+| 베어물기 | 물기 | Bite |
+| 독독 | 맹독 | Toxic |
 
 ## 로드맵
 작업 전 `ROADMAP.md`를 확인하고, 완료된 항목은 `- [ ]` → `- [x]` 로 업데이트한다.

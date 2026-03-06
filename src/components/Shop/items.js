@@ -21,7 +21,7 @@ export const SHOP_ITEMS = [
 
   // ── 기술머신 ───────────────────────────────────────────────────────
   { id: 'tm01', tmNum: 'TM01', name: '힘껏펀치',     category: 'tm', moveName: '힘껏펀치',     emoji: '👊', cost: 300, moveType: '격투', moveCategory: '물리', movePower: 150 },
-  { id: 'tm06', tmNum: 'TM06', name: '독독',         category: 'tm', moveName: '독독',         emoji: '☠️', cost: 100,  moveType: '독',   moveCategory: '변화', movePower: null },
+  { id: 'tm06', tmNum: 'TM06', name: '맹독',         category: 'tm', moveName: '맹독',         emoji: '☠️', cost: 100,  moveType: '독',   moveCategory: '변화', movePower: null },
   { id: 'tm11', tmNum: 'TM11', name: '쾌청',         category: 'tm', moveName: '쾌청',         emoji: '☀️', cost: 100,  moveType: '불꽃', moveCategory: '변화', movePower: null },
   { id: 'tm13', tmNum: 'TM13', name: '얼음빔',       category: 'tm', moveName: '얼음빔',       emoji: '❄️', cost: 200,  moveType: '얼음', moveCategory: '특수', movePower: 90 },
   { id: 'tm14', tmNum: 'TM14', name: '눈보라',       category: 'tm', moveName: '눈보라',       emoji: '🌨️', cost: 250,  moveType: '얼음', moveCategory: '특수', movePower: 110 },
