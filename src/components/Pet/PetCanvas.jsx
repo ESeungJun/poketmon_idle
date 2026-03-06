@@ -1,6 +1,16 @@
 import { useEffect, useRef } from 'react'
 import { ANIMATIONS, drawFrame } from './animations'
+import { drawPokemon, DEFAULT_ANIMATIONS } from './pokemonDraw'
+import * as squirtleData from './squirtle-anims'
+import * as charmanderData from './charmander-anims'
+import * as bulbasaurData from './bulbasaur-anims'
 import { spriteUrl } from '../../data/pokemon'
+
+const PIXEL_ART = {
+  squirtle:   squirtleData,
+  charmander: charmanderData,
+  bulbasaur:  bulbasaurData,
+}
 
 // Inject CSS keyframes once
 let injected = false
@@ -40,12 +50,18 @@ function getSpriteStyle(state) {
   }
 }
 
-export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 5, flipX = false, dexNum = null }) {
+export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 5, flipX = false, dexNum = null, speciesId = null }) {
   const canvasRef = useRef(null)
   const frameRef = useRef(0)
   const animRef = useRef(null)
 
   injectStyles()
+
+  // Pixel-art canvas rendering for starters with custom dot art
+  if (speciesId && PIXEL_ART[speciesId]) {
+    const pokemonData = PIXEL_ART[speciesId]
+    return <PixelArtCanvas pokemonData={pokemonData} state={state} scale={scale} flipX={flipX} />
+  }
 
   // Sprite-based rendering (Pokémon species selected)
   if (dexNum) {
@@ -80,6 +96,55 @@ export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 
 
   // Legacy Gengar pixel-art canvas rendering
   return <GengarCanvas state={state} equippedItems={equippedItems} scale={scale} flipX={flipX} canvasRef={canvasRef} frameRef={frameRef} animRef={animRef} />
+}
+
+function PixelArtCanvas({ pokemonData, state, flipX }) {
+  const canvasRef = useRef(null)
+  const frameRef = useRef(0)
+  const animRef = useRef(null)
+
+  const activeBody = (state === 'sleeping' && pokemonData.SLEEP_BODY) ? pokemonData.SLEEP_BODY : pokemonData.BASE_BODY
+  const rows = activeBody.length
+  const cols = activeBody[0]?.length ?? rows
+  const scale = Math.floor(100 / Math.max(rows, cols))
+  const canvasW = cols * scale
+  const canvasH = rows * scale
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const ctx = canvas.getContext('2d', { alpha: true })
+    ctx.imageSmoothingEnabled = false
+
+    const isSleeping = state === 'sleeping' && pokemonData.SLEEP_BODY
+    const body = isSleeping ? pokemonData.SLEEP_BODY : pokemonData.BASE_BODY
+    const colors = isSleeping ? pokemonData.SLEEP_COLORS : pokemonData.COLORS
+
+    const animation = DEFAULT_ANIMATIONS[isSleeping ? 'sleeping' : state] || DEFAULT_ANIMATIONS.idle
+    const { frames, fps } = animation
+    const interval = 1000 / fps
+    frameRef.current = 0
+
+    const animate = () => {
+      const frame = frames[frameRef.current % frames.length]
+      drawPokemon(ctx, body, colors, frame, scale)
+      frameRef.current = (frameRef.current + 1) % frames.length
+      animRef.current = setTimeout(animate, interval)
+    }
+
+    animate()
+    return () => { if (animRef.current) clearTimeout(animRef.current) }
+  }, [state, scale, pokemonData])
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={canvasW}
+      height={canvasH}
+      style={{ imageRendering: 'pixelated', display: 'block', background: 'transparent', transform: flipX ? 'scaleX(-1)' : 'none' }}
+    />
+  )
 }
 
 function GengarCanvas({ state, equippedItems, scale, flipX, canvasRef, frameRef, animRef }) {

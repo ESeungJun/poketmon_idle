@@ -1,6 +1,23 @@
 import { create } from 'zustand'
 import { calcLevel, getPokemon } from '../data/pokemon'
 
+function applyLevelUpMoves(petStats, pokemon, prevLevel, newLevel) {
+  if (!petStats || !pokemon) return null
+  const existingPool = petStats.learnedPool || petStats.moves || []
+  let pool = [...existingPool]
+  let moves = [...petStats.moves]
+  for (let lv = prevLevel + 1; lv <= newLevel; lv++) {
+    for (const m of pokemon.baseMoves) {
+      if ((m.learnAt ?? 1) === lv && !pool.includes(m.name)) {
+        pool.push(m.name)
+        if (moves.length < 4) moves.push(m.name)
+      }
+    }
+  }
+  if (pool.length === existingPool.length) return null
+  return { ...petStats, learnedPool: pool, moves }
+}
+
 const DEFAULT_STATE = {
   points: 0,
   totalPointsEarned: 0,
@@ -69,11 +86,18 @@ const useStore = create((set, get) => ({
       ...(showHappy ? { petState: 'happy' } : {}),
     }
 
-    // Check for evolution on level-up
+    // Check for level-up effects
     if (newLevel > prevLevel && state.petSpeciesId) {
       const pokemon = getPokemon(state.petSpeciesId)
-      if (pokemon && pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
-        update.petState = 'evolving'
+      if (pokemon) {
+        if (pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
+          update.petState = 'evolving'
+        }
+        const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
+        if (updatedStats) {
+          update.petStats = updatedStats
+          saveToStore('petStats', updatedStats)
+        }
       }
     }
 
@@ -218,6 +242,9 @@ const useStore = create((set, get) => ({
 
   setPetState: (state) => {
     set({ petState: state })
+    if (window.electronAPI) {
+      window.electronAPI.sendStateUpdate({ petState: state })
+    }
   },
 
   setPetSpecies: (speciesId) => {

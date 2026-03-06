@@ -47,13 +47,11 @@ export default function Panel() {
           </div>
 
           <div style={styles.content}>
-            {tab === 0 && (
-              <>
-                <PointDisplay />
-                <PomodoroTimer />
-                <TodoList />
-              </>
-            )}
+            <div style={{ display: tab === 0 ? 'block' : 'none' }}>
+              <PointDisplay />
+              <PomodoroTimer />
+              <TodoList />
+            </div>
             {tab === 1 && <Shop />}
             {tab === 2 && <PokemonStats />}
             {tab === 3 && <Settings />}

@@ -283,6 +283,10 @@ ipcMain.handle('close-panel', () => {
   if (panelWindow) panelWindow.hide()
 })
 
+ipcMain.handle('quit-app', () => {
+  app.quit()
+})
+
 ipcMain.handle('show-context-menu', (event) => {
   const menu = Menu.buildFromTemplate([
     {

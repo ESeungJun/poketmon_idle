@@ -1,7 +1,35 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from '../Shop/items'
-import { getPokemon, resolveMove, calcLevel, expForLevel, spriteUrl } from '../../data/pokemon'
+import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel, getUpcomingMoves } from '../../data/pokemon'
+import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
+import * as squirtleData from '../Pet/squirtle-anims'
+import * as charmanderData from '../Pet/charmander-anims'
+import * as bulbasaurData from '../Pet/bulbasaur-anims'
+
+const PIXEL_ART = { squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData }
+
+function StaticPixelArt({ speciesId, size = 56 }) {
+  const canvasRef = useRef(null)
+  const data = PIXEL_ART[speciesId]
+  useEffect(() => {
+    if (!data) return
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const ctx = canvas.getContext('2d', { alpha: true })
+    ctx.imageSmoothingEnabled = false
+    const rows = data.BASE_BODY.length
+    const cols = data.BASE_BODY[0]?.length ?? rows
+    const scale = Math.floor(size / Math.max(rows, cols))
+    const frame = DEFAULT_ANIMATIONS.idle.frames[0]
+    drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
+  }, [speciesId, size])
+  if (!data) return null
+  const rows = data.BASE_BODY.length
+  const cols = data.BASE_BODY[0]?.length ?? rows
+  const scale = Math.floor(size / Math.max(rows, cols))
+  return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
+}
 
 const STAT_KEYS = ['HP', '공격', '방어', '특수공격', '특수방어', '스피드']
 const STAT_COLOR = {
@@ -14,15 +42,15 @@ const NATURES = [
   { name: '개구쟁이', up: null, down: null },
   { name: '외로움',   up: '공격',    down: '방어' },
   { name: '용감한',   up: '공격',    down: '스피드' },
-  { name: '개구진',   up: '공격',    down: '특수공격' },
-  { name: '장난꾸러기', up: '공격',  down: '특수방어' },
+  { name: '개구진',   up: '공격',    down: '특수방어' },
+  { name: '장난꾸러기', up: '방어',  down: '특수공격' },
   { name: '대담한',   up: '방어',    down: '공격' },
   { name: '온순한',   up: null,      down: null },
   { name: '느긋한',   up: '방어',    down: '스피드' },
   { name: '장난기',   up: '방어',    down: '특수공격' },
-  { name: '촐랑대는', up: '방어',    down: '특수방어' },
-  { name: '성급한',   up: '스피드',  down: '공격' },
-  { name: '서두른',   up: '스피드',  down: '방어' },
+  { name: '촐랑대는', up: '방어',    down: '특수공격' },
+  { name: '성급한',   up: '스피드',  down: '방어' },
+  { name: '서두른',   up: '스피드',  down: '공격' },
   { name: '진지한',   up: null,      down: null },
   { name: '기쁜',     up: '스피드',  down: '특수공격' },
   { name: '덜렁대는', up: '스피드',  down: '특수방어' },
@@ -33,8 +61,8 @@ const NATURES = [
   { name: '건방진',   up: '특수공격', down: '특수방어' },
   { name: '차분한',   up: '특수방어', down: '공격' },
   { name: '온후한',   up: '특수방어', down: '방어' },
-  { name: '신중한',   up: '특수방어', down: '스피드' },
-  { name: '주의깊은', up: '특수방어', down: '특수공격' },
+  { name: '신중한',   up: '특수방어', down: '특수공격' },
+  { name: '주의깊은', up: '특수방어', down: '스피드' },
   { name: '이상한',   up: null,      down: null },
 ]
 
@@ -45,23 +73,23 @@ const TYPE_COLOR = {
   바위: '#887840', 강철: '#607890', 비행: '#6890f0',
 }
 
-function calcStat(base, iv, ev, key, nature) {
+function calcStat(base, iv, ev, key, nature, level = 1) {
   const evBonus = Math.floor((ev || 0) / 4)
-  if (key === 'HP') return Math.floor((2 * base + iv + evBonus) * 50 / 100 + 60)
-  let v = Math.floor((2 * base + iv + evBonus) * 50 / 100 + 5)
+  if (key === 'HP') return Math.floor((2 * base + iv + evBonus) * level / 100) + level + 10
+  let v = Math.floor((2 * base + iv + evBonus) * level / 100) + 5
   if (nature.up === key)   v = Math.floor(v * 1.1)
   if (nature.down === key) v = Math.floor(v * 0.9)
   return v
 }
 
-function generate(pokemon) {
+function generate(pokemon, level = 1) {
   const ivs = {}
   STAT_KEYS.forEach(k => { ivs[k] = Math.floor(Math.random() * 32) })
-  const nature   = NATURES[Math.floor(Math.random() * NATURES.length)]
-  const movePool = pokemon.baseMoves.map(m => m.name)
-  const moves    = [...movePool].sort(() => Math.random() - 0.5).slice(0, 4)
-  const ability  = pokemon.abilities[Math.floor(Math.random() * pokemon.abilities.length)]
-  return { speciesId: pokemon.id, ivs, natureName: nature.name, moves, learnedPool: [...moves], abilityName: ability.name }
+  const nature  = NATURES[Math.floor(Math.random() * NATURES.length)]
+  const ability = pokemon.abilities[Math.floor(Math.random() * pokemon.abilities.length)]
+  const learnedMoves = getMovesUpToLevel(pokemon, level).map(m => m.name)
+  const moves = learnedMoves.slice(0, 4)
+  return { speciesId: pokemon.id, ivs, natureName: nature.name, moves, learnedPool: [...learnedMoves], abilityName: ability.name }
 }
 
 export default function PokemonStats() {
@@ -83,11 +111,12 @@ export default function PokemonStats() {
   const [swapSlot, setSwapSlot] = useState(null)
 
   const pokemon = getPokemon(petSpeciesId)
+  const currentLevel = calcLevel(totalPointsEarned)
 
   useEffect(() => {
     if (!initialized || !pokemon) return
     if (!petStats || petStats.speciesId !== pokemon.id) {
-      setPetStats(generate(pokemon))
+      setPetStats(generate(pokemon, currentLevel))
     }
   }, [initialized, pokemon, petStats])
 
@@ -103,11 +132,9 @@ export default function PokemonStats() {
   }
 
   if (!petStats) return null
-
-  const currentLevel = calcLevel(totalPointsEarned)
   const currentLevelExp = expForLevel(currentLevel)
   const nextLevelExp = expForLevel(currentLevel + 1)
-  const expProgress = totalPointsEarned - currentLevelExp
+  const expProgress = Math.max(0, totalPointsEarned - currentLevelExp)
   const expNeeded = nextLevelExp - currentLevelExp
   const expPct = expNeeded > 0 ? Math.min(100, Math.round(expProgress / expNeeded * 100)) : 100
   const canEvolve = pokemon.evolveAt && currentLevel >= pokemon.evolveAt
@@ -127,7 +154,7 @@ export default function PokemonStats() {
   const availableForSwap = learnedMoves.filter(m => !petStats.moves.includes(m.name))
 
   const total = STAT_KEYS.reduce((sum, k) =>
-    sum + calcStat(pokemon.baseStats[k], petStats.ivs[k], petEVs[k], k, nature), 0)
+    sum + calcStat(pokemon.baseStats[k], petStats.ivs[k], petEVs[k], k, nature, currentLevel), 0)
 
   const myTMs = SHOP_ITEMS.filter(i => i.category === 'tm' && ownedTMs.includes(i.id))
 
@@ -136,12 +163,9 @@ export default function PokemonStats() {
       {/* Header */}
       <div style={s.header}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
-          <img
-            src={spriteUrl(pokemon.dexNum)}
-            alt={pokemon.speciesName}
-            style={s.headerSprite}
-            draggable={false}
-          />
+          <div style={s.headerSprite}>
+            <StaticPixelArt speciesId={petSpeciesId} size={56} />
+          </div>
           <div style={{ flex: 1 }}>
             {editing ? (
               <input style={s.nameInput} value={nameInput}
@@ -205,7 +229,7 @@ export default function PokemonStats() {
       <div style={s.sectionTitle}>스탯</div>
       {STAT_KEYS.map(key => {
         const ev  = petEVs[key] || 0
-        const val = calcStat(pokemon.baseStats[key], petStats.ivs[key], ev, key, nature)
+        const val = calcStat(pokemon.baseStats[key], petStats.ivs[key], ev, key, nature, currentLevel)
         const pct = Math.min(100, Math.round(val / BAR_MAX * 100))
         const isUp = nature.up === key
         const isDn = nature.down === key
@@ -246,6 +270,25 @@ export default function PokemonStats() {
           </div>
         ))}
       </div>
+
+      {/* 배울 기술 */}
+      {(() => {
+        const upcoming = getUpcomingMoves(pokemon, currentLevel)
+        if (upcoming.length === 0) return null
+        return (
+          <>
+            <div style={{ ...s.sectionTitle, marginTop: '10px' }}>배울 기술</div>
+            {upcoming.map(m => (
+              <div key={m.name} style={s.upcomingRow}>
+                <span style={s.upcomingLevel}>Lv.{m.learnAt}</span>
+                <span style={{ ...s.typeBadge, background: TYPE_COLOR[m.type] || '#555', fontSize: '10px' }}>{m.type}</span>
+                <span style={s.upcomingName}>{m.name}</span>
+                <span style={s.upcomingPower}>{m.power ? `위력 ${m.power}` : '변화기'}</span>
+              </div>
+            ))}
+          </>
+        )
+      })()}
 
       {/* 교체 피커 */}
       {swapSlot !== null && (
@@ -312,7 +355,7 @@ const s = {
   emptyText: { fontSize: '15px', color: '#555', fontWeight: 'bold' },
   emptyHint: { fontSize: '12px', color: '#3a3a5e', textAlign: 'center', lineHeight: '1.6' },
   header: { background: '#1a1a2e', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' },
-  headerSprite: { imageRendering: 'pixelated', width: '56px', height: '56px', objectFit: 'contain', flexShrink: 0 },
+  headerSprite: { width: '56px', height: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   nameRow: { display: 'flex', alignItems: 'center', gap: '6px' },
   name: { fontSize: '18px', fontWeight: 'bold', color: '#fff' },
   editBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '0', opacity: 0.5 },
@@ -368,4 +411,8 @@ const s = {
   tmUseBtn: { background: '#667eea', border: 'none', borderRadius: '6px', color: '#fff', fontSize: '11px', padding: '4px 10px', cursor: 'pointer' },
   tmBadgeLearned: { fontSize: '10px', color: '#4CAF50' },
   tmBadgeNo: { fontSize: '10px', color: '#FF6B6B' },
+  upcomingRow: { display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', borderBottom: '1px solid #1a1a2e' },
+  upcomingLevel: { fontSize: '10px', color: '#667eea', width: '32px', flexShrink: 0, fontWeight: 'bold' },
+  upcomingName: { fontSize: '12px', color: '#888', flex: 1 },
+  upcomingPower: { fontSize: '11px', color: '#444' },
 }

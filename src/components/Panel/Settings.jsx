@@ -28,6 +28,12 @@ export default function Settings() {
           </div>
         )}
       </div>
+      <div style={styles.section}>
+        <div style={styles.sectionTitle}>앱</div>
+        <button style={styles.quitBtn} onClick={() => window.electronAPI.quitApp()}>
+          앱 종료
+        </button>
+      </div>
     </div>
   )
 }
@@ -94,5 +100,15 @@ const styles = {
     padding: '8px',
     fontSize: '14px',
     cursor: 'pointer',
+  },
+  quitBtn: {
+    background: '#1a1a2e',
+    border: '1px solid #3a3a5e',
+    color: '#aaa',
+    borderRadius: '8px',
+    padding: '10px 16px',
+    fontSize: '14px',
+    cursor: 'pointer',
+    width: '100%',
   },
 }

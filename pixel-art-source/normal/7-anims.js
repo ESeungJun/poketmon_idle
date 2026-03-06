@@ -1,0 +1,50 @@
+// 꼬부기(Squirtle) — pixel art (auto-converted from 25×20)
+const _ = null
+
+export const COLORS = {
+  outline: '#313131',
+  body: '#7C3A0B',
+  bodyL: '#525252',
+  bodyD: '#8C5229',
+  belly: '#3A736B',
+  shadow: '#766843',
+  accent: '#BD6B21',
+  highlight: '#6B7C6A',
+  detail1: '#978556',
+  detail2: '#529C9C',
+  detail3: '#D68C29',
+  detail4: '#AEA572',
+  detail5: '#CEAD5A',
+  detail6: '#64B3CF',
+  detail7: '#A6A6A6',
+  detail8: '#E0C670',
+  detail9: '#73C5F7',
+  detail10: '#BDBDBD',
+  c18: '#F7E68C',
+  c19: '#DADADA',
+  c20: '#FFFFFF',
+}
+
+// grid: 25×20
+export const BASE_BODY = [
+/* row  0 */ [_, _, _, _, 'outline', 'outline', 'outline', 'outline', _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', _, _],
+/* row  1 */ [_, _, 'outline', 'outline', 'detail2', 'detail9', 'detail9', 'detail9', 'outline', 'outline', 'outline', _, _, _, _, _, _, _, 'outline', 'detail9', 'detail9', 'detail9', 'detail9', 'outline', _],
+/* row  2 */ [_, 'outline', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail6', 'detail2', 'outline', 'outline', _, _, _, _, 'outline', 'detail9', 'detail9', 'detail9', 'detail2', 'detail2', 'detail2', 'outline'],
+/* row  3 */ [_, 'outline', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail6', 'detail2', 'outline', 'outline', _, _, _, _, 'outline', 'detail9', 'detail9', 'detail9', 'detail2', 'detail2', 'detail2', 'outline'],
+/* row  4 */ [_, 'outline', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'bodyL', 'accent', 'outline', 'outline', _, _, 'outline', 'detail9', 'detail9', 'detail2', 'bodyL', 'bodyL', 'belly', 'outline'],
+/* row  5 */ ['outline', 'detail9', 'detail9', 'detail9', 'detail9', 'detail9', 'detail2', 'detail9', 'detail9', 'detail9', 'detail9', 'detail2', 'bodyL', 'detail3', 'accent', 'outline', 'outline', 'detail2', 'detail9', 'detail2', 'bodyL', 'detail2', 'detail2', 'detail2', 'outline'],
+/* row  6 */ ['outline', 'detail9', 'detail9', 'detail9', 'detail9', 'belly', 'c20', 'outline', 'detail9', 'detail9', 'detail9', 'detail2', 'bodyL', 'bodyD', 'detail3', 'accent', 'accent', 'bodyL', 'detail2', 'detail2', 'bodyL', 'detail2', 'detail2', 'outline', _],
+/* row  7 */ ['outline', 'detail9', 'detail9', 'detail9', 'detail9', 'detail2', 'outline', 'outline', 'detail9', 'detail6', 'detail2', 'detail2', 'bodyL', 'c20', 'bodyD', 'detail3', 'detail3', 'bodyL', 'detail2', 'detail2', 'bodyL', 'outline', 'outline', _, _],
+/* row  8 */ [_, 'outline', 'detail9', 'detail9', 'detail9', 'detail9', 'outline', 'bodyD', 'detail2', 'detail2', 'detail2', 'bodyL', 'detail10', 'c20', 'bodyD', 'detail3', 'detail3', 'accent', 'bodyL', 'detail2', 'outline', _, _, _, _],
+/* row  9 */ [_, 'detail7', 'belly', 'belly', 'detail2', 'detail6', 'belly', 'highlight', 'detail2', 'detail2', 'belly', 'belly', 'highlight', 'c19', 'detail10', 'accent', 'accent', 'accent', 'bodyL', 'detail2', 'outline', _, _, _, _],
+/* row 10 */ [_, _, 'outline', 'outline', 'bodyL', 'detail2', 'detail2', 'detail2', 'detail2', 'belly', 'bodyL', 'detail2', 'bodyL', 'detail10', 'c20', 'body', 'bodyD', 'accent', 'bodyL', 'detail2', 'outline', _, _, _, _],
+/* row 11 */ [_, _, 'outline', 'outline', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'detail5', 'detail8', 'c18', 'bodyL', 'detail9', 'bodyL', 'c20', 'body', 'bodyD', 'bodyD', 'bodyL', 'outline', _, _, _, _, _],
+/* row 12 */ [_, _, _, _, 'outline', 'outline', 'c18', 'c18', 'c18', 'detail4', 'bodyL', 'detail9', 'detail9', 'detail9', 'bodyL', 'bodyD', 'bodyD', 'accent', 'outline', _, _, _, _, _, _],
+/* row 13 */ [_, _, _, _, _, _, 'outline', 'detail5', 'detail5', 'detail1', 'bodyL', 'detail9', 'detail9', 'detail2', 'bodyL', 'bodyD', 'bodyD', 'accent', 'outline', _, _, _, _, _, _],
+/* row 14 */ [_, _, _, _, _, 'outline', 'belly', 'bodyL', 'c18', 'c18', 'c18', 'bodyL', 'detail2', 'bodyL', 'bodyL', 'c19', 'detail10', 'outline', _, _, _, _, _, _, _],
+/* row 15 */ [_, _, _, _, _, 'outline', 'belly', 'belly', 'outline', 'shadow', 'detail5', 'detail5', 'bodyL', 'bodyL', 'detail2', 'bodyL', 'bodyL', 'outline', _, _, _, _, _, _, _],
+/* row 16 */ [_, _, _, _, _, 'outline', 'belly', 'belly', 'outline', 'shadow', 'detail5', 'detail5', 'bodyL', 'bodyL', 'detail2', 'bodyL', 'bodyL', 'outline', _, _, _, _, _, _, _],
+/* row 17 */ [_, _, _, _, _, _, 'outline', 'outline', _, 'detail7', 'outline', 'bodyL', 'detail9', 'detail2', 'detail2', 'outline', 'outline', _, _, _, _, _, _, _, _],
+/* row 18 */ [_, _, _, _, _, _, _, _, _, _, _, 'outline', 'detail2', 'belly', 'detail2', 'outline', 'outline', _, _, _, _, _, _, _, _],
+/* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', _, _, _, _, _, _, _, _, _, _],
+]
