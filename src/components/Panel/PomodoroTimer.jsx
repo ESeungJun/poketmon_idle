@@ -28,10 +28,8 @@ export default function PomodoroTimer() {
         totalActiveMsRef.current += Date.now() - tickStartRef.current
         tickStartRef.current = null
       }
-      if (!isBreak) {
-        setPetState('idle')
-        window.electronAPI?.startWandering()
-      }
+      setPetState('idle')
+      window.electronAPI?.startWandering()
       return
     }
 
@@ -126,7 +124,7 @@ export default function PomodoroTimer() {
     <div style={styles.container}>
       <div style={styles.header}>
         <span style={styles.title}>⏱ 집중모드</span>
-        <span style={styles.mode}>{isBreak ? '휴식 중' : '집중 중'}</span>
+        <span style={styles.mode}>{isRunning && !isBreak ? '집중 중' : isBreak ? '휴식 중' : '대기 중'}</span>
       </div>
 
       <div style={styles.timerWrapper}>
