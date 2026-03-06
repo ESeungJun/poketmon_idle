@@ -43,6 +43,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('force-remount', handler)
   },
 
+  resizePetWindow: (size) => ipcRenderer.invoke('resize-pet-window', size),
+
   startWandering: () => ipcRenderer.invoke('start-wandering'),
   stopWandering:  () => ipcRenderer.invoke('stop-wandering'),
 

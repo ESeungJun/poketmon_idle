@@ -1,0 +1,85 @@
+// 리자드(Charmeleon) — pixel art (auto-converted from 20×21)
+const _ = null
+
+export const COLORS = {
+  outline: '#191919',
+  body: '#313131',
+  eye: '#196363',
+  bodyL: '#525252',
+  bodyD: '#A5423A',
+  belly: '#CE4A42',
+  shadow: '#F76B4A',
+  accent: '#F7A542',
+  highlight: '#D6B57B',
+  detail1: '#F7F729',
+  detail2: '#BDBDBD',
+  detail3: '#F7D69C',
+  detail4: '#FFFFFF',
+}
+
+// grid: 20×21
+export const BASE_BODY = [
+/* row  0 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, 'outline', _, _, _, _, _],
+/* row  1 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'shadow', 'outline', _, _, _, _],
+/* row  2 */ [_, _, _, _, _, _, _, 'outline', 'outline', _, _, _, _, 'outline', 'shadow', 'outline', _, _, _, _],
+/* row  3 */ [_, _, _, _, _, _, 'outline', 'belly', 'shadow', 'outline', _, _, 'outline', 'shadow', 'accent', 'shadow', 'outline', _, _, _],
+/* row  4 */ [_, _, _, _, _, _, 'shadow', 'shadow', 'belly', 'outline', _, _, 'outline', 'shadow', 'detail1', 'shadow', 'shadow', 'outline', _, _],
+/* row  5 */ [_, _, _, _, 'outlinebody', 'outline', 'shadow', 'shadow', 'outline', _, _, _, 'outline', 'accent', 'detail1', 'accent', 'shadow', 'outline', _, _],
+/* row  6 */ [_, _, 'outline', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'belly', 'outline', _, _, _, 'outline', 'accent', 'belly', 'outline', _, _, _],
+/* row  7 */ [_, _, 'outline', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'outline', _, _, _, _, 'outline', 'shadow', 'belly', 'outline', _, _],
+/* row  8 */ [_, 'outline', 'shadow', 'belly', 'shadow', 'shadow', 'body', 'shadow', 'shadow', 'belly', 'outline', _, _, _, _, 'outline', 'shadow', 'shadow', 'outline', _],
+/* row  9 */ ['outline', 'shadow', 'shadow', 'bodyD', 'shadow', 'eye', 'detail4', 'shadow', 'belly', 'belly', 'bodyL', 'outline', _, _, _, 'outline', 'shadow', 'shadow', 'shadow', 'outline'],
+/* row 10 */ ['outline', 'shadow', 'shadow', 'shadow', 'body', 'bodyL', 'detail4', 'belly', 'belly', 'belly', 'shadow', 'shadow', 'outline', 'outline', _, _, 'outline', 'shadow', 'shadow', 'outline'],
+/* row 11 */ [_, 'outline', 'shadow', 'belly', 'shadow', 'shadow', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'shadow', 'shadow', 'belly', 'outline', _, 'outline', 'shadow', 'belly', 'belly'],
+/* row 12 */ [_, _, 'outline', 'bodyL', 'belly', 'belly', 'bodyL', 'bodyL', 'highlight', 'belly', 'bodyL', 'shadow', 'shadow', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'belly', 'belly'],
+/* row 13 */ [_, 'outline', 'bodyD', 'bodyD', 'bodyL', 'bodyL', 'body', 'detail3', 'detail3', 'highlight', 'belly', 'bodyL', 'shadow', 'bodyL', 'belly', 'bodyL', 'belly', 'belly', 'belly', 'outline'],
+/* row 14 */ ['outline', 'detail2', 'bodyD', 'bodyD', 'bodyD', 'outline', 'outline', 'detail3', 'detail3', 'detail3', 'bodyL', 'belly', 'belly', 'belly', 'bodyL', 'belly', 'bodyL', 'belly', 'belly', 'outline'],
+/* row 15 */ ['outline', 'bodyD', 'detail2', 'outline', 'outline', _, 'bodyD', 'bodyL', 'highlight', 'bodyL', 'belly', 'belly', 'belly', 'belly', 'bodyL', 'belly', 'bodyL', 'belly', 'outline', _],
+/* row 16 */ [_, 'outline', 'outline', _, _, _, 'bodyD', 'bodyD', 'bodyL', 'detail4', 'belly', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'outline', 'outline', _, _],
+/* row 17 */ [_, _, _, _, _, _, 'detail2', 'bodyD', 'bodyD', 'outline', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'belly', 'outline', _, _, _],
+/* row 18 */ [_, _, _, _, _, _, 'outline', 'outline', 'outline', _, 'outline', 'bodyL', 'belly', 'belly', 'belly', 'outline', _, _, _, _],
+/* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, 'outline', 'detail4', 'bodyD', 'detail2', 'outline', _, _, _, _],
+/* row 20 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', _, _, _, _, _],
+]
+
+export const SLEEP_COLORS = {
+  outline: '#191919',
+  body: '#603429',
+  bodyL: '#514F50',
+  bodyD: '#814640',
+  belly: '#A35749',
+  shadow: '#CF4A45',
+  accent: '#7A7879',
+  highlight: '#D16D56',
+  detail1: '#F36744',
+  detail3: '#EE9B35',
+  detail4: '#D4B17B',
+  detail5: '#F8F125',
+  detail6: '#F1D198',
+  detail7: '#CDCCCA',
+}
+
+// grid: 20×21
+export const SLEEP_BODY = [
+/* row  0 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+/* row  1 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+/* row  2 */ [_, _, _, _, _, _, _, 'outline', 'outline', _, _, _, _, _, _, _, _, _, _, _],
+/* row  3 */ [_, _, _, _, _, _, 'outline', 'detail1', 'detail1', 'outline', _, _, _, _, _, _, _, _, _, _],
+/* row  4 */ [_, _, _, _, _, 'outline', 'detail1', 'detail1', 'shadow', 'outline', _, _, _, _, _, _, _, _, _, _],
+/* row  5 */ [_, _, 'outline', 'outline', 'belly', 'highlight', 'detail1', 'shadow', 'outline', _, _, _, 'outline', 'outline', _, _, _, _, _, _],
+/* row  6 */ [_, _, 'outline', 'detail1', 'detail1', 'detail1', 'detail1', 'detail1', 'shadow', 'outline', 'outline', 'outline', 'shadow', 'detail1', 'outline', 'outline', _, _, _, _],
+/* row  7 */ [_, _, 'outline', 'detail1', 'detail1', 'shadow', 'detail1', 'detail1', 'detail1', 'outline', 'shadow', 'shadow', 'shadow', 'detail1', 'detail1', 'shadow', _, _, _, _],
+/* row  8 */ [_, 'outline', 'shadow', 'detail1', 'shadow', 'detail1', 'detail1', 'belly', 'detail1', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'detail1', 'detail1', 'body', _, _, _],
+/* row  9 */ [_, _, 'outline', 'detail1', 'detail1', 'bodyD', 'outline', 'detail1', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'detail1', 'detail1', 'outline', _, _],
+/* row 10 */ [_, 'outline', 'detail1', 'detail1', 'detail1', 'detail1', 'detail1', 'shadow', 'shadow', 'shadow', 'shadow', 'bodyL', 'shadow', 'shadow', 'shadow', 'shadow', 'detail1', 'shadow', 'outline', _],
+/* row 11 */ [_, 'outline', 'detail1', 'shadow', 'detail1', 'detail1', 'shadow', 'shadow', 'bodyL', 'detail1', 'shadow', 'detail4', 'shadow', 'bodyL', 'shadow', 'shadow', 'detail1', 'shadow', 'outline', _],
+/* row 12 */ [_, _, 'outline', 'detail1', 'shadow', 'bodyD', 'bodyL', 'bodyL', 'detail1', 'detail1', 'bodyL', 'detail6', 'bodyL', 'detail1', 'detail1', 'shadow', 'shadow', 'shadow', 'shadow', 'outline'],
+/* row 13 */ [_, 'outline', 'shadow', 'outline', 'outline', 'bodyD', 'shadow', 'detail1', 'detail1', 'shadow', 'detail6', 'bodyL', 'detail1', 'detail1', 'detail1', 'shadow', 'shadow', 'shadow', 'shadow', 'outline'],
+/* row 14 */ [_, 'outline', 'shadow', 'shadow', 'belly', 'detail1', 'detail1', 'shadow', 'shadow', 'outline', 'detail6', 'bodyL', 'detail1', 'detail1', 'shadow', 'shadow', 'belly', 'shadow', 'shadow', 'outline'],
+/* row 15 */ [_, _, 'outline', 'shadow', _, 'bodyD', 'detail3', 'shadow', 'outline', _, 'outline', 'bodyL', 'shadow', 'shadow', 'shadow', 'shadow', 'belly', 'shadow', 'shadow', 'outline'],
+/* row 16 */ [_, _, _, _, _, 'belly', 'detail5', 'detail3', 'highlight', _, 'outline', 'detail7', 'belly', 'bodyD', 'body', 'detail4', 'highlight', 'shadow', 'body', _],
+/* row 17 */ [_, _, _, _, _, 'highlight', 'detail5', 'detail3', 'belly', 'outline', 'outline', 'outline', 'outline', 'detail6', 'detail6', 'detail1', 'shadow', 'outline', _, _],
+/* row 18 */ [_, _, _, _, _, _, 'shadow', 'outline', 'shadow', 'shadow', 'detail1', 'detail1', 'detail1', 'detail1', 'shadow', 'shadow', 'body', _, _, _],
+/* row 19 */ [_, _, _, _, _, _, _, _, 'outline', 'outline', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'outline', _, _, _, _],
+/* row 20 */ [_, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'outline', _, _, _, _, _],
+]
