@@ -147,12 +147,12 @@ function createPetWindow() {
   petWindow.webContents.on('render-process-gone', (event, details) => {
     if (details.reason === 'clean-exit') return
     console.error('[pet] renderer gone:', details.reason, '— reloading')
-    petWindow.reload()
+    event.sender.reload()
   })
 
   petWindow.on('unresponsive', () => {
     console.error('[pet] unresponsive — reloading')
-    petWindow.reload()
+    if (petWindow) petWindow.reload()
   })
 
   // macOS: visibleOnFullScreen 옵션으로 풀스크린 앱 위에서도 펫이 보이게 함
@@ -209,12 +209,12 @@ function createPanelWindow() {
   panelWindow.webContents.on('render-process-gone', (event, details) => {
     if (details.reason === 'clean-exit') return
     console.error('[panel] renderer gone:', details.reason, '— reloading')
-    panelWindow.reload()
+    event.sender.reload()
   })
 
   panelWindow.on('unresponsive', () => {
     console.error('[panel] unresponsive — reloading')
-    panelWindow.reload()
+    if (panelWindow) panelWindow.reload()
   })
 }
 
@@ -295,7 +295,9 @@ ipcMain.handle('set-store', (_, key, value) => {
   if (!ALLOWED_STORE_KEYS.has(key)) return
   store.set(key, value)
 })
-ipcMain.handle('get-all-store', () => store.store)
+ipcMain.handle('get-all-store', () =>
+  Object.fromEntries(Object.entries(store.store).filter(([k]) => ALLOWED_STORE_KEYS.has(k)))
+)
 ipcMain.handle('clear-store', () => {
   store.clear()
   if (petWindow) petWindow.hide()
@@ -311,6 +313,7 @@ ipcMain.handle('starter-selected', () => {
 // visibleOnAllWorkspaces를 드래그 중에 false로 해제해야
 // macOS에서 다른 물리적 디스플레이로 setPosition()이 허용됨
 ipcMain.handle('start-drag', (_, { offsetX, offsetY }) => {
+  if (typeof offsetX !== 'number' || typeof offsetY !== 'number') return
   dragOffsetX = offsetX
   dragOffsetY = offsetY
   stopWandering()
@@ -375,8 +378,10 @@ ipcMain.handle('close-panel', () => {
   if (panelWindow) panelWindow.hide()
 })
 
+const VALID_WIN_SIZES = new Set([100, 120, 160])
 ipcMain.handle('resize-pet-window', (_, newSize) => {
   if (!petWindow || currentWinSize === newSize) return
+  if (!VALID_WIN_SIZES.has(newSize)) return
   currentWinSize = newSize
   const [x, y] = petWindow.getPosition()
   const display = screen.getDisplayNearestPoint({ x, y })
