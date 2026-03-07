@@ -23,12 +23,12 @@
 > 야생 포켓몬 도트는 Phase 3 배틀/배회 연출에 필요.
 
 ### 진화형 (스타터 3종 진화 라인)
-- [ ] 이상해풀(ivysaur) — BASE_BODY / COLORS / SLEEP_BODY / SLEEP_COLORS
-- [ ] 이상해꽃(venusaur)
-- [ ] 리자드(charmeleon)
-- [ ] 리자몽(charizard)
-- [ ] 어니부기(wartortle)
-- [ ] 거북왕(blastoise)
+- [x] 이상해풀(ivysaur) — BASE_BODY / COLORS / SLEEP_BODY / SLEEP_COLORS
+- [x] 이상해꽃(venusaur)
+- [x] 리자드(charmeleon)
+- [x] 리자몽(charizard)
+- [x] 어니부기(wartortle)
+- [x] 거북왕(blastoise)
 
 ### 야생 포켓몬 (pokemon.js DB에 데이터 이미 존재)
 - [ ] 구구(pidgey)
