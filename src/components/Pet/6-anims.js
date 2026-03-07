@@ -3,7 +3,7 @@ const _ = null
 
 export const COLORS = {
   outline: '#191919',
-  body: '#525252',
+  body: '#191919',
   bodyL: '#316B5A',
   bodyD: '#B5423A',
   belly: '#4A8473',
@@ -56,7 +56,7 @@ export const BASE_BODY = [
 export const SLEEP_COLORS = {
   outline: '#191919',
   body: '#336D5F',
-  bodyL: '#5D5D5D',
+  bodyL: '#191919',
   bodyD: '#CA4033',
   belly: '#4A8374',
   shadow: '#D65F3F',
