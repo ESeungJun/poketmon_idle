@@ -6,7 +6,6 @@ import { getPokemon } from './data/pokemon'
 
 function PetView() {
   const petState = useStore(s => s.petState)
-  const equippedItems = useStore(s => s.equippedItems)
   const initialize = useStore(s => s.initialize)
   const syncFromOtherWindow = useStore(s => s.syncFromOtherWindow)
   const initialized = useStore(s => s.initialized)
@@ -74,11 +73,6 @@ function PetView() {
     }
   }
 
-  const handleContextMenu = (e) => {
-    e.preventDefault()
-    window.electronAPI?.showContextMenu()
-  }
-
   const handleMouseMove = (e) => {
     if (dragging.current && e.buttons === 1) {
       dragMoved.current = true
@@ -96,13 +90,10 @@ function PetView() {
       style={styles.petContainer}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onContextMenu={handleContextMenu}
     >
       <PetCanvas
         key={canvasKey}
         state={petState}
-        equippedItems={equippedItems}
-        scale={5}
         flipX={flipX}
         dexNum={dexNum}
         speciesId={petSpeciesId}
@@ -139,14 +130,8 @@ function PanelView() {
 }
 
 export default function App() {
-  const [view, setView] = useState(null)
+  const [view] = useState(() => new URLSearchParams(window.location.search).get('view') || 'pet')
 
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    setView(params.get('view') || 'pet')
-  }, [])
-
-  if (!view) return null
   if (view === 'panel') return <PanelView />
   return <PetView />
 }
