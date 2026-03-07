@@ -40,8 +40,17 @@
 
 ## 필수 규칙
 
-### 빌드
-코드를 수정한 뒤에는 **반드시** 빌드 후 앱을 실행한다.
+### 빌드 및 검증 절차
+
+코드 수정 후 PR 올리기 전까지 반드시 아래 순서를 따른다:
+
+1. **빌드** — 성공 여부 확인
+2. **앱 실행** — 기존 프로세스 종료 후 실행, 변경사항 직접 확인
+3. **사용자 확인** — PR을 올려도 되는지 사용자에게 먼저 물어본다
+4. **PR 생성** — 승인 후에만 커밋·푸시·PR 진행
+
+> PR 없이 dev에 바로 push하는 경우(docs 등)도 사용자 확인 후 진행한다.
+
 ```bash
 npm run build
 ```
@@ -56,7 +65,7 @@ pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app
 
 **Windows**
 ```bash
-powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && npm run build && start "" "release/win-unpacked/poketmon-idle.exe"
+powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "release/win-unpacked/poketmon-idle.exe"
 ```
 
 
