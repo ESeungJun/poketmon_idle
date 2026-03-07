@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen, Menu } = require('electron')
+const { app, BrowserWindow, ipcMain, screen } = require('electron')
 const path = require('path')
 const Store = require('electron-store')
 
@@ -9,6 +9,7 @@ const isDev = process.env.NODE_ENV === 'development' || (!app.isPackaged && proc
 const WIN_SIZE = 100
 
 // 진화 단계별 윈도우 크기 (stage2 = 1.5×, stage3 = 1.5²×)
+// ※ 새 포켓몬 추가 시 PetCanvas.jsx의 STAGE2/STAGE3 Set도 함께 수정할 것
 const STAGE2_SPECIES = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
 const STAGE3_SPECIES = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
 function getWinSizeForSpecies(speciesId) {
@@ -221,10 +222,15 @@ app.whenReady().then(() => {
   createPetWindow()
   createPanelWindow()
 
-  // 저장된 스타터가 있으면 펫 창 즉시 표시, 없으면 패널만 열어 스타터 선택 유도
+  // 저장된 스타터가 있으면 펫 창 표시, 없으면 패널만 열어 스타터 선택 유도
+  // panel과 동일하게 did-finish-load 후에 표시해 흰 화면 플래시 방지
   const hasPet = !!store.get('petSpeciesId')
   if (hasPet) {
-    showPetWindow()
+    if (petWindow.webContents.isLoading()) {
+      petWindow.webContents.once('did-finish-load', () => showPetWindow())
+    } else {
+      showPetWindow()
+    }
   }
   panelWindow.webContents.once('did-finish-load', () => {
     panelWindow.show()
@@ -262,8 +268,8 @@ ipcMain.handle('toggle-panel', () => {
       // 기본: 펫 왼쪽 위에 배치
       let panelX = px - 390
       let panelY = py - 480
-      // 화면 경계 보정
-      if (panelX < dX) panelX = px + WIN_SIZE + 10
+      // 화면 경계 보정 (currentWinSize: 진화 단계별 실제 창 크기 반영)
+      if (panelX < dX) panelX = px + currentWinSize + 10
       if (panelX + 380 > dX + width) panelX = dX + width - 390
       if (panelY < dY) panelY = dY + 10
       if (panelY + 580 > dY + height) panelY = dY + height - 590
@@ -276,7 +282,7 @@ ipcMain.handle('toggle-panel', () => {
 
 // renderer가 임의 키를 읽거나 쓰는 것을 방지하는 허용 키 목록
 const ALLOWED_STORE_KEYS = new Set([
-  'points', 'totalPointsEarned', 'purchasedItems', 'equippedItems',
+  'points', 'totalPointsEarned', 'purchasedItems',
   'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
   'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
 ])
@@ -384,21 +390,3 @@ ipcMain.handle('quit-app', () => {
   app.quit()
 })
 
-ipcMain.handle('show-context-menu', (event) => {
-  const menu = Menu.buildFromTemplate([
-    {
-      label: '패널 열기/닫기',
-      click: () => {
-        if (!panelWindow) return
-        if (panelWindow.isVisible()) panelWindow.hide()
-        else { panelWindow.show(); panelWindow.focus() }
-      },
-    },
-    { type: 'separator' },
-    {
-      label: '종료',
-      click: () => app.quit(),
-    },
-  ])
-  menu.popup({ window: BrowserWindow.fromWebContents(event.sender) })
-})

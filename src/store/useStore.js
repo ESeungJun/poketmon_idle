@@ -26,7 +26,6 @@ const DEFAULT_STATE = {
   points: 0,
   totalPointsEarned: 0,
   purchasedItems: [],
-  equippedItems: [],
   todos: [],
   pomodoroHistory: [],
   petState: 'idle', // idle | happy | sleeping | evolving
@@ -177,7 +176,10 @@ const useStore = create((set, get) => ({
     }
     setTimeout(() => {
       set(s => {
-        if (s.petState === 'happy') return { petState: 'idle' }
+        if (s.petState === 'happy') {
+          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: 'idle' })
+          return { petState: 'idle' }
+        }
         return {}
       })
     }, 2000)
@@ -191,23 +193,6 @@ const useStore = create((set, get) => ({
     set({ purchasedItems: newPurchased })
     saveToStore('purchasedItems', newPurchased)
     return true
-  },
-
-  toggleEquipItem: (itemId) => {
-    const { equippedItems, purchasedItems } = get()
-    if (!purchasedItems.includes(itemId)) return
-
-    let newEquipped
-    if (equippedItems.includes(itemId)) {
-      newEquipped = equippedItems.filter(id => id !== itemId)
-    } else {
-      newEquipped = [...equippedItems, itemId]
-    }
-    set({ equippedItems: newEquipped })
-    saveToStore('equippedItems', newEquipped)
-    if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ equippedItems: newEquipped })
-    }
   },
 
   addTodo: (text) => {
@@ -365,7 +350,7 @@ const useStore = create((set, get) => ({
   // allowed 키 목록으로 필터링해 알 수 없는 키가 store를 오염시키지 않도록 방어
   syncFromOtherWindow: (data) => {
     const allowed = [
-      'points', 'totalPointsEarned', 'purchasedItems', 'equippedItems',
+      'points', 'totalPointsEarned', 'purchasedItems',
       'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
       'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
     ]
