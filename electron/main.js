@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, screen, Tray, Menu, nativeImage } = require('electron')
 const path = require('path')
 const Store = require('electron-store')
 
@@ -22,6 +22,7 @@ let currentWinSize = WIN_SIZE
 
 let petWindow = null
 let panelWindow = null
+let tray = null
 
 // --- 드래그 상태 ---
 // renderer의 mousemove 대신 main에서 커서를 폴링하는 이유:
@@ -218,7 +219,37 @@ function createPanelWindow() {
   })
 }
 
+function createTray() {
+  const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
+  const icon = nativeImage.createFromPath(iconPath)
+  tray = new Tray(icon)
+  tray.setToolTip('포켓몬 키우기')
+
+  const buildMenu = () => Menu.buildFromTemplate([
+    {
+      label: '패널 열기/닫기',
+      click: () => {
+        if (!panelWindow) return
+        if (panelWindow.isVisible()) panelWindow.hide()
+        else { panelWindow.show(); panelWindow.focus() }
+      },
+    },
+    { type: 'separator' },
+    { label: '종료', click: () => app.quit() },
+  ])
+
+  tray.setContextMenu(buildMenu())
+
+  // 좌클릭 시 패널 토글 (Windows)
+  tray.on('click', () => {
+    if (!panelWindow) return
+    if (panelWindow.isVisible()) panelWindow.hide()
+    else { panelWindow.show(); panelWindow.focus() }
+  })
+}
+
 app.whenReady().then(() => {
+  createTray()
   createPetWindow()
   createPanelWindow()
 
@@ -246,8 +277,9 @@ app.whenReady().then(() => {
   })
 })
 
+// 트레이가 있으면 모든 창이 닫혀도 앱을 유지 (트레이에서 재접근 가능)
 app.on('window-all-closed', () => {
-  if (process.platform !== 'darwin') {
+  if (process.platform !== 'darwin' && !tray) {
     app.quit()
   }
 })
