@@ -92,7 +92,7 @@ export default function Shop() {
           </div>
           <div style={st.sectionDesc}>
             스탯당 최대 252 EV · 전체 합계 최대 510 EV<br />
-            EV는 실제 스탯 수치에 반영됩니다 (floor(EV÷4))
+            EV는 실제 스탯 수치에 반영됩니다
           </div>
           <div style={st.grid3}>
             {SHOP_ITEMS.filter(i => i.category === 'vitamin').map(item => {
@@ -134,7 +134,7 @@ export default function Shop() {
       {tab === 2 && (
         <div style={st.section}>
           <div style={st.sectionDesc}>
-            구매 후 스탯 탭에서 사용 가능 · 겐가르 적용 여부는 사용 시 확인
+            구매 후 스탯 탭에서 사용 가능
           </div>
           <div style={st.grid2}>
             {SHOP_ITEMS.filter(i => i.category === 'tm').map(item => {

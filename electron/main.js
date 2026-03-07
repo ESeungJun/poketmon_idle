@@ -143,6 +143,17 @@ function createPetWindow() {
     stopWandering()
   })
 
+  petWindow.webContents.on('render-process-gone', (event, details) => {
+    if (details.reason === 'clean-exit') return
+    console.error('[pet] renderer gone:', details.reason, '— reloading')
+    petWindow.reload()
+  })
+
+  petWindow.on('unresponsive', () => {
+    console.error('[pet] unresponsive — reloading')
+    petWindow.reload()
+  })
+
   // macOS: visibleOnFullScreen 옵션으로 풀스크린 앱 위에서도 펫이 보이게 함
   if (process.platform !== 'win32') {
     petWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true })
@@ -192,6 +203,17 @@ function createPanelWindow() {
 
   panelWindow.on('closed', () => {
     panelWindow = null
+  })
+
+  panelWindow.webContents.on('render-process-gone', (event, details) => {
+    if (details.reason === 'clean-exit') return
+    console.error('[panel] renderer gone:', details.reason, '— reloading')
+    panelWindow.reload()
+  })
+
+  panelWindow.on('unresponsive', () => {
+    console.error('[panel] unresponsive — reloading')
+    panelWindow.reload()
   })
 }
 
