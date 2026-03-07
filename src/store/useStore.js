@@ -173,7 +173,7 @@ const useStore = create((set, get) => ({
     saveToStore('petSpeciesId', newSpeciesId)
     saveToStore('petStats', newPetStats)
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy' })
+      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy', petStats: newPetStats })
     }
     setTimeout(() => {
       set(s => {
