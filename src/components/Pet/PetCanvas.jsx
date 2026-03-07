@@ -26,6 +26,7 @@ const PIXEL_ART = {
 }
 
 // 진화 단계별 펫 창 크기 (stage2 = 1.5×, stage3 = 2.25×)
+// ※ 새 포켓몬 추가 시 electron/main.js의 STAGE2_SPECIES/STAGE3_SPECIES도 함께 수정할 것
 const STAGE2 = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
 const STAGE3 = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
 export function getWinSize(speciesId) {
@@ -78,7 +79,7 @@ function getSpriteStyle(state) {
 // 1. speciesId가 PIXEL_ART 맵에 있으면 → 커스텀 도트 canvas (PixelArtCanvas)
 // 2. dexNum이 있으면 → PokeAPI CDN 스프라이트 img 태그 (진화형 등 도트 미완성 종)
 // 3. 둘 다 없으면 → null
-export default function PetCanvas({ state = 'idle', equippedItems = [], scale = 5, flipX = false, dexNum = null, speciesId = null }) {
+export default function PetCanvas({ state = 'idle', flipX = false, dexNum = null, speciesId = null }) {
   injectStyles()
 
   const winSize = getWinSize(speciesId)

@@ -51,6 +51,4 @@ contextBridge.exposeInMainWorld('electronAPI', {
   // 드래그: mousedown 시 오프셋(창 내 클릭 위치)을 main에 전달
   startDrag: (offset) => ipcRenderer.invoke('start-drag', offset),
   stopDrag:  ()       => ipcRenderer.invoke('stop-drag'),
-
-  showContextMenu: () => ipcRenderer.invoke('show-context-menu'),
 })
