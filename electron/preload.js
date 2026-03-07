@@ -8,8 +8,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   closePanel:  () => ipcRenderer.invoke('close-panel'),
 
   getStore:      (key)        => ipcRenderer.invoke('get-store', key),
-  setStore:      (key, value) => ipcRenderer.invoke('set-store', key, value),
-  setStoreAsync: (key, value) => ipcRenderer.invoke('set-store', key, value),  // useStore의 saveToStore에서 사용
+  setStoreAsync: (key, value) => ipcRenderer.invoke('set-store', key, value),
   getAllStore:    ()           => ipcRenderer.invoke('get-all-store'),
   clearStore:    ()           => ipcRenderer.invoke('clear-store'),
   notifyStarterSelected: ()   => ipcRenderer.invoke('starter-selected'),
