@@ -259,6 +259,9 @@ export default function PokemonStats() {
               <div style={{ ...s.barFill, width: `${pct}%`, background: STAT_COLOR[key] }} />
             </div>
             <span style={{ ...s.statVal, color: isUp ? '#FF6B6B' : isDn ? '#6B9EFF' : '#fff' }}>{val}</span>
+            {isUp && <span style={s.natureUp}>↑</span>}
+            {isDn && <span style={s.natureDn}>↓</span>}
+            {!isUp && !isDn && <span style={s.naturePh} />}
             {ev > 0 && <span style={s.evTag}>EV{ev}</span>}
           </div>
         )
@@ -384,6 +387,9 @@ const s = {
   barBg: { flex: 1, height: '7px', background: '#2a2a3e', borderRadius: '4px', overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: '4px' },
   statVal: { width: '28px', fontSize: '12px', textAlign: 'right', fontWeight: 'bold', flexShrink: 0 },
+  natureUp: { width: '10px', fontSize: '11px', color: '#FF6B6B', fontWeight: 'bold', flexShrink: 0, textAlign: 'center' },
+  natureDn: { width: '10px', fontSize: '11px', color: '#6B9EFF', fontWeight: 'bold', flexShrink: 0, textAlign: 'center' },
+  naturePh: { width: '10px', flexShrink: 0 },
   evTag: { fontSize: '9px', color: '#4CAF50', background: '#1a3a1a', borderRadius: '3px', padding: '1px 3px', flexShrink: 0, minWidth: '30px', textAlign: 'center' },
   totalRow: { display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' },
   totalLabel: { color: '#555', fontSize: '11px' },
