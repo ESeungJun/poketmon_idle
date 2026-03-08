@@ -221,7 +221,10 @@ function createPanelWindow() {
 
 function createTray() {
   const iconPath = path.join(__dirname, 'assets', 'tray-icon.png')
-  const icon = nativeImage.createFromPath(iconPath)
+  let icon = nativeImage.createFromPath(iconPath)
+  if (process.platform === 'darwin') {
+    icon = icon.resize({ width: 16, height: 16 })
+  }
   tray = new Tray(icon)
   tray.setToolTip('포켓몬 키우기')
 
@@ -249,6 +252,11 @@ function createTray() {
 }
 
 app.whenReady().then(() => {
+  if (process.platform === 'darwin') {
+    const dockIconPath = path.join(__dirname, 'assets', 'app-icon.png')
+    const dockIcon = nativeImage.createFromPath(dockIconPath)
+    if (!dockIcon.isEmpty()) app.dock.setIcon(dockIcon)
+  }
   createTray()
   createPetWindow()
   createPanelWindow()

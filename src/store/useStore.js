@@ -99,6 +99,7 @@ const useStore = create((set, get) => ({
         // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
         if (pokemon.evolveAt && prevLevel < pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
           update.petState = 'evolving'
+          update.preEvolvingState = prevState === 'happy' ? 'idle' : prevState
         }
         const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
         if (updatedStats) {
@@ -115,6 +116,7 @@ const useStore = create((set, get) => ({
       const syncData = { points: newPoints, totalPointsEarned: newTotalEarned }
       if (update.petState) syncData.petState = update.petState
       if (update.petStats) syncData.petStats = update.petStats
+      if (update.preEvolvingState !== undefined) syncData.preEvolvingState = update.preEvolvingState
       window.electronAPI.sendStateUpdate(syncData)
     }
 
@@ -161,14 +163,15 @@ const useStore = create((set, get) => ({
   // 진화 확정: App.jsx에서 evolving 상태 3초 후 호출
   // 새 종 ID로 교체하고 petStats의 speciesId만 갱신 (성격·특성·개체값은 유지)
   confirmEvolution: () => {
-    const { petSpeciesId, petStats } = get()
+    const { petSpeciesId, petStats, preEvolvingState } = get()
+    const prevState = preEvolvingState || 'idle'
     const pokemon = getPokemon(petSpeciesId)
     if (!pokemon || !pokemon.evolveTo) return
     const newSpeciesId = pokemon.evolveTo
     const newPetStats = petStats
       ? { ...petStats, speciesId: newSpeciesId }
       : null
-    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy' })
+    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy', preEvolvingState: null })
     saveToStore('petSpeciesId', newSpeciesId)
     saveToStore('petStats', newPetStats)
     if (window.electronAPI) {
@@ -177,8 +180,8 @@ const useStore = create((set, get) => ({
     setTimeout(() => {
       set(s => {
         if (s.petState === 'happy') {
-          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: 'idle' })
-          return { petState: 'idle' }
+          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: prevState })
+          return { petState: prevState }
         }
         return {}
       })
@@ -256,9 +259,13 @@ const useStore = create((set, get) => ({
 
   // petState 변경 + 다른 창에 동기화
   setPetState: (state) => {
-    set({ petState: state })
+    const update = { petState: state }
+    if (state === 'evolving') {
+      update.preEvolvingState = get().petState
+    }
+    set(update)
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petState: state })
+      window.electronAPI.sendStateUpdate(update)
     }
   },
 
@@ -351,7 +358,7 @@ const useStore = create((set, get) => ({
   syncFromOtherWindow: (data) => {
     const allowed = [
       'points', 'totalPointsEarned', 'purchasedItems',
-      'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
+      'todos', 'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
       'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
     ]
     const safe = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))

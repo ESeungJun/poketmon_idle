@@ -38,10 +38,13 @@
       "package.json"
     ],
     "mac": {
-      "icon": "build/icon.png",
+      "icon": "build/icon.icns",
       "category": "public.app-category.productivity",
       "hardenedRuntime": false,
-      "target": [{ "target": "dir", "arch": ["universal"] }]
+      "target": [
+        { "target": "dir", "arch": ["universal"] },
+        { "target": "dir", "arch": ["arm64"] }
+      ]
     },
     "win": {
       "icon": "build/icon.ico",
