@@ -1,5 +1,7 @@
 import { create } from 'zustand'
-import { calcLevel, getPokemon } from '../data/pokemon'
+import { calcLevel, getPokemon, pickWildEncounter } from '../data/pokemon'
+import { buildWildBattler, buildPlayerBattler, processTurn, generatePetStats } from '../data/battleEngine'
+import { SHOP_ITEMS } from '../components/Shop/items'
 
 // 레벨업 시 새로 배울 수 있는 기술을 learnedPool과 moves에 반영
 // prevLevel → newLevel 사이에 learnAt이 걸쳐 있는 기술을 순서대로 추가
@@ -37,6 +39,7 @@ const DEFAULT_STATE = {
   petEVs: { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 },
   ownedTMs: [],
   equippedTool: null,
+  wildBattle: null, // in-memory only, not persisted
 }
 
 // 앱 시작 시 electron-store에서 저장된 데이터를 로드
@@ -343,6 +346,94 @@ const useStore = create((set, get) => ({
     set({ petStats: newStats })
     saveToStore('petStats', newStats)
     if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
+  },
+
+  // ── Wild Battle ─────────────────────────────────────────────────
+
+  startWildBattle: () => {
+    const { petSpeciesId, petEVs, totalPointsEarned } = get()
+    let { petStats } = get()
+    if (!petSpeciesId) return
+    const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+    // petStats가 null이면 자동 생성 (스탯 탭 미방문 시 대비)
+    if (!petStats) {
+      const pokemon = getPokemon(petSpeciesId)
+      if (!pokemon) return
+      petStats = generatePetStats(pokemon, playerLevel)
+      set({ petStats })
+      saveToStore('petStats', petStats)
+      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats })
+    }
+    const encounter = pickWildEncounter(playerLevel)
+    if (!encounter) {
+      set({ wildBattle: { wild: null, player: null, phase: 'ended', result: null, log: '근처에 야생 포켓몬이 없다...' } })
+      return
+    }
+    const wild   = buildWildBattler(encounter.speciesId, encounter.level)
+    const player = buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEarned, SHOP_ITEMS)
+    if (!wild || !player) return
+    const wildName = getPokemon(wild.speciesId)?.speciesName ?? wild.speciesId
+    set({
+      wildBattle: {
+        wild,
+        player,
+        turn: 1,
+        phase: 'selecting',
+        log: `야생 ${wildName}이(가) 나타났다!`,
+        result: null,
+      },
+    })
+  },
+
+  executePlayerMove: (moveName) => {
+    const { wildBattle } = get()
+    if (!wildBattle || wildBattle.phase !== 'selecting') return
+    const { newBattle, pointsGained } = processTurn(wildBattle, moveName)
+    set({ wildBattle: newBattle })
+    if (pointsGained > 0) get().addPoints(pointsGained)
+    // Save HP and PP to petStats after every turn
+    const { petStats } = get()
+    if (petStats && newBattle.player) {
+      const updatedPetStats = {
+        ...petStats,
+        currentHP: newBattle.player.hp,
+        movePP: { ...petStats.movePP, ...newBattle.player.movePP },
+      }
+      set({ petStats: updatedPetStats })
+      saveToStore('petStats', updatedPetStats)
+      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+    }
+  },
+
+  fleeFromBattle: () => {
+    const { wildBattle, petStats } = get()
+    if (!wildBattle || wildBattle.phase !== 'selecting') return
+    set({
+      wildBattle: { ...wildBattle, phase: 'ended', result: 'flee', log: '도망쳤다!' },
+    })
+    if (petStats && wildBattle.player) {
+      const updatedPetStats = {
+        ...petStats,
+        currentHP: wildBattle.player.hp,
+        movePP: { ...petStats.movePP, ...wildBattle.player.movePP },
+      }
+      set({ petStats: updatedPetStats })
+      saveToStore('petStats', updatedPetStats)
+      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+    }
+  },
+
+  dismissBattle: () => {
+    set({ wildBattle: null })
+  },
+
+  healAtCenter: () => {
+    const { petStats } = get()
+    if (!petStats) return
+    const updatedPetStats = { ...petStats, currentHP: null, movePP: null }
+    set({ petStats: updatedPetStats })
+    saveToStore('petStats', updatedPetStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
   },
 
   resetAllData: async () => {

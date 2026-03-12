@@ -510,3 +510,76 @@ export function resolveMove(moveName, pokemon, shopItems) {
   if (tm) return { name: tm.moveName, type: tm.moveType, category: tm.moveCategory, power: tm.movePower }
   return null
 }
+
+// Move metadata: accuracy (default 100 if omitted) and status effect data
+export const MOVE_META = {
+  '씨뿌리기':        { accuracy: 90 },
+  '독가루':          { accuracy: 75, statusEffect: { type: 'poison',    chance: 1.0 } },
+  '수면가루':        { accuracy: 75, statusEffect: { type: 'sleep',     chance: 1.0 } },
+  '최면술':          { accuracy: 60, statusEffect: { type: 'sleep',     chance: 1.0 } },
+  '맹독':            { accuracy: 90, statusEffect: { type: 'poison',    chance: 1.0 } },
+  '불꽃엄니':        { accuracy: 95, statusEffect: { type: 'burn',      chance: 0.1 } },
+  '불꽃세례':        { statusEffect: { type: 'burn',      chance: 0.1 } },
+  '불꽃튀기기':      { statusEffect: { type: 'burn',      chance: 0.1 } },
+  '화염방사':        { statusEffect: { type: 'burn',      chance: 0.1 } },
+  '연옥':            { accuracy: 50, statusEffect: { type: 'burn',      chance: 1.0 } },
+  '열풍':            { accuracy: 90, statusEffect: { type: 'burn',      chance: 0.1 } },
+  '플레어드라이브':  { statusEffect: { type: 'burn',      chance: 0.1 } },
+  '회오리불꽃':      { accuracy: 85 },
+  '전기쇼크':        { statusEffect: { type: 'paralysis', chance: 0.1 } },
+  '10만볼트':        { statusEffect: { type: 'paralysis', chance: 0.1 } },
+  '번개':            { accuracy: 70, statusEffect: { type: 'paralysis', chance: 0.3 } },
+  '냉동빔':          { statusEffect: { type: 'freeze',    chance: 0.1 } },
+  '아쿠아테일':      { accuracy: 90 },
+  '하이드로펌프':    { accuracy: 80 },
+  '기합구슬':        { accuracy: 70 },
+  '아이언테일':      { accuracy: 75 },
+  '기가임팩트':      { accuracy: 90 },
+  '에어슬래시':      { accuracy: 95 },
+}
+
+// Move PP values (Gen 7 USUM standard)
+export const MOVE_PP = {
+  '몸통박치기': 35, '울음소리': 40, '씨뿌리기': 10, '덩굴채찍': 25,
+  '독가루': 35, '수면가루': 15, '돌진': 15, '잎날가르기': 25,
+  '달콤한향기': 20, '성장': 20, '이판사판태클': 15, '고민씨': 10,
+  '광합성': 5, '씨폭탄': 15, '꽃잎댄스': 10, '솔라빔': 10, '꽃보라': 15,
+  '할퀴기': 35, '불꽃세례': 25, '연막': 20, '용의분노': 10, '겁나는얼굴': 10,
+  '불꽃엄니': 15, '불꽃튀기기': 15, '베어가르기': 20, '화염방사': 15,
+  '회오리불꽃': 15, '연옥': 5, '날개치기': 35, '열풍': 10, '플레어드라이브': 15,
+  '꼬리흔들기': 30, '물대포': 25, '껍질에숨기': 40, '거품': 30, '물기': 25,
+  '고속스핀': 40, '보호': 10, '물의파동': 20, '아쿠아테일': 10,
+  '로케트박치기': 10, '철벽': 15, '비바라기': 5, '하이드로펌프': 5,
+  '러스터캐논': 10, '쪼기': 35, '모래뿌리기': 15, '바람일으키기': 35,
+  '전광석화': 30, '에어슬래시': 15, '뽐내기': 15, '전기쇼크': 30,
+  '10만볼트': 15, '아이언테일': 15, '번개': 10, '지진': 10,
+  '기합구슬': 5, '나이트헤드': 15, '최면술': 20, '맹독': 10,
+  '저주': 10, '섀도볼': 15, '꿈먹기': 15, '에너지볼': 10,
+  '병상첨병': 10, '악의파동': 15, '아픔나누기': 20, '누르기': 15,
+  '잠자기': 10, '울부짖기': 20, '냉동빔': 10, '기가임팩트': 5,
+  '애교부리기': 20, '사이코키네시스': 10, '그림자분신': 15,
+  '기가드레인': 10, '독찌르기': 35, '암석봉인': 15, '버블빔': 20,
+  '사이코쇼크': 10, '번개엄니': 15, '드래곤테일': 10,
+}
+
+export function getMaxPP(moveName) {
+  return MOVE_PP[moveName] ?? 20
+}
+
+// Wild encounter pool — minLevel: 이 레벨 이상의 플레이어만 조우 가능
+export const WILD_POOL = [
+  { speciesId: 'pidgey',  minLevel:  1 },
+  { speciesId: 'pikachu', minLevel:  5 },
+  { speciesId: 'gastly',  minLevel:  8 },
+  { speciesId: 'eevee',   minLevel: 15 },
+  { speciesId: 'snorlax', minLevel: 20 },
+]
+
+// 플레이어 레벨 이상인 풀 중 랜덤 선택, 야생 레벨 = playerLevel ±3
+export function pickWildEncounter(playerLevel) {
+  const eligible = WILD_POOL.filter(e => playerLevel >= e.minLevel)
+  const pool = eligible.length ? eligible : WILD_POOL.slice(0, 1)
+  const entry = pool[Math.floor(Math.random() * pool.length)]
+  const level = Math.max(1, playerLevel + Math.floor(Math.random() * 7) - 3)
+  return { speciesId: entry.speciesId, level }
+}
