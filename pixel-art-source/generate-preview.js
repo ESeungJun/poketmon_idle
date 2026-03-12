@@ -19,6 +19,16 @@ const POKEMON = [
   { file: '7-anims.js',          name: '꼬부기 (7)' },
   { file: '8-anims.js',          name: '어니부기 (8)' },
   { file: '9-anims.js',          name: '거북왕 (9)' },
+  { file: '16-anims.js',         name: '구구 (16)' },
+  { file: '17-anims.js',         name: '피죤 (17)' },
+  { file: '18-anims.js',         name: '피죤투 (18)' },
+  { file: '25-anims.js',         name: '피카츄 (25)' },
+  { file: '26-anims.js',         name: '라이츄 (26)' },
+  { file: '92-anims.js',         name: '고오스 (92)' },
+  { file: '93-anims.js',         name: '고우스트 (93)' },
+  { file: '94-anims.js',         name: '겐가르 (94)' },
+  { file: '133-anims.js',        name: '이브이 (133)' },
+  { file: '143-anims.js',        name: '잠만보 (143)' },
 ]
 
 function loadData(filePath) {
