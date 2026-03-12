@@ -3,6 +3,7 @@ import useStore from '../../store/useStore'
 import { getPokemon, spriteUrl, getMaxPP } from '../../data/pokemon'
 import { STATUS_KO } from '../../data/battleEngine'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
+import { getWinSize } from '../Pet/PetCanvas'
 
 // Pixel art imports (same map as PokemonStats)
 import * as squirtleData    from '../Pet/7-anims'
@@ -100,9 +101,10 @@ function BattlerRow({ battler, isWild }) {
   if (!battler) return null
   const pokemon = getPokemon(battler.speciesId)
   const name = isWild ? `야생 ${pokemon?.speciesName ?? battler.speciesId}` : (pokemon?.speciesName ?? battler.speciesId)
+  const spriteSize = Math.round(getWinSize(battler.speciesId) * 0.56)
   return (
     <div style={s.battlerRow}>
-      <PokemonSprite speciesId={battler.speciesId} dexNum={battler.dexNum} size={56} flip={!isWild} />
+      <PokemonSprite speciesId={battler.speciesId} dexNum={battler.dexNum} size={spriteSize} flip={!isWild} />
       <div style={s.battlerInfo}>
         <div style={s.battlerName}>
           {name}
@@ -116,45 +118,66 @@ function BattlerRow({ battler, isWild }) {
             <span key={t} style={{ ...s.typeBadge, background: TYPE_COLOR[t] ?? '#888' }}>{t}</span>
           ))}
         </div>
+        {battler.stages && (
+          <div style={s.stageRow}>
+            {Object.entries(battler.stages).filter(([k, v]) => v !== 0 && k !== '명중률' && k !== '회피율').map(([stat, v]) => (
+              <span key={stat} style={{ ...s.stageBadge, color: v > 0 ? '#4CAF50' : '#F44336' }}>
+                {stat.slice(0, 2)} {v > 0 ? `+${v}` : v}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   )
 }
 
 export default function Battle() {
-  const wildBattle        = useStore(s => s.wildBattle)
-  const startWildBattle   = useStore(s => s.startWildBattle)
-  const executePlayerMove = useStore(s => s.executePlayerMove)
-  const fleeFromBattle    = useStore(s => s.fleeFromBattle)
-  const dismissBattle     = useStore(s => s.dismissBattle)
-  const healAtCenter      = useStore(s => s.healAtCenter)
-  const petSpeciesId      = useStore(s => s.petSpeciesId)
-  const petStats          = useStore(s => s.petStats)
+  const wildBattle          = useStore(s => s.wildBattle)
+  const startWildBattle     = useStore(s => s.startWildBattle)
+  const executePlayerMove   = useStore(s => s.executePlayerMove)
+  const advanceBattleFrame  = useStore(s => s.advanceBattleFrame)
+  const fleeFromBattle      = useStore(s => s.fleeFromBattle)
+  const dismissBattle       = useStore(s => s.dismissBattle)
+  const petSpeciesId        = useStore(s => s.petSpeciesId)
+  const petStats            = useStore(s => s.petStats)
+  const points              = useStore(s => s.points)
+
+  // Play pending frames one by one with 0.5s delay
+  useEffect(() => {
+    if (wildBattle?.phase !== 'animating') return
+    const timer = setTimeout(advanceBattleFrame, 500)
+    return () => clearTimeout(timer)
+  }, [wildBattle?.phase, wildBattle?.frameIndex, advanceBattleFrame])
 
   if (!petSpeciesId) {
     return <div style={s.empty}>포켓몬을 먼저 선택하세요.</div>
   }
 
-  // No battle active — show HP status and encounter/heal options
+  // No battle active — show encounter option
   if (!wildBattle) {
+    const fainted = petStats?.currentHP === 0
+    const noPoints = points < 10
+    const cannotStart = fainted || noPoints
     return (
       <div style={s.center}>
         <div style={s.emptyIcon}>⚔️</div>
-        <div style={s.emptyText}>야생 포켓몬을 찾으러 가자!</div>
-        <button style={s.encounterBtn} onClick={startWildBattle}>
-          조우하기
-        </button>
-        {petStats?.currentHP != null && (
-          <button style={s.healBtnLarge} onClick={healAtCenter}>
-            포켓몬 센터 (회복)
-          </button>
+        <div style={s.emptyText}>
+          {fainted ? '포켓몬이 쓰러졌다! 센터에서 회복하자.' : '야생 포켓몬을 찾으러 가자!'}
+        </div>
+        {noPoints && !fainted && (
+          <div style={s.costWarning}>포인트가 부족합니다 (필요: 10pt)</div>
         )}
+        <button style={{ ...s.encounterBtn, opacity: cannotStart ? 0.4 : 1 }} disabled={cannotStart} onClick={startWildBattle}>
+          조우하기 · 10pt
+        </button>
       </div>
     )
   }
 
-  const { wild, player, phase, result, log, turn } = wildBattle
-  const ended = phase === 'ended'
+  const { wild, player, phase, result, logLines = [], turn } = wildBattle
+  const ended    = phase === 'ended'
+  const animating = phase === 'animating'
 
   return (
     <div style={s.wrap}>
@@ -166,7 +189,7 @@ export default function Battle() {
 
       {/* Battle log */}
       <div style={s.logBox}>
-        {log?.split('\n').map((line, i) => (
+        {logLines.filter(Boolean).map((line, i) => (
           <div key={i} style={s.logLine}>{line}</div>
         ))}
       </div>
@@ -174,17 +197,20 @@ export default function Battle() {
       {/* Move buttons or result */}
       {!ended ? (
         <>
-          <div style={s.turnLabel}>Turn {turn} — 기술을 선택하세요</div>
+          <div style={s.turnLabel}>
+            Turn {turn} — {animating ? '...' : '기술을 선택하세요'}
+          </div>
           <div style={s.moveGrid}>
             {player?.resolvedMoves?.map(move => {
               const pp = player.movePP?.[move.name] ?? 0
               const maxPP = getMaxPP(move.name)
               const noPP = pp <= 0
+              const disabled = noPP || animating
               return (
                 <button
                   key={move.name}
-                  disabled={noPP}
-                  style={{ ...s.moveBtn, borderColor: TYPE_COLOR[move.type] ?? '#555', opacity: noPP ? 0.4 : 1 }}
+                  disabled={disabled}
+                  style={{ ...s.moveBtn, borderColor: TYPE_COLOR[move.type] ?? '#555', opacity: disabled ? 0.4 : 1 }}
                   onClick={() => executePlayerMove(move.name)}
                 >
                   <span style={{ ...s.moveType, background: TYPE_COLOR[move.type] ?? '#555' }}>
@@ -196,18 +222,21 @@ export default function Battle() {
               )
             })}
           </div>
-          <button style={s.fleeBtn} onClick={fleeFromBattle}>도망가기</button>
+          <button style={{ ...s.fleeBtn, opacity: animating ? 0.4 : 1 }} disabled={animating} onClick={fleeFromBattle}>도망가기</button>
         </>
       ) : (
         <div style={s.resultWrap}>
-          <div style={{ ...s.resultText, color: result === 'win' ? '#4CAF50' : result === 'lose' ? '#F44336' : '#FFC107' }}>
+          <div style={{ ...s.resultText, color: result === 'win' ? '#4CAF50' : result === 'lose' ? '#F44336' : result === 'flee_roar' ? '#9E9E9E' : '#FFC107' }}>
             {result === 'win'  && '승리! +30 포인트'}
             {result === 'lose' && '패배...'}
             {result === 'flee' && '도망쳤다!'}
+            {result === 'flee_roar' && '야생 포켓몬이 도망쳤다!'}
           </div>
           <div style={s.resultButtons}>
-            <button style={s.encounterBtn} onClick={startWildBattle}>다시 조우</button>
-            <button style={s.dismissBtn}   onClick={dismissBattle}>닫기</button>
+            {result !== 'lose' && (
+              <button style={s.encounterBtn} onClick={startWildBattle}>다시 조우</button>
+            )}
+            <button style={s.dismissBtn} onClick={dismissBattle}>닫기</button>
           </div>
         </div>
       )}
@@ -221,6 +250,7 @@ const s = {
   empty: { color: '#888', textAlign: 'center', paddingTop: '40px' },
   emptyIcon: { fontSize: '48px' },
   emptyText: { color: '#aaa', fontSize: '14px' },
+  costWarning: { color: '#F44336', fontSize: '12px' },
   encounterBtn: {
     background: '#4CAF50', color: '#fff', border: 'none', borderRadius: '8px',
     padding: '10px 28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',
@@ -235,6 +265,8 @@ const s = {
   hpText: { fontSize: '11px', color: '#aaa' },
   typeRow: { display: 'flex', gap: '4px', marginTop: '4px' },
   typeBadge: { fontSize: '10px', borderRadius: '3px', padding: '1px 5px', color: '#fff' },
+  stageRow: { display: 'flex', gap: '4px', marginTop: '2px', flexWrap: 'wrap' },
+  stageBadge: { fontSize: '9px', fontWeight: 'bold' },
   logBox: {
     background: '#0f0f1e', border: '1px solid #2a2a3e', borderRadius: '8px',
     padding: '8px 12px', minHeight: '52px', fontSize: '12px', color: '#ddd', lineHeight: '1.6',
@@ -250,10 +282,6 @@ const s = {
   moveName: { fontSize: '12px', color: '#eee', fontWeight: 'bold' },
   movePower: { fontSize: '10px', color: '#aaa' },
   movePP: { fontSize: '10px', color: '#aaa' },
-  healBtnLarge: {
-    background: '#1a4a8a', color: '#fff', border: 'none', borderRadius: '8px',
-    padding: '8px 20px', fontSize: '13px', cursor: 'pointer',
-  },
   fleeBtn: {
     background: 'none', border: '1px solid #555', color: '#888', borderRadius: '8px',
     padding: '6px', fontSize: '12px', cursor: 'pointer', width: '100%',

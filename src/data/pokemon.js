@@ -117,7 +117,7 @@ export const POKEMON_DB = {
       { name: '울음소리', type: '노말', category: '변화', power: null, learnAt: 1 },
       { name: '불꽃세례', type: '불꽃', category: '특수', power: 40, learnAt: 7 },
       { name: '연막', type: '노말', category: '변화', power: null, learnAt: 10 },
-      { name: '용의분노', type: '드래곤', category: '특수', power: null, learnAt: 16 },
+      { name: '용의분노', type: '드래곤', category: '특수', power: null, fixedDamage: 40, learnAt: 16 },
       { name: '겁나는얼굴', type: '노말', category: '변화', power: null, learnAt: 19 },
       { name: '불꽃엄니', type: '불꽃', category: '물리', power: 65, learnAt: 25 },
       { name: '불꽃튀기기', type: '불꽃', category: '특수', power: 70, learnAt: 28 },
@@ -142,7 +142,7 @@ export const POKEMON_DB = {
       { name: '울음소리', type: '노말', category: '변화', power: null, learnAt: 1 },
       { name: '불꽃세례', type: '불꽃', category: '특수', power: 40, learnAt: 1 },
       { name: '연막', type: '노말', category: '변화', power: null, learnAt: 10 },
-      { name: '용의분노', type: '드래곤', category: '특수', power: null, learnAt: 17 },
+      { name: '용의분노', type: '드래곤', category: '특수', power: null, fixedDamage: 40, learnAt: 17 },
       { name: '겁나는얼굴', type: '노말', category: '변화', power: null, learnAt: 21 },
       { name: '불꽃엄니', type: '불꽃', category: '물리', power: 65, learnAt: 28 },
       { name: '불꽃튀기기', type: '불꽃', category: '특수', power: 70, learnAt: 32 },
@@ -168,7 +168,7 @@ export const POKEMON_DB = {
       { name: '울음소리', type: '노말', category: '변화', power: null, learnAt: 1 },
       { name: '불꽃세례', type: '불꽃', category: '특수', power: 40, learnAt: 7 },
       { name: '연막', type: '노말', category: '변화', power: null, learnAt: 10 },
-      { name: '용의분노', type: '드래곤', category: '특수', power: null, learnAt: 17 },
+      { name: '용의분노', type: '드래곤', category: '특수', power: null, fixedDamage: 40, learnAt: 17 },
       { name: '겁나는얼굴', type: '노말', category: '변화', power: null, learnAt: 21 },
       { name: '불꽃엄니', type: '불꽃', category: '물리', power: 65, learnAt: 28 },
       { name: '불꽃튀기기', type: '불꽃', category: '특수', power: 70, learnAt: 32 },
@@ -536,6 +536,25 @@ export const MOVE_META = {
   '아이언테일':      { accuracy: 75 },
   '기가임팩트':      { accuracy: 90 },
   '에어슬래시':      { accuracy: 95 },
+  // 스탯 하락 (상대)
+  '울음소리':        { accuracy: null, statEffect: { target: 'opponent', changes: { '공격': -1 } } },
+  '꼬리흔들기':      { accuracy: null, statEffect: { target: 'opponent', changes: { '방어': -1 } } },
+  '겁나는얼굴':      { accuracy: null, statEffect: { target: 'opponent', changes: { '스피드': -2 } } },
+  '애교부리기':      { accuracy: null, statEffect: { target: 'opponent', changes: { '공격': -2 } } },
+  // 스탯 상승 (자신)
+  '껍질에숨기':      { accuracy: null, statEffect: { target: 'self', changes: { '방어': 1 } } },
+  '성장':            { accuracy: null, statEffect: { target: 'self', changes: { '공격': 1, '특수공격': 1 } } },
+  '철벽':            { accuracy: null, statEffect: { target: 'self', changes: { '방어': 2 } } },
+  // 명중률/회피율
+  '연막':            { accuracy: null, statEffect: { target: 'opponent', changes: { '명중률': -1 } } },
+  '달콤한향기':      { accuracy: null, statEffect: { target: 'opponent', changes: { '회피율': -2 } } },
+  '모래뿌리기':      { accuracy: null, statEffect: { target: 'opponent', changes: { '명중률': -1 } } },
+  '그림자분신':      { accuracy: null, statEffect: { target: 'self', changes: { '회피율': 1 } } },
+  // 특수 기술
+  '울부짖기':        { accuracy: null, special: 'roar' },
+  '광합성':          { accuracy: null, special: 'synthesis' },
+  '잠자기':          { accuracy: null, special: 'rest' },
+  '아픔나누기':      { accuracy: null, special: 'pain_split' },
 }
 
 // Move PP values (Gen 7 USUM standard)
