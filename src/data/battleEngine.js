@@ -73,11 +73,6 @@ function calcStat(base, iv, ev, key, nature = NEUTRAL_NATURE, level = 1) {
   return v
 }
 
-// Move accuracy (100 if not specified)
-function getMoveAccuracy(moveName) {
-  return MOVE_META[moveName]?.accuracy ?? 100
-}
-
 // Move status effect (null if none)
 function getMoveStatusEffect(moveName) {
   return MOVE_META[moveName]?.statusEffect ?? null
@@ -335,8 +330,17 @@ export function processTurn(battle, playerMoveName) {
       } else if (moveMeta?.special === 'pain_split') {
         const avg = Math.floor((curPlayer.hp + curWild.hp) / 2)
         curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, avg) }
-        curWild = { ...curWild, hp: Math.min(curWild.maxHP, avg) }
+        curWild = { ...curWild, hp: Math.max(0, Math.min(curWild.maxHP, avg)) }
         snap('서로의 HP를 나누었다!')
+        if (curWild.hp <= 0) {
+          snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
+          pointsGained = 30
+          return true
+        }
+        if (curPlayer.hp <= 0) {
+          snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+          return true
+        }
       // 2) statEffect 기술
       } else if (moveMeta?.statEffect) {
         const se = moveMeta.statEffect
@@ -433,9 +437,18 @@ export function processTurn(battle, playerMoveName) {
         snap(`야생 ${wildPokemon.speciesName}은(는) 잠들어서 HP를 회복했다!`)
       } else if (wildMoveMeta?.special === 'pain_split') {
         const avg = Math.floor((curPlayer.hp + curWild.hp) / 2)
-        curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, avg) }
-        curWild = { ...curWild, hp: Math.min(curWild.maxHP, avg) }
+        curPlayer = { ...curPlayer, hp: Math.max(0, Math.min(curPlayer.maxHP, avg)) }
+        curWild = { ...curWild, hp: Math.max(0, Math.min(curWild.maxHP, avg)) }
         snap('서로의 HP를 나누었다!')
+        if (curPlayer.hp <= 0) {
+          snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+          return true
+        }
+        if (curWild.hp <= 0) {
+          snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
+          pointsGained = 30
+          return true
+        }
       // 2) statEffect 기술
       } else if (wildMoveMeta?.statEffect) {
         const se = wildMoveMeta.statEffect
