@@ -47,38 +47,37 @@
 > - 배틀: 기술 선택 UI, 타입상성, 명중률, 상태이상 모두 포함
 
 ### 3-1. 데이터 확장 (pokemon.js / items.js)
-- [ ] 기술 데이터에 `accuracy`, `statusEffect` 필드 추가
+- [x] 기술 데이터에 `accuracy`, `statusEffect` 필드 추가 (`MOVE_META` 맵으로 구현)
   - `statusEffect`: `{ type: 'burn'|'poison'|'paralysis'|'sleep'|'freeze', chance: 0~1 }`
-- [ ] 18타입 상성 테이블 구현 (`src/data/typeChart.js`)
-- [ ] 야생 포켓몬 등장 레벨 범위 정의 (내 레벨 ±3 범위에서 랜덤)
+- [x] 18타입 상성 테이블 구현 (`src/data/typeChart.js`)
+- [x] 야생 포켓몬 등장 레벨 범위 정의 (`WILD_POOL`, `pickWildEncounter` — 내 레벨 ±3)
 
 ### 3-2. 배틀 상태 관리 (store)
-- [ ] `wildBattle` 상태 추가:
+- [x] `wildBattle` 상태 추가 (in-memory, 미영속):
   ```
-  { active, wildSpeciesId, wildLevel, wildHP, wildMaxHP,
-    wildStatus, myHP, myMaxHP, myStatus, turn, phase, log }
+  { wild, player, turn, phase, log, result }
   ```
-- [ ] 배틀 시작 / 종료 / 도망 액션
+- [x] 배틀 시작(`startWildBattle`) / 턴 실행(`executePlayerMove`) / 도망(`fleeFromBattle`) / 닫기(`dismissBattle`) 액션
 
 ### 3-3. 배틀 로직
-- [ ] 데미지 계산: `기술 위력 × (공격 / 방어) × 타입상성 × 0.5`
-- [ ] 명중률: `Math.random() < move.accuracy` 로 빗나감 처리
-- [ ] 상태이상 적용: 기술의 `statusEffect.chance` 확률로 발동
-- [ ] 상태이상 턴 효과:
+- [x] 데미지 계산: `기술 위력 × (공격 / 방어) × 타입상성 × 0.5`
+- [x] 명중률: `Math.random() < move.accuracy` 로 빗나감 처리
+- [x] 상태이상 적용: 기술의 `statusEffect.chance` 확률로 발동
+- [x] 상태이상 턴 효과:
   - 화상(burn): 매 턴 최대 HP의 1/16 감소
   - 독(poison): 매 턴 최대 HP의 1/8 감소
   - 마비(paralysis): 25% 확률로 행동 불능
   - 잠듦(sleep): 1~3턴 행동 불능 후 자동 해제
   - 얼음(freeze): 20% 확률로 해제될 때까지 행동 불능
-- [ ] 내 기술 선택 → 데미지/상태 적용 → 상대 랜덤 기술 자동 반격 → 턴 반복
-- [ ] 배틀 종료: 승리(포인트 +30) / 패배(배틀 종료) / 도망
+- [x] 내 기술 선택 → 데미지/상태 적용 → 상대 랜덤 기술 자동 반격 → 턴 반복
+- [x] 배틀 종료: 승리(포인트 +30) / 패배(배틀 종료) / 도망
 
 ### 3-4. 배틀 UI (패널 탭)
-- [ ] 야생 포켓몬 도트 + HP바 + 상태이상 아이콘
-- [ ] 내 포켓몬 도트 + HP바 + 상태이상 아이콘
-- [ ] 기술 선택 버튼 4개 (위력 / 타입 표시)
-- [ ] 볼 투척 / 도망 버튼
-- [ ] 턴 로그 1줄 텍스트 ("XX가 YY 데미지! / 빗나갔다! / 화상을 입었다!")
+- [x] 야생 포켓몬 도트 + HP바 + 상태이상 뱃지
+- [x] 내 포켓몬 도트 + HP바 + 상태이상 뱃지
+- [x] 기술 선택 버튼 4개 (위력 / 타입 색상 표시)
+- [x] 도망 버튼
+- [x] 턴 로그 텍스트 (빗나감 / 효과 굉장 / 상태이상 적용 등)
 
 ---
 
