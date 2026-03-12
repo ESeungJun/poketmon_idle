@@ -147,6 +147,7 @@ function createPetWindow() {
 
   petWindow.webContents.on('render-process-gone', (event, details) => {
     if (details.reason === 'clean-exit') return
+    if (!petWindow || !event.sender || event.sender.isDestroyed()) return
     console.error('[pet] renderer gone:', details.reason, '— reloading')
     event.sender.reload()
   })
@@ -209,6 +210,7 @@ function createPanelWindow() {
 
   panelWindow.webContents.on('render-process-gone', (event, details) => {
     if (details.reason === 'clean-exit') return
+    if (!panelWindow || !event.sender || event.sender.isDestroyed()) return
     console.error('[panel] renderer gone:', details.reason, '— reloading')
     event.sender.reload()
   })
