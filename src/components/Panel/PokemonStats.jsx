@@ -110,9 +110,43 @@ function generate(pokemon, level = 1) {
   return { speciesId: pokemon.id, ivs, natureName: nature.name, moves, learnedPool: [...learnedMoves], abilityName: ability.name }
 }
 
+function HPSection({ petStats, pokemon, currentLevel, petEVs, nature, onHeal }) {
+  const bs = pokemon.baseStats
+  const ivs = petStats.ivs || {}
+  const evs = petEVs || {}
+  const maxHP = calcStat(bs.HP, ivs.HP || 0, evs.HP || 0, 'HP', nature, currentLevel)
+  const currentHP = petStats.currentHP != null ? Math.min(petStats.currentHP, maxHP) : maxHP
+  const pct = maxHP > 0 ? currentHP / maxHP : 1
+  const barColor = pct > 0.5 ? '#4CAF50' : pct > 0.2 ? '#FFC107' : '#F44336'
+  const isFull = currentHP >= maxHP
+
+  return (
+    <div style={s.xpSection}>
+      <div style={s.xpLabelRow}>
+        <span style={s.xpLabel}>HP</span>
+        <span style={s.xpVal}>{currentHP} / {maxHP}</span>
+        {!isFull && (
+          <button onClick={onHeal} style={hpS.healBtn}>포켓몬 센터</button>
+        )}
+      </div>
+      <div style={s.xpBarBg}>
+        <div style={{ ...s.xpBarFill, width: `${pct * 100}%`, background: barColor }} />
+      </div>
+    </div>
+  )
+}
+
+const hpS = {
+  healBtn: {
+    background: '#3a6ab5', color: '#fff', border: 'none', borderRadius: '4px',
+    padding: '1px 8px', fontSize: '11px', cursor: 'pointer', marginLeft: 'auto',
+  },
+}
+
 export default function PokemonStats() {
   const petStats          = useStore(s => s.petStats)
   const setPetStats       = useStore(s => s.setPetStats)
+  const healAtCenter      = useStore(s => s.healAtCenter)
   const petName           = useStore(s => s.petName)
   const setPetName        = useStore(s => s.setPetName)
   const petSpeciesId      = useStore(s => s.petSpeciesId)
@@ -218,6 +252,16 @@ export default function PokemonStats() {
           <div style={{ ...s.xpBarFill, width: `${expPct}%` }} />
         </div>
       </div>
+
+      {/* HP Bar */}
+      <HPSection
+        petStats={petStats}
+        pokemon={pokemon}
+        currentLevel={currentLevel}
+        petEVs={petEVs}
+        nature={nature}
+        onHeal={healAtCenter}
+      />
 
       {/* 성격 · 특성 · 지니기 */}
       <div style={s.infoRow}>
