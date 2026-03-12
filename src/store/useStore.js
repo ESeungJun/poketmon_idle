@@ -351,9 +351,10 @@ const useStore = create((set, get) => ({
   // ── Wild Battle ─────────────────────────────────────────────────
 
   startWildBattle: () => {
-    const { petSpeciesId, petEVs, totalPointsEarned } = get()
+    const { petSpeciesId, petEVs, totalPointsEarned, spendPoints } = get()
     let { petStats } = get()
     if (!petSpeciesId) return
+    if (!spendPoints(10)) return
     const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
     // petStats가 null이면 자동 생성 (스탯 탭 미방문 시 대비)
     if (!petStats) {
@@ -379,7 +380,7 @@ const useStore = create((set, get) => ({
         player,
         turn: 1,
         phase: 'selecting',
-        log: `야생 ${wildName}이(가) 나타났다!`,
+        logLines: [`야생 ${wildName}이(가) 나타났다!`],
         result: null,
       },
     })
@@ -388,20 +389,59 @@ const useStore = create((set, get) => ({
   executePlayerMove: (moveName) => {
     const { wildBattle } = get()
     if (!wildBattle || wildBattle.phase !== 'selecting') return
-    const { newBattle, pointsGained } = processTurn(wildBattle, moveName)
+    const { frames, pointsGained } = processTurn(wildBattle, moveName)
+    if (!frames.length) return
+    set({
+      wildBattle: {
+        ...wildBattle,
+        phase: 'animating',
+        pendingFrames: frames,
+        frameIndex: 0,
+        pendingPointsGained: pointsGained,
+        logLines: [],
+      },
+    })
+  },
+
+  advanceBattleFrame: () => {
+    const { wildBattle } = get()
+    if (!wildBattle || wildBattle.phase !== 'animating') return
+    const { pendingFrames, frameIndex = 0, logLines = [], pendingPointsGained = 0 } = wildBattle
+    if (!pendingFrames || frameIndex >= pendingFrames.length) return
+
+    const frame   = pendingFrames[frameIndex]
+    const nextIdx = frameIndex + 1
+    const isLast  = nextIdx >= pendingFrames.length
+    const newLogLines = frame.addLog ? [...logLines, frame.addLog] : logLines
+
+    const newBattle = {
+      ...wildBattle,
+      wild:     frame.wild,
+      player:   frame.player,
+      logLines: newLogLines,
+      phase:    frame.phase,
+      result:   frame.result,
+      frameIndex: nextIdx,
+      pendingFrames: isLast ? null : pendingFrames,
+      // Increment turn counter when a selecting frame is the last one
+      turn: (isLast && frame.phase === 'selecting') ? wildBattle.turn + 1 : wildBattle.turn,
+    }
     set({ wildBattle: newBattle })
-    if (pointsGained > 0) get().addPoints(pointsGained)
-    // Save HP and PP to petStats after every turn
-    const { petStats } = get()
-    if (petStats && newBattle.player) {
-      const updatedPetStats = {
-        ...petStats,
-        currentHP: newBattle.player.hp,
-        movePP: { ...petStats.movePP, ...newBattle.player.movePP },
+
+    if (isLast) {
+      // Save HP/PP to petStats
+      const { petStats } = get()
+      if (petStats && frame.player) {
+        const updatedPetStats = {
+          ...petStats,
+          currentHP: frame.player.hp,
+          movePP: { ...petStats.movePP, ...frame.player.movePP },
+        }
+        set({ petStats: updatedPetStats })
+        saveToStore('petStats', updatedPetStats)
+        if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
       }
-      set({ petStats: updatedPetStats })
-      saveToStore('petStats', updatedPetStats)
-      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+      if (pendingPointsGained > 0) get().addPoints(pendingPointsGained)
     }
   },
 
@@ -409,7 +449,7 @@ const useStore = create((set, get) => ({
     const { wildBattle, petStats } = get()
     if (!wildBattle || wildBattle.phase !== 'selecting') return
     set({
-      wildBattle: { ...wildBattle, phase: 'ended', result: 'flee', log: '도망쳤다!' },
+      wildBattle: { ...wildBattle, phase: 'ended', result: 'flee', logLines: [...(wildBattle.logLines || []), '도망쳤다!'] },
     })
     if (petStats && wildBattle.player) {
       const updatedPetStats = {
@@ -428,8 +468,9 @@ const useStore = create((set, get) => ({
   },
 
   healAtCenter: () => {
-    const { petStats } = get()
+    const { petStats, spendPoints } = get()
     if (!petStats) return
+    if (!spendPoints(20)) return
     const updatedPetStats = { ...petStats, currentHP: null, movePP: null }
     set({ petStats: updatedPetStats })
     saveToStore('petStats', updatedPetStats)
