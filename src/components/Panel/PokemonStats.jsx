@@ -13,6 +13,16 @@ import * as charmeleonData from '../Pet/5-anims'
 import * as charizardData from '../Pet/6-anims'
 import * as wartortleData from '../Pet/8-anims'
 import * as blastoiseData from '../Pet/9-anims'
+import * as pidgeyData from '../Pet/16-anims'
+import * as pidgeottoData from '../Pet/17-anims'
+import * as pidgeotData from '../Pet/18-anims'
+import * as pikachuData from '../Pet/25-anims'
+import * as raichuData from '../Pet/26-anims'
+import * as gastlyData from '../Pet/92-anims'
+import * as haunterData from '../Pet/93-anims'
+import * as gengarData from '../Pet/94-anims'
+import * as eeveeData from '../Pet/133-anims'
+import * as snorlaxData from '../Pet/143-anims'
 import { getWinSize } from '../Pet/PetCanvas'
 
 const PIXEL_ART = {
@@ -20,6 +30,10 @@ const PIXEL_ART = {
   ivysaur: ivysaurData, venusaur: venusaurData,
   charmeleon: charmeleonData, charizard: charizardData,
   wartortle: wartortleData, blastoise: blastoiseData,
+  pidgey: pidgeyData, pidgeotto: pidgeottoData, pidgeot: pidgeotData,
+  pikachu: pikachuData, raichu: raichuData,
+  gastly: gastlyData, haunter: haunterData, gengar: gengarData,
+  eevee: eeveeData, snorlax: snorlaxData,
 }
 
 function StaticPixelArt({ speciesId, dexNum, size = 56 }) {

@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>포켓몬 키우기 — 개발 연대기</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --poke-red: #E3350D;
+      --poke-blue: #3B4CCA;
+      --poke-yellow: #FFDE00;
+      --poke-dark: #0D0D1A;
+      --poke-darker: #07070F;
+      --poke-panel: #111128;
+      --poke-border: #2A2A4A;
+      --poke-text: #C8C8E8;
+      --poke-text-dim: #6868A8;
+      --poke-green: #3DAA54;
+      --poke-purple: #7038F8;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: var(--poke-darker);
+      color: var(--poke-text);
+      font-family: 'Press Start 2P', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* Scanline overlay */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background: repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        rgba(0,0,0,0.07) 2px,
+        rgba(0,0,0,0.07) 4px
+      );
+      pointer-events: none;
+      z-index: 9999;
+    }
+
+    /* ─── Header ─── */
+    .header {
+      background: linear-gradient(180deg, #1A0A2E 0%, #0D0D1A 100%);
+      border-bottom: 3px solid var(--poke-red);
+      padding: 48px 24px 40px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .header::before {
+      content: '';
+      position: absolute;
+      top: -60px; left: 50%; transform: translateX(-50%);
+      width: 300px; height: 300px;
+      background: radial-gradient(circle, rgba(227,53,13,0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .header-pokeball {
+      width: 80px; height: 80px;
+      margin: 0 auto 24px;
+      position: relative;
+      animation: spin-slow 8s linear infinite;
+    }
+
+    .header-pokeball svg {
+      width: 100%; height: 100%;
+      filter: drop-shadow(0 0 16px rgba(227,53,13,0.6));
+    }
+
+    @keyframes spin-slow {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .header h1 {
+      font-size: clamp(10px, 2.5vw, 18px);
+      color: var(--poke-yellow);
+      text-shadow: 3px 3px 0 var(--poke-red), 0 0 24px rgba(255,222,0,0.4);
+      line-height: 1.6;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
+    }
+
+    .header-sub {
+      font-size: clamp(9px, 2vw, 13px);
+      color: var(--poke-text-dim);
+      letter-spacing: 2px;
+    }
+
+    .header-sprites {
+      display: flex;
+      justify-content: center;
+      gap: 24px;
+      margin-top: 28px;
+      flex-wrap: wrap;
+    }
+
+    .header-sprite-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .header-sprite-wrap span {
+      font-size: 10px;
+      color: var(--poke-text-dim);
+    }
+
+    .sprite-float {
+      animation: float 3s ease-in-out infinite;
+    }
+
+    .sprite-float:nth-child(2) { animation-delay: 0.5s; }
+    .sprite-float:nth-child(3) { animation-delay: 1s; }
+    .sprite-float:nth-child(4) { animation-delay: 1.5s; }
+    .sprite-float:nth-child(5) { animation-delay: 2s; }
+    .sprite-float:nth-child(6) { animation-delay: 2.5s; }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0px); }
+      50% { transform: translateY(-8px); }
+    }
+
+    /* ─── Stats bar ─── */
+    .stats-bar {
+      background: var(--poke-panel);
+      border-bottom: 2px solid var(--poke-border);
+      padding: 16px 24px;
+      display: flex;
+      justify-content: center;
+      gap: clamp(16px, 4vw, 48px);
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+    }
+
+    .stat-value {
+      font-size: clamp(12px, 3vw, 20px);
+      color: var(--poke-yellow);
+      display: block;
+      text-shadow: 0 0 10px rgba(255,222,0,0.4);
+    }
+
+    .stat-label {
+      font-size: 10px;
+      color: var(--poke-text-dim);
+      margin-top: 4px;
+      display: block;
+    }
+
+    /* ─── Main timeline ─── */
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 24px;
+    }
+
+    /* Phase section */
+    .phase {
+      margin-bottom: 64px;
+      position: relative;
+    }
+
+    .phase-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+
+    .badge {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 3px solid;
+      box-shadow: 0 0 20px currentColor;
+      animation: badge-pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes badge-pulse {
+      0%, 100% { box-shadow: 0 0 12px currentColor; }
+      50% { box-shadow: 0 0 28px currentColor; }
+    }
+
+    .badge-1 { color: var(--poke-red); background: rgba(227,53,13,0.15); }
+    .badge-2 { color: var(--poke-blue); background: rgba(59,76,202,0.15); }
+    .badge-3 { color: var(--poke-purple); background: rgba(112,56,248,0.15); }
+
+    .phase-title-wrap {}
+
+    .phase-num {
+      font-size: 11px;
+      color: var(--poke-text-dim);
+      margin-bottom: 6px;
+      letter-spacing: 2px;
+    }
+
+    .phase-title {
+      font-size: clamp(12px, 2.5vw, 16px);
+      line-height: 1.5;
+    }
+
+    .phase-1 .phase-title { color: var(--poke-red); text-shadow: 0 0 12px rgba(227,53,13,0.5); }
+    .phase-2 .phase-title { color: #6B9FFF; text-shadow: 0 0 12px rgba(107,159,255,0.5); }
+    .phase-3 .phase-title { color: #B07AFF; text-shadow: 0 0 12px rgba(176,122,255,0.5); }
+
+    .phase-date {
+      font-size: 10px;
+      color: var(--poke-text-dim);
+      margin-top: 4px;
+    }
+
+    /* Vertical timeline track */
+    .timeline-track {
+      position: relative;
+      padding-left: 40px;
+    }
+
+    .timeline-track::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: linear-gradient(180deg, var(--poke-border) 0%, var(--poke-border) 100%);
+    }
+
+    /* Day group */
+    .day-group {
+      margin-bottom: 24px;
+    }
+
+    .day-label {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .day-node {
+      width: 24px; height: 24px;
+      border-radius: 50%;
+      border: 2px solid;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: absolute;
+      left: -40px;
+      background: var(--poke-darker);
+      flex-shrink: 0;
+    }
+
+    .phase-1 .day-node { border-color: var(--poke-red); }
+    .phase-2 .day-node { border-color: var(--poke-blue); }
+    .phase-3 .day-node { border-color: var(--poke-purple); }
+
+    .day-node::before {
+      content: '';
+      width: 8px; height: 8px;
+      border-radius: 50%;
+    }
+
+    .phase-1 .day-node::before { background: var(--poke-red); box-shadow: 0 0 8px var(--poke-red); }
+    .phase-2 .day-node::before { background: var(--poke-blue); box-shadow: 0 0 8px var(--poke-blue); }
+    .phase-3 .day-node::before { background: var(--poke-purple); box-shadow: 0 0 8px var(--poke-purple); }
+
+    .day-text {
+      font-size: 12px;
+      color: var(--poke-text-dim);
+      padding-left: 4px;
+    }
+
+    /* Milestone cards */
+    .milestones {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .milestone {
+      background: var(--poke-panel);
+      border: 1px solid var(--poke-border);
+      border-left: 3px solid;
+      padding: 12px 16px;
+      border-radius: 0 4px 4px 0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      cursor: default;
+    }
+
+    .milestone:hover {
+      transform: translateX(4px);
+      box-shadow: -4px 0 0 0 currentColor, 0 4px 16px rgba(0,0,0,0.4);
+    }
+
+    .phase-1 .milestone { border-left-color: var(--poke-red); color: var(--poke-red); }
+    .phase-2 .milestone { border-left-color: var(--poke-blue); color: #6B9FFF; }
+    .phase-3 .milestone { border-left-color: var(--poke-purple); color: #B07AFF; }
+
+    .milestone-text {
+      font-size: clamp(10px, 2vw, 13px);
+      color: var(--poke-text);
+      line-height: 2.0;
+    }
+
+    .milestone-tag {
+      display: inline-block;
+      font-size: 9px;
+      padding: 2px 6px;
+      border-radius: 2px;
+      margin-right: 6px;
+      vertical-align: middle;
+    }
+
+    .tag-feat { background: rgba(61,170,84,0.3); color: var(--poke-green); border: 1px solid var(--poke-green); }
+    .tag-art  { background: rgba(255,222,0,0.2); color: var(--poke-yellow); border: 1px solid var(--poke-yellow); }
+    .tag-fix  { background: rgba(227,53,13,0.2); color: var(--poke-red); border: 1px solid var(--poke-red); }
+    .tag-sys  { background: rgba(59,76,202,0.2); color: #6B9FFF; border: 1px solid #6B9FFF; }
+    .tag-wip  { background: rgba(176,122,255,0.2); color: #B07AFF; border: 1px solid #B07AFF; }
+
+    /* ─── Pokemon roster ─── */
+    .roster-section {
+      margin: 48px 0;
+      padding: 32px 24px;
+      background: var(--poke-panel);
+      border: 2px solid var(--poke-border);
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .roster-section::before {
+      content: '◆ 등록된 포켓몬';
+      position: absolute;
+      top: -10px; left: 20px;
+      background: var(--poke-panel);
+      padding: 0 12px;
+      font-size: 11px;
+      color: var(--poke-yellow);
+      letter-spacing: 1px;
+    }
+
+    .roster-group {
+      margin-bottom: 28px;
+    }
+
+    .roster-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .roster-group-label {
+      font-size: 11px;
+      color: var(--poke-text-dim);
+      margin-bottom: 16px;
+      letter-spacing: 2px;
+      border-bottom: 1px solid var(--poke-border);
+      padding-bottom: 8px;
+    }
+
+    .roster-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .roster-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+      padding: 10px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--poke-border);
+      border-radius: 4px;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    .roster-item:hover {
+      border-color: var(--poke-yellow);
+      box-shadow: 0 0 12px rgba(255,222,0,0.2);
+    }
+
+    .roster-item .dex-num {
+      font-size: 9px;
+      color: var(--poke-text-dim);
+    }
+
+    .roster-item .poke-name {
+      font-size: 11px;
+      color: var(--poke-text);
+      text-align: center;
+    }
+
+    /* ─── Footer ─── */
+    .footer {
+      background: var(--poke-panel);
+      border-top: 2px solid var(--poke-border);
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .footer-title {
+      font-size: 11px;
+      color: var(--poke-text-dim);
+      margin-bottom: 20px;
+      letter-spacing: 2px;
+    }
+
+    .footer-stats {
+      display: flex;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+
+    .footer-stat {
+      text-align: center;
+    }
+
+    .footer-stat-val {
+      font-size: 16px;
+      color: var(--poke-yellow);
+      display: block;
+      text-shadow: 0 0 8px rgba(255,222,0,0.4);
+    }
+
+    .footer-stat-lbl {
+      font-size: 10px;
+      color: var(--poke-text-dim);
+      margin-top: 4px;
+      display: block;
+    }
+
+    .footer-copy {
+      font-size: 10px;
+      color: var(--poke-text-dim);
+      line-height: 2;
+    }
+
+    .cursor-blink {
+      animation: blink 1s step-end infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 600px) {
+      .phase-header { flex-direction: column; text-align: center; }
+      .badge { width: 44px; height: 44px; font-size: 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════
+     HEADER
+════════════════════════════════════════════════════ -->
+<header class="header">
+  <div class="header-pokeball">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <circle cx="50" cy="50" r="46" fill="#1A1A2E" stroke="#E3350D" stroke-width="4"/>
+      <path d="M4 50 Q4 4 50 4 Q96 4 96 50 Z" fill="#E3350D" opacity="0.9"/>
+      <path d="M4 50 Q4 96 50 96 Q96 96 96 50 Z" fill="#1A1A2E"/>
+      <rect x="0" y="46" width="100" height="8" fill="#191919" rx="2"/>
+      <circle cx="50" cy="50" r="14" fill="#191919"/>
+      <circle cx="50" cy="50" r="10" fill="#1A1A2E" stroke="#E3350D" stroke-width="2"/>
+      <circle cx="46" cy="46" r="3" fill="rgba(255,255,255,0.25)"/>
+    </svg>
+  </div>
+
+  <h1>포켓몬 키우기<br>개발 연대기</h1>
+  <p class="header-sub">2026-03-05 ~ 2026-03-12 &nbsp;·&nbsp; 7일간의 기록</p>
+
+  <div class="header-sprites" id="headerSprites"></div>
+</header>
+
+<!-- ─── Stats bar ─── -->
+<div class="stats-bar">
+  <div class="stat-item">
+    <span class="stat-value">25+</span>
+    <span class="stat-label">총 커밋</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">24</span>
+    <span class="stat-label">병합된 PR</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">19</span>
+    <span class="stat-label">등록 포켓몬</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">3</span>
+    <span class="stat-label">개발 Phase</span>
+  </div>
+  <div class="stat-item">
+    <span class="stat-value">7</span>
+    <span class="stat-label">개발 일수</span>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════
+     TIMELINE
+════════════════════════════════════════════════════ -->
+<main class="container">
+
+  <!-- ─── PHASE 1 ─── -->
+  <section class="phase phase-1">
+    <div class="phase-header">
+      <div class="badge badge-1">①</div>
+      <div class="phase-title-wrap">
+        <div class="phase-num">PHASE 1</div>
+        <div class="phase-title">기반 완성</div>
+        <div class="phase-date">2026-03-05 ~ 03-06</div>
+      </div>
+    </div>
+
+    <div class="timeline-track">
+
+      <!-- 03-05 -->
+      <div class="day-group">
+        <div class="day-label">
+          <div class="day-node"></div>
+          <span class="day-text">03-05</span>
+        </div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              프로젝트 시작 — Electron + React + Vite로 데스크탑 펫 앱 초기 구축
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              빌드 시스템 구축 (앱 번들 재구성 스크립트, macOS universal binary)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03-06 -->
+      <div class="day-group">
+        <div class="day-label">
+          <div class="day-node"></div>
+          <span class="day-text">03-06</span>
+        </div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-art">ART</span>
+              스타터 3종(이상해씨·파이리·꼬부기) 픽셀아트 + 수면 도트 완성
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              집중모드(뽀모도로 타이머) + 레벨업·진화 시스템 구현
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              IPC 보안 강화 (allowlist, invoke/on cleanup), 브랜치 전략 수립
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              Windows 크로스플랫폼 지원 — process.platform 가드 전면 적용
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-fix">FIX</span>
+              포켓몬 기술·아이템 한국어 공식명칭 전면 정정 (누르기, 거품광선 등)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-fix">FIX</span>
+              포인트 밸런스 조정 — 집중모드·할일 보상값 재조정
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── PHASE 2 ─── -->
+  <section class="phase phase-2">
+    <div class="phase-header">
+      <div class="badge badge-2">②</div>
+      <div class="phase-title-wrap">
+        <div class="phase-num">PHASE 2</div>
+        <div class="phase-title">진화형 도트 완성</div>
+        <div class="phase-date">2026-03-07 ~ 03-08</div>
+      </div>
+    </div>
+
+    <div class="timeline-track">
+
+      <!-- 03-07 -->
+      <div class="day-group">
+        <div class="day-label">
+          <div class="day-node"></div>
+          <span class="day-text">03-07</span>
+        </div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              픽셀아트 파일 번호화 시스템 리팩토링 (*-anims.js 명명 규칙 확립)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-art">ART</span>
+              스타터 2진화 트리오 픽셀아트 완성 — 이상해풀(2), 리자드(5), 어니부기(8)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-art">ART</span>
+              스타터 3진화 픽셀아트 + 수면 도트 완성 — 이상해꽃(3), 리자몽(6), 거북왕(9)
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 03-08 -->
+      <div class="day-group">
+        <div class="day-label">
+          <div class="day-node"></div>
+          <span class="day-text">03-08</span>
+        </div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-fix">FIX</span>
+              픽셀아트 색상 통일 — outline 색상 #191919 고정, 전 파일 외곽 픽셀 수정
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              IPC 보안 2차 강화 — sendSync 완전 제거, state-sync 흐름 재설계
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              시스템 트레이 아이콘 + macOS·Windows 앱 실행파일 아이콘 추가
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── PHASE 3 ─── -->
+  <section class="phase phase-3">
+    <div class="phase-header">
+      <div class="badge badge-3">③</div>
+      <div class="phase-title-wrap">
+        <div class="phase-num">PHASE 3</div>
+        <div class="phase-title">야생 배틀 시스템</div>
+        <div class="phase-date">2026-03-12 &nbsp;<span class="wip-badge">진행 중</span></div>
+      </div>
+    </div>
+
+    <style>
+      .wip-badge {
+        font-size: 9px;
+        background: rgba(176,122,255,0.25);
+        color: #B07AFF;
+        border: 1px solid #B07AFF;
+        padding: 2px 6px;
+        border-radius: 2px;
+        animation: badge-pulse 1.5s ease-in-out infinite;
+      }
+    </style>
+
+    <div class="timeline-track">
+
+      <!-- 03-12 -->
+      <div class="day-group">
+        <div class="day-label">
+          <div class="day-node"></div>
+          <span class="day-text">03-12</span>
+        </div>
+        <div class="milestones">
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              야생 포켓몬 조우 시스템 + 턴제 배틀 UI 구현
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              18타입 상성 테이블(typeChart.js) + 데미지 계산 공식 (공식 포켓몬 공식)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              상태이상 시스템 — 화상·독·마비·잠듦·얼음 (매 턴 판정, 지속 데미지)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              스탯 단계 시스템 (-6~+6) — 공식 포켓몬 배율표 구현
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-sys">SYS</span>
+              명중률·회피율 단계 시스템 (독립 배율 테이블)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              변화 기술 16종 구현 — 울음소리·꼬리흔들기·겁나는얼굴·껍질에숨기 등
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              특수 기술 구현 — 울부짖기·광합성·잠자기·아픔나누기
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              포켓몬센터 탭 추가 — 포인트로 HP 회복, 배틀 경제 연동
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-feat">FEAT</span>
+              프레임 기반 배틀 로그 애니메이션 (타자 효과 + 순차 출력)
+            </div>
+          </div>
+          <div class="milestone">
+            <div class="milestone-text">
+              <span class="milestone-tag tag-wip">WIP</span>
+              야생 포켓몬 10종 픽셀아트 추가 중 — 구구·피죤·피죤투·피카츄·라이츄·고오스·고우스트·겐가르·이브이·잠만보
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ─── Pokemon Roster ─── -->
+  <div class="roster-section" id="rosterSection">
+    <div class="roster-group">
+      <div class="roster-group-label">▸ 스타터 라인업 (커스텀 픽셀아트)</div>
+      <div class="roster-grid" id="starterRoster"></div>
+    </div>
+    <div class="roster-group">
+      <div class="roster-group-label">▸ 야생 포켓몬 (커스텀 픽셀아트)</div>
+      <div class="roster-grid" id="wildRoster"></div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ─── Footer ─── -->
+<footer class="footer">
+  <div class="footer-title">— 프로젝트 통계 —</div>
+  <div class="footer-stats">
+    <div class="footer-stat">
+      <span class="footer-stat-val">7일</span>
+      <span class="footer-stat-lbl">개발 기간</span>
+    </div>
+    <div class="footer-stat">
+      <span class="footer-stat-val">3</span>
+      <span class="footer-stat-lbl">스타터 라인</span>
+    </div>
+    <div class="footer-stat">
+      <span class="footer-stat-val">19</span>
+      <span class="footer-stat-lbl">커스텀 도트</span>
+    </div>
+    <div class="footer-stat">
+      <span class="footer-stat-val">10</span>
+      <span class="footer-stat-lbl">야생 포켓몬</span>
+    </div>
+    <div class="footer-stat">
+      <span class="footer-stat-val">18</span>
+      <span class="footer-stat-lbl">타입 상성</span>
+    </div>
+    <div class="footer-stat">
+      <span class="footer-stat-val">16+</span>
+      <span class="footer-stat-lbl">변화 기술</span>
+    </div>
+  </div>
+  <p class="footer-copy">
+    Electron 28 + React 18 + Vite 5 + Zustand 4<br>
+    macOS &amp; Windows 크로스플랫폼<br><br>
+    <span style="color: var(--poke-yellow);">▶</span>
+    포켓몬 키우기 ©2026
+    <span class="cursor-blink">█</span>
+  </p>
+</footer>
+
+<!-- ═══════════════════════════════════════════════════
+     SPRITE RENDERING (PNG images from pixel-art-source)
+════════════════════════════════════════════════════ -->
+<script>
+// PNG 기반 스프라이트 — pixel-art-source/normal/ 폴더 참조
+const IMG_BASE = 'pixel-art-source/normal/';
+
+// 모든 포켓몬 데이터 (PNG 이미지 기반)
+const ALL_POKEMON = [
+  // 스타터 라인업
+  { dex: 1,   name: '이상해씨', group: 'starter', size: 72 },
+  { dex: 2,   name: '이상해풀', group: 'starter', size: 72 },
+  { dex: 3,   name: '이상해꽃', group: 'starter', size: 80 },
+  { dex: 4,   name: '파이리',   group: 'starter', size: 72 },
+  { dex: 5,   name: '리자드',   group: 'starter', size: 72 },
+  { dex: 6,   name: '리자몽',   group: 'starter', size: 80 },
+  { dex: 7,   name: '꼬부기',   group: 'starter', size: 72 },
+  { dex: 8,   name: '어니부기', group: 'starter', size: 72 },
+  { dex: 9,   name: '거북왕',   group: 'starter', size: 80 },
+  // 야생 포켓몬
+  { dex: 16,  name: '구구',     group: 'wild', size: 72 },
+  { dex: 17,  name: '피죤',     group: 'wild', size: 72 },
+  { dex: 18,  name: '피죤투',   group: 'wild', size: 80 },
+  { dex: 25,  name: '피카츄',   group: 'wild', size: 72 },
+  { dex: 26,  name: '라이츄',   group: 'wild', size: 72 },
+  { dex: 92,  name: '고오스',   group: 'wild', size: 72 },
+  { dex: 93,  name: '고우스트', group: 'wild', size: 72 },
+  { dex: 94,  name: '겐가르',   group: 'wild', size: 80 },
+  { dex: 133, name: '이브이',   group: 'wild', size: 72 },
+  { dex: 143, name: '잠만보',   group: 'wild', size: 72 },
+];
+
+function makeSpriteImg(dex, name, size) {
+  const img = document.createElement('img');
+  img.src = IMG_BASE + dex + '.png';
+  img.alt = name;
+  img.width = size;
+  img.height = size;
+  img.style.cssText = 'image-rendering: pixelated; image-rendering: crisp-edges; object-fit: contain; background: transparent;';
+  img.draggable = false;
+  return img;
+}
+
+// ── Header sprites ──
+const headerDex = [1, 4, 7, 25, 133, 94, 6];
+const headerEl = document.getElementById('headerSprites');
+headerDex.forEach((dex, i) => {
+  const p = ALL_POKEMON.find(x => x.dex === dex);
+  if (!p) return;
+  const wrap = document.createElement('div');
+  wrap.className = 'header-sprite-wrap sprite-float';
+  wrap.style.animationDelay = (i * 0.45) + 's';
+  wrap.appendChild(makeSpriteImg(dex, p.name, 72));
+  const label = document.createElement('span');
+  label.textContent = p.name;
+  wrap.appendChild(label);
+  headerEl.appendChild(wrap);
+});
+
+// ── Roster: 스타터 라인업 ──
+const starterRoster = document.getElementById('starterRoster');
+ALL_POKEMON.filter(p => p.group === 'starter').forEach((p, i) => {
+  const item = document.createElement('div');
+  item.className = 'roster-item sprite-float';
+  item.style.animationDelay = (i * 0.3) + 's';
+  const dex = document.createElement('span');
+  dex.className = 'dex-num';
+  dex.textContent = '#' + String(p.dex).padStart(3, '0');
+  item.appendChild(dex);
+  item.appendChild(makeSpriteImg(p.dex, p.name, p.size));
+  const name = document.createElement('span');
+  name.className = 'poke-name';
+  name.textContent = p.name;
+  item.appendChild(name);
+  starterRoster.appendChild(item);
+});
+
+// ── Roster: 야생 포켓몬 ──
+const wildRoster = document.getElementById('wildRoster');
+ALL_POKEMON.filter(p => p.group === 'wild').forEach((p, i) => {
+  const item = document.createElement('div');
+  item.className = 'roster-item sprite-float';
+  item.style.animationDelay = (i * 0.3) + 's';
+  const dex = document.createElement('span');
+  dex.className = 'dex-num';
+  dex.textContent = '#' + String(p.dex).padStart(3, '0');
+  item.appendChild(dex);
+  item.appendChild(makeSpriteImg(p.dex, p.name, p.size));
+  const name = document.createElement('span');
+  name.className = 'poke-name';
+  name.textContent = p.name;
+  item.appendChild(name);
+  wildRoster.appendChild(item);
+});
+</script>
+
+</body>
+</html>

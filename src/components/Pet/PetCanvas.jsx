@@ -9,6 +9,16 @@ import * as venusaurData from './3-anims'
 import * as charizardData from './6-anims'
 import * as wartortleData from './8-anims'
 import * as blastoiseData from './9-anims'
+import * as pidgeyData from './16-anims'
+import * as pidgeottoData from './17-anims'
+import * as pidgeotData from './18-anims'
+import * as pikachuData from './25-anims'
+import * as raichuData from './26-anims'
+import * as gastlyData from './92-anims'
+import * as haunterData from './93-anims'
+import * as gengarData from './94-anims'
+import * as eeveeData from './133-anims'
+import * as snorlaxData from './143-anims'
 import { spriteUrl } from '../../data/pokemon'
 
 // 커스텀 도트 데이터가 있는 포켓몬 목록
@@ -23,6 +33,16 @@ const PIXEL_ART = {
   charizard:  charizardData,
   wartortle:  wartortleData,
   blastoise:  blastoiseData,
+  pidgey:     pidgeyData,
+  pidgeotto:  pidgeottoData,
+  pidgeot:    pidgeotData,
+  pikachu:    pikachuData,
+  raichu:     raichuData,
+  gastly:     gastlyData,
+  haunter:    haunterData,
+  gengar:     gengarData,
+  eevee:      eeveeData,
+  snorlax:    snorlaxData,
 }
 
 // 진화 단계별 펫 창 크기 (stage2 = 1.5×, stage3 = 2.25×)
