@@ -1,15 +1,13 @@
-import { useEffect, useState, useRef } from 'react'
-import PetCanvas from './components/Pet/PetCanvas'
+import { useEffect, useState, useRef, useLayoutEffect } from 'react'
+import PetCanvas, { getWinSize } from './components/Pet/PetCanvas'
 import Panel from './components/Panel/Panel'
 import useStore from './store/useStore'
 import { getPokemon } from './data/pokemon'
 
 function PetView() {
   const petState = useStore(s => s.petState)
-  const equippedItems = useStore(s => s.equippedItems)
   const initialize = useStore(s => s.initialize)
   const syncFromOtherWindow = useStore(s => s.syncFromOtherWindow)
-  const checkSleepState = useStore(s => s.checkSleepState)
   const initialized = useStore(s => s.initialized)
   const petSpeciesId = useStore(s => s.petSpeciesId)
   const confirmEvolution = useStore(s => s.confirmEvolution)
@@ -18,17 +16,22 @@ function PetView() {
   const dragMoved = useRef(false)
   const [flipX, setFlipX] = useState(false)
   const [canvasKey, setCanvasKey] = useState(0)
+  const [heartKey, setHeartKey] = useState(0)  // 매번 새 key로 애니메이션 재트리거
+
+  // happy 상태가 될 때마다 key를 올려 하트 애니메이션을 새로 시작
+  useLayoutEffect(() => {
+    if (petState === 'happy') setHeartKey(k => k + 1)
+  }, [petState])
 
   useEffect(() => {
     initialize()
 
+    const cleanups = []
     if (window.electronAPI) {
-      window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
-      window.electronAPI.onWanderDirection(dir => setFlipX(dir > 0))
-      window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1))
+      cleanups.push(window.electronAPI.onStateSync(data => syncFromOtherWindow(data)))
+      cleanups.push(window.electronAPI.onWanderDirection(dir => setFlipX(dir > 0)))
+      cleanups.push(window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1)))
     }
-
-    const sleepCheck = setInterval(checkSleepState, 60000)
 
     const handleMouseUp = () => {
       if (!dragging.current) return
@@ -43,8 +46,8 @@ function PetView() {
 
     window.addEventListener('mouseup', handleMouseUp)
     return () => {
-      clearInterval(sleepCheck)
       window.removeEventListener('mouseup', handleMouseUp)
+      cleanups.forEach(fn => fn?.())
     }
   }, [])
 
@@ -55,6 +58,12 @@ function PetView() {
     return () => clearTimeout(timer)
   }, [petState])
 
+  // 진화 단계에 따라 Electron 창 크기 조정
+  useEffect(() => {
+    if (!petSpeciesId || !window.electronAPI) return
+    window.electronAPI.resizePetWindow(getWinSize(petSpeciesId))
+  }, [petSpeciesId])
+
   const handleMouseDown = (e) => {
     if (e.button === 2) return
     dragging.current = true
@@ -62,11 +71,6 @@ function PetView() {
     if (window.electronAPI) {
       window.electronAPI.startDrag({ offsetX: e.clientX, offsetY: e.clientY })
     }
-  }
-
-  const handleContextMenu = (e) => {
-    e.preventDefault()
-    window.electronAPI?.showContextMenu()
   }
 
   const handleMouseMove = (e) => {
@@ -86,17 +90,26 @@ function PetView() {
       style={styles.petContainer}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
-      onContextMenu={handleContextMenu}
     >
       <PetCanvas
         key={canvasKey}
         state={petState}
-        equippedItems={equippedItems}
-        scale={5}
         flipX={flipX}
         dexNum={dexNum}
         speciesId={petSpeciesId}
       />
+      {petState === 'happy' && HEARTS.map((h, i) => (
+        <div
+          key={`${heartKey}-${i}`}
+          style={{
+            ...styles.heart,
+            left: `calc(50% + ${flipX ? h.dx : -h.dx}px)`,
+            top: h.top,
+            fontSize: h.size,
+            animationDelay: h.delay,
+          }}
+        >❤</div>
+      ))}
     </div>
   )
 }
@@ -108,7 +121,8 @@ function PanelView() {
   useEffect(() => {
     initialize()
     if (window.electronAPI) {
-      window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
+      const cleanup = window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
+      return () => cleanup?.()
     }
   }, [])
 
@@ -116,31 +130,48 @@ function PanelView() {
 }
 
 export default function App() {
-  const [view, setView] = useState(null)
+  const [view] = useState(() => new URLSearchParams(window.location.search).get('view') || 'pet')
 
-  useEffect(() => {
-    if (window.electronAPI) {
-      setView(window.electronAPI.getQueryParam('view') || 'pet')
-    } else {
-      const params = new URLSearchParams(window.location.search)
-      setView(params.get('view') || 'pet')
-    }
-  }, [])
-
-  if (!view) return null
   if (view === 'panel') return <PanelView />
   return <PetView />
 }
 
+// 하트 3개: 캐릭터 앞쪽으로 퍼지며 시차를 두고 떠오름
+// dx: 중심에서 앞쪽(flipX 방향)으로 벌어지는 거리
+const HEARTS = [
+  { dx: 22, top: '10px', size: '22px', delay: '0s'    },
+  { dx: 34, top: '18px', size: '18px', delay: '0.18s' },
+  { dx: 14, top: '20px', size: '16px', delay: '0.32s' },
+]
+
 const styles = {
   petContainer: {
-    width: '100px',
-    height: '100px',
+    width: '100vw',
+    height: '100vh',
     display: 'flex',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'grab',
     userSelect: 'none',
     background: 'transparent',
+    position: 'relative',
   },
+  heart: {
+    position: 'absolute',
+    color: '#FF4D6D',
+    pointerEvents: 'none',
+    animation: 'heartFloat 1.8s ease-out forwards',
+  },
+}
+
+// 하트 플로팅 애니메이션 (위로 올라가며 사라짐)
+if (typeof document !== 'undefined') {
+  const style = document.createElement('style')
+  style.textContent = `
+    @keyframes heartFloat {
+      0%   { opacity: 1; transform: translateY(0); }
+      100% { opacity: 0; transform: translateY(-30px); }
+    }
+  `
+  document.head.appendChild(style)
 }

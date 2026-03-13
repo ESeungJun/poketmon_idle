@@ -1,15 +1,42 @@
 import { useEffect, useRef, useState } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from '../Shop/items'
-import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel, getUpcomingMoves } from '../../data/pokemon'
+import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel } from '../../data/pokemon'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
-import * as squirtleData from '../Pet/squirtle-anims'
-import * as charmanderData from '../Pet/charmander-anims'
-import * as bulbasaurData from '../Pet/bulbasaur-anims'
+import { spriteUrl } from '../../data/pokemon'
+import * as squirtleData from '../Pet/7-anims'
+import * as charmanderData from '../Pet/4-anims'
+import * as bulbasaurData from '../Pet/1-anims'
+import * as ivysaurData from '../Pet/2-anims'
+import * as venusaurData from '../Pet/3-anims'
+import * as charmeleonData from '../Pet/5-anims'
+import * as charizardData from '../Pet/6-anims'
+import * as wartortleData from '../Pet/8-anims'
+import * as blastoiseData from '../Pet/9-anims'
+import * as pidgeyData from '../Pet/16-anims'
+import * as pidgeottoData from '../Pet/17-anims'
+import * as pidgeotData from '../Pet/18-anims'
+import * as pikachuData from '../Pet/25-anims'
+import * as raichuData from '../Pet/26-anims'
+import * as gastlyData from '../Pet/92-anims'
+import * as haunterData from '../Pet/93-anims'
+import * as gengarData from '../Pet/94-anims'
+import * as eeveeData from '../Pet/133-anims'
+import * as snorlaxData from '../Pet/143-anims'
+import { getWinSize } from '../Pet/PetCanvas'
 
-const PIXEL_ART = { squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData }
+const PIXEL_ART = {
+  squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData,
+  ivysaur: ivysaurData, venusaur: venusaurData,
+  charmeleon: charmeleonData, charizard: charizardData,
+  wartortle: wartortleData, blastoise: blastoiseData,
+  pidgey: pidgeyData, pidgeotto: pidgeottoData, pidgeot: pidgeotData,
+  pikachu: pikachuData, raichu: raichuData,
+  gastly: gastlyData, haunter: haunterData, gengar: gengarData,
+  eevee: eeveeData, snorlax: snorlaxData,
+}
 
-function StaticPixelArt({ speciesId, size = 56 }) {
+function StaticPixelArt({ speciesId, dexNum, size = 56 }) {
   const canvasRef = useRef(null)
   const data = PIXEL_ART[speciesId]
   useEffect(() => {
@@ -24,11 +51,16 @@ function StaticPixelArt({ speciesId, size = 56 }) {
     const frame = DEFAULT_ANIMATIONS.idle.frames[0]
     drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
   }, [speciesId, size])
-  if (!data) return null
-  const rows = data.BASE_BODY.length
-  const cols = data.BASE_BODY[0]?.length ?? rows
-  const scale = Math.floor(size / Math.max(rows, cols))
-  return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
+  if (data) {
+    const rows = data.BASE_BODY.length
+    const cols = data.BASE_BODY[0]?.length ?? rows
+    const scale = Math.floor(size / Math.max(rows, cols))
+    return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
+  }
+  if (dexNum) {
+    return <img src={spriteUrl(dexNum)} alt={speciesId} draggable={false} style={{ width: size, height: size, imageRendering: 'pixelated', objectFit: 'contain', display: 'block' }} />
+  }
+  return null
 }
 
 const STAT_KEYS = ['HP', '공격', '방어', '특수공격', '특수방어', '스피드']
@@ -90,6 +122,28 @@ function generate(pokemon, level = 1) {
   const learnedMoves = getMovesUpToLevel(pokemon, level).map(m => m.name)
   const moves = learnedMoves.slice(0, 4)
   return { speciesId: pokemon.id, ivs, natureName: nature.name, moves, learnedPool: [...learnedMoves], abilityName: ability.name }
+}
+
+function HPSection({ petStats, pokemon, currentLevel, petEVs, nature }) {
+  const bs = pokemon.baseStats
+  const ivs = petStats.ivs || {}
+  const evs = petEVs || {}
+  const maxHP = calcStat(bs.HP, ivs.HP || 0, evs.HP || 0, 'HP', nature, currentLevel)
+  const currentHP = petStats.currentHP != null ? Math.min(petStats.currentHP, maxHP) : maxHP
+  const pct = maxHP > 0 ? currentHP / maxHP : 1
+  const barColor = pct > 0.5 ? '#4CAF50' : pct > 0.2 ? '#FFC107' : '#F44336'
+
+  return (
+    <div style={s.xpSection}>
+      <div style={s.xpLabelRow}>
+        <span style={s.xpLabel}>HP</span>
+        <span style={s.xpVal}>{currentHP} / {maxHP}</span>
+      </div>
+      <div style={s.xpBarBg}>
+        <div style={{ ...s.xpBarFill, width: `${pct * 100}%`, background: barColor }} />
+      </div>
+    </div>
+  )
 }
 
 export default function PokemonStats() {
@@ -164,7 +218,7 @@ export default function PokemonStats() {
       <div style={s.header}>
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center', width: '100%' }}>
           <div style={s.headerSprite}>
-            <StaticPixelArt speciesId={petSpeciesId} size={56} />
+            <StaticPixelArt speciesId={petSpeciesId} dexNum={pokemon.dexNum} size={Math.round(getWinSize(petSpeciesId) * 0.56)} />
           </div>
           <div style={{ flex: 1 }}>
             {editing ? (
@@ -201,6 +255,15 @@ export default function PokemonStats() {
         </div>
       </div>
 
+      {/* HP Bar */}
+      <HPSection
+        petStats={petStats}
+        pokemon={pokemon}
+        currentLevel={currentLevel}
+        petEVs={petEVs}
+        nature={nature}
+      />
+
       {/* 성격 · 특성 · 지니기 */}
       <div style={s.infoRow}>
         <span style={s.label}>성격</span>
@@ -219,7 +282,7 @@ export default function PokemonStats() {
         {toolItem ? (
           <span style={s.value}>{toolItem.emoji} {toolItem.name}<span style={s.abilityDesc}> — {toolItem.effect}</span></span>
         ) : (
-          <span style={{ ...s.value, color: '#444' }}>없음</span>
+          <span style={{ ...s.value, color: '#888' }}>없음</span>
         )}
       </div>
 
@@ -241,6 +304,9 @@ export default function PokemonStats() {
               <div style={{ ...s.barFill, width: `${pct}%`, background: STAT_COLOR[key] }} />
             </div>
             <span style={{ ...s.statVal, color: isUp ? '#FF6B6B' : isDn ? '#6B9EFF' : '#fff' }}>{val}</span>
+            {isUp && <span style={s.natureUp}>↑</span>}
+            {isDn && <span style={s.natureDn}>↓</span>}
+            {!isUp && !isDn && <span style={s.naturePh} />}
             {ev > 0 && <span style={s.evTag}>EV{ev}</span>}
           </div>
         )
@@ -271,24 +337,6 @@ export default function PokemonStats() {
         ))}
       </div>
 
-      {/* 배울 기술 */}
-      {(() => {
-        const upcoming = getUpcomingMoves(pokemon, currentLevel)
-        if (upcoming.length === 0) return null
-        return (
-          <>
-            <div style={{ ...s.sectionTitle, marginTop: '10px' }}>배울 기술</div>
-            {upcoming.map(m => (
-              <div key={m.name} style={s.upcomingRow}>
-                <span style={s.upcomingLevel}>Lv.{m.learnAt}</span>
-                <span style={{ ...s.typeBadge, background: TYPE_COLOR[m.type] || '#555', fontSize: '10px' }}>{m.type}</span>
-                <span style={s.upcomingName}>{m.name}</span>
-                <span style={s.upcomingPower}>{m.power ? `위력 ${m.power}` : '변화기'}</span>
-              </div>
-            ))}
-          </>
-        )
-      })()}
 
       {/* 교체 피커 */}
       {swapSlot !== null && (
@@ -299,7 +347,7 @@ export default function PokemonStats() {
               <button key={m.name} onClick={() => { swapMove(swapSlot, m.name); setSwapSlot(null) }} style={s.swapOption}>
                 <span style={{ ...s.typeBadge, background: TYPE_COLOR[m.type] || '#555', fontSize: '10px' }}>{m.type}</span>
                 <span style={{ color: '#fff', marginLeft: '6px' }}>{m.name}</span>
-                <span style={{ marginLeft: 'auto', color: '#666', fontSize: '11px' }}>{m.power ? `위력 ${m.power}` : '변화'}</span>
+                <span style={{ marginLeft: 'auto', color: '#bbb', fontSize: '11px' }}>{m.power ? `위력 ${m.power}` : '변화'}</span>
               </button>
             ))
           }
@@ -352,67 +400,66 @@ const s = {
   container: { fontSize: '13px', paddingBottom: '8px' },
   empty: { display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '60px 20px', gap: '12px' },
   emptyIcon: { fontSize: '48px', opacity: 0.3 },
-  emptyText: { fontSize: '15px', color: '#555', fontWeight: 'bold' },
-  emptyHint: { fontSize: '12px', color: '#3a3a5e', textAlign: 'center', lineHeight: '1.6' },
+  emptyText: { fontSize: '15px', color: '#ccc', fontWeight: 'bold' },
+  emptyHint: { fontSize: '12px', color: '#888', textAlign: 'center', lineHeight: '1.6' },
   header: { background: '#1a1a2e', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px' },
   headerSprite: { width: '56px', height: '56px', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' },
   nameRow: { display: 'flex', alignItems: 'center', gap: '6px' },
   name: { fontSize: '18px', fontWeight: 'bold', color: '#fff' },
   editBtn: { background: 'none', border: 'none', cursor: 'pointer', fontSize: '13px', padding: '0', opacity: 0.5 },
   nameInput: { fontSize: '16px', fontWeight: 'bold', background: '#2a2a3e', border: '1px solid #667eea', borderRadius: '6px', color: '#fff', padding: '2px 8px', width: '110px', outline: 'none' },
-  dex: { fontSize: '11px', color: '#555', marginTop: '2px', marginBottom: '4px' },
+  dex: { fontSize: '11px', color: '#aaa', marginTop: '2px', marginBottom: '4px' },
   types: { display: 'flex', gap: '5px', alignItems: 'center', marginTop: '2px' },
   typeBadge: { fontSize: '11px', color: '#fff', padding: '2px 7px', borderRadius: '10px', fontWeight: 'bold' },
   xpSection: { marginBottom: '8px' },
   xpLabelRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '3px' },
-  xpLabel: { fontSize: '10px', color: '#555', letterSpacing: '1px' },
-  xpVal: { fontSize: '10px', color: '#444', flex: 1 },
+  xpLabel: { fontSize: '10px', color: '#aaa', letterSpacing: '1px' },
+  xpVal: { fontSize: '10px', color: '#ccc', flex: 1 },
   evolveTag: { fontSize: '10px', color: '#ffd700', background: '#2a2500', borderRadius: '4px', padding: '1px 6px', fontWeight: 'bold', animation: 'none' },
   xpBarBg: { height: '6px', background: '#2a2a3e', borderRadius: '3px', overflow: 'hidden' },
   xpBarFill: { height: '100%', background: 'linear-gradient(90deg, #667eea, #a78bfa)', borderRadius: '3px', transition: 'width 0.3s ease' },
   infoRow: { display: 'flex', alignItems: 'flex-start', gap: '8px', padding: '4px 0' },
-  label: { color: '#555', width: '32px', flexShrink: 0 },
-  value: { color: '#ccc', lineHeight: '1.4' },
+  label: { color: '#aaa', width: '32px', flexShrink: 0 },
+  value: { color: '#eee', lineHeight: '1.4' },
   up: { color: '#FF6B6B', fontSize: '11px' },
   down: { color: '#6B9EFF', fontSize: '11px' },
-  abilityDesc: { color: '#555', fontSize: '11px' },
+  abilityDesc: { color: '#aaa', fontSize: '11px' },
   divider: { height: '1px', background: '#2a2a3e', margin: '10px 0' },
-  sectionTitle: { color: '#555', fontSize: '10px', marginBottom: '8px', letterSpacing: '1px', textTransform: 'uppercase' },
+  sectionTitle: { color: '#aaa', fontSize: '10px', marginBottom: '8px', letterSpacing: '1px', textTransform: 'uppercase' },
   statRow: { display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '5px' },
   statName: { width: '52px', fontSize: '11px', textAlign: 'right', flexShrink: 0 },
-  statBase: { width: '24px', fontSize: '11px', textAlign: 'right', color: '#444', flexShrink: 0 },
+  statBase: { width: '24px', fontSize: '11px', textAlign: 'right', color: '#bbb', flexShrink: 0 },
   barBg: { flex: 1, height: '7px', background: '#2a2a3e', borderRadius: '4px', overflow: 'hidden' },
   barFill: { height: '100%', borderRadius: '4px' },
   statVal: { width: '28px', fontSize: '12px', textAlign: 'right', fontWeight: 'bold', flexShrink: 0 },
+  natureUp: { width: '10px', fontSize: '11px', color: '#FF6B6B', fontWeight: 'bold', flexShrink: 0, textAlign: 'center' },
+  natureDn: { width: '10px', fontSize: '11px', color: '#6B9EFF', fontWeight: 'bold', flexShrink: 0, textAlign: 'center' },
+  naturePh: { width: '10px', flexShrink: 0 },
   evTag: { fontSize: '9px', color: '#4CAF50', background: '#1a3a1a', borderRadius: '3px', padding: '1px 3px', flexShrink: 0, minWidth: '30px', textAlign: 'center' },
   totalRow: { display: 'flex', justifyContent: 'flex-end', gap: '6px', marginTop: '4px' },
-  totalLabel: { color: '#555', fontSize: '11px' },
-  totalVal: { color: '#888', fontSize: '12px', fontWeight: 'bold', width: '28px', textAlign: 'right' },
+  totalLabel: { color: '#aaa', fontSize: '11px' },
+  totalVal: { color: '#eee', fontSize: '12px', fontWeight: 'bold', width: '28px', textAlign: 'right' },
   moveGrid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' },
   moveCard: { background: '#1a1a2e', borderRadius: '8px', padding: '8px 10px', border: '1px solid transparent' },
   moveCardSel: { borderColor: '#667eea' },
   moveTop: { display: 'flex', gap: '4px', alignItems: 'center', marginBottom: '4px' },
-  moveCat: { fontSize: '10px', color: '#555', flex: 1 },
-  swapBtn: { background: 'none', border: 'none', color: '#555', fontSize: '12px', cursor: 'pointer', padding: '0 2px' },
+  moveCat: { fontSize: '10px', color: '#aaa', flex: 1 },
+  swapBtn: { background: 'none', border: 'none', color: '#aaa', fontSize: '12px', cursor: 'pointer', padding: '0 2px' },
   moveName: { fontSize: '13px', color: '#fff', fontWeight: 'bold', marginBottom: '2px' },
-  movePower: { fontSize: '11px', color: '#666' },
+  movePower: { fontSize: '11px', color: '#bbb' },
   swapPicker: { marginTop: '10px', background: '#1a1a2e', borderRadius: '8px', padding: '8px', border: '1px solid #2a2a3e' },
-  swapEmpty: { fontSize: '11px', color: '#555', textAlign: 'center', padding: '6px 0' },
+  swapEmpty: { fontSize: '11px', color: '#888', textAlign: 'center', padding: '6px 0' },
   swapOption: { display: 'flex', alignItems: 'center', width: '100%', background: '#2a2a3e', border: 'none', borderRadius: '6px', padding: '7px 10px', cursor: 'pointer', marginBottom: '4px' },
   tmRow: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#1a1a2e', borderRadius: '8px', padding: '8px 10px', marginBottom: '6px' },
   tmLeft: { display: 'flex', alignItems: 'center', gap: '8px', flex: 1 },
-  tmNum: { fontSize: '10px', color: '#444', fontFamily: 'monospace', width: '30px', flexShrink: 0 },
+  tmNum: { fontSize: '10px', color: '#bbb', fontFamily: 'monospace', width: '30px', flexShrink: 0 },
   tmEmoji: { fontSize: '18px', flexShrink: 0 },
   tmName: { fontSize: '12px', color: '#fff', fontWeight: 'bold', marginBottom: '3px' },
   tmMeta: { display: 'flex', gap: '4px', alignItems: 'center' },
-  tmCat: { fontSize: '10px', color: '#555' },
-  tmPower: { fontSize: '10px', color: '#666' },
+  tmCat: { fontSize: '10px', color: '#aaa' },
+  tmPower: { fontSize: '10px', color: '#bbb' },
   tmRight: { flexShrink: 0, marginLeft: '8px' },
   tmUseBtn: { background: '#667eea', border: 'none', borderRadius: '6px', color: '#fff', fontSize: '11px', padding: '4px 10px', cursor: 'pointer' },
   tmBadgeLearned: { fontSize: '10px', color: '#4CAF50' },
   tmBadgeNo: { fontSize: '10px', color: '#FF6B6B' },
-  upcomingRow: { display: 'flex', alignItems: 'center', gap: '6px', padding: '4px 0', borderBottom: '1px solid #1a1a2e' },
-  upcomingLevel: { fontSize: '10px', color: '#667eea', width: '32px', flexShrink: 0, fontWeight: 'bold' },
-  upcomingName: { fontSize: '12px', color: '#888', flex: 1 },
-  upcomingPower: { fontSize: '11px', color: '#444' },
 }

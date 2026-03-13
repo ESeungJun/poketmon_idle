@@ -3,9 +3,9 @@ import useStore from '../../store/useStore'
 import { STARTERS, getPokemon } from '../../data/pokemon'
 
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
-import * as squirtleData from '../Pet/squirtle-anims'
-import * as charmanderData from '../Pet/charmander-anims'
-import * as bulbasaurData from '../Pet/bulbasaur-anims'
+import * as squirtleData from '../Pet/7-anims'
+import * as charmanderData from '../Pet/4-anims'
+import * as bulbasaurData from '../Pet/1-anims'
 
 const PIXEL_ART = {
   squirtle: squirtleData,

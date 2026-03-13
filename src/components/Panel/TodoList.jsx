@@ -30,7 +30,7 @@ export default function TodoList() {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder="새 할일 추가... (+20pt)"
+          placeholder="새 할일 추가... (+30pt)"
           style={styles.input}
         />
         <button type="submit" style={styles.addBtn}>+</button>
