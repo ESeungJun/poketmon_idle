@@ -31,11 +31,11 @@
 - [x] 거북왕(blastoise)
 
 ### 야생 포켓몬 (pokemon.js DB에 데이터 이미 존재)
-- [ ] 구구(pidgey)
-- [ ] 고오스(gastly)
-- [ ] 이브이(eevee)
-- [ ] 잠만보(snorlax)
-- [ ] 피카츄(pikachu)
+- [x] 구구(pidgey) / 피죤(pidgeotto) / 피죤투(pidgeot)
+- [x] 고오스(gastly) / 고우스트(haunter) / 팬텀(gengar)
+- [x] 이브이(eevee)
+- [x] 잠만보(snorlax)
+- [x] 피카츄(pikachu) / 라이츄(raichu)
 
 ---
 
