@@ -371,7 +371,7 @@ export const POKEMON_DB = {
       { name: '부유', desc: '땅 타입 기술에 면역' },
     ],
     baseMoves: [
-      { name: '나이트헤드', type: '고스트', category: '특수', power: null, learnAt: 1 },
+      { name: '나이트헤드', type: '고스트', category: '특수', power: null, fixedDamage: 'level', learnAt: 1 },
       { name: '최면술', type: '에스퍼', category: '변화', power: null, learnAt: 9 },
       { name: '맹독', type: '독', category: '변화', power: null, learnAt: 15 },
       { name: '저주', type: '고스트', category: '변화', power: null, learnAt: 20 },
@@ -398,7 +398,7 @@ export const POKEMON_DB = {
     evolveAt: 36, evolveTo: 'gengar',
   },
   gengar: {
-    id: 'gengar', dexNum: 94, speciesName: '겐가르',
+    id: 'gengar', dexNum: 94, speciesName: '팬텀',
     types: ['고스트', '독'],
     baseStats: { HP: 60, 공격: 65, 방어: 60, 특수공격: 130, 특수방어: 75, 스피드: 110 },
     abilities: [
