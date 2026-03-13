@@ -26,7 +26,7 @@ const POKEMON = [
   { file: '26-anims.js',         name: '라이츄 (26)' },
   { file: '92-anims.js',         name: '고오스 (92)' },
   { file: '93-anims.js',         name: '고우스트 (93)' },
-  { file: '94-anims.js',         name: '겐가르 (94)' },
+  { file: '94-anims.js',         name: '팬텀 (94)' },
   { file: '133-anims.js',        name: '이브이 (133)' },
   { file: '143-anims.js',        name: '잠만보 (143)' },
 ]
@@ -94,9 +94,15 @@ function buildHtml(allData) {
     .pal-swatch { width: 14px; height: 14px; border: 1px solid #555; border-radius: 2px; flex-shrink: 0; }
     .pal-name { color: #d1d5db; }
     .pal-hex { color: #6b7280; }
-    #canvas-wrap { position: relative; display: inline-block; cursor: crosshair; }
+    #viewer-area { display: flex; gap: 20px; align-items: flex-start; }
+    #canvas-wrap { position: relative; display: inline-block; cursor: crosshair; flex-shrink: 0; }
     #main-canvas { display: block; }
     #overlay-canvas { position: absolute; top: 0; left: 0; pointer-events: none; }
+    #ref-wrap {
+      flex-shrink: 0; display: flex; flex-direction: column; align-items: center; gap: 8px;
+    }
+    #ref-wrap label { font-size: 12px; color: #6b7280; }
+    #ref-img { image-rendering: pixelated; border: 1px solid #374151; border-radius: 4px; background: #1e293b; }
   </style>
 </head>
 <body>
@@ -115,13 +121,19 @@ function buildHtml(allData) {
   </div>
   <div id="info">포켓몬을 선택하고 픽셀 위에 마우스를 올리세요 — 클릭하면 좌표 복사</div>
   <div id="palette"></div>
-  <div id="canvas-wrap">
-    <canvas id="main-canvas"></canvas>
-    <canvas id="overlay-canvas"></canvas>
+  <div id="viewer-area">
+    <div id="canvas-wrap">
+      <canvas id="main-canvas"></canvas>
+      <canvas id="overlay-canvas"></canvas>
+    </div>
+    <div id="ref-wrap">
+      <img id="ref-img" alt="원본 PNG">
+    </div>
   </div>
 
   <script>
     const DATA = ${JSON.stringify(allData)};
+    const refImg = document.getElementById('ref-img');
 
     const sel   = document.getElementById('pokemon-select');
     const btnN  = document.getElementById('btn-normal');
@@ -145,9 +157,14 @@ function buildHtml(allData) {
       sel.appendChild(o);
     });
 
-    // restore last selected pokemon
+    // restore last selected pokemon & mode
     const saved = sessionStorage.getItem('poke');
     if (saved && DATA[saved]) sel.value = saved;
+    const savedMode = sessionStorage.getItem('pokeMode');
+    if (savedMode === 'sleep' && DATA[sel.value]?.SLEEP_BODY) {
+      mode = 'sleep';
+      btnS.classList.add('active'); btnN.classList.remove('active');
+    }
 
     function getCurrent() {
       const d = DATA[sel.value];
@@ -172,6 +189,7 @@ function buildHtml(allData) {
 
     function render() {
       sessionStorage.setItem('poke', sel.value);
+      sessionStorage.setItem('pokeMode', mode);
       const data = getCurrent();
       if (!data) return;
       const { body, colors } = data;
@@ -203,6 +221,19 @@ function buildHtml(allData) {
 
       renderPalette(colors);
       renderOverlay(rows, cols);
+
+      // 원본 PNG 표시 — 캔버스와 같은 높이
+      const dexMatch = sel.value.match(/\\((\\d+)\\)/);
+      if (dexMatch) {
+        const dexNum = dexMatch[1];
+        const folder = mode === 'sleep' ? 'sleep' : 'normal';
+        refImg.src = '/img/' + folder + '/' + dexNum + '.png';
+        refImg.style.width = mainC.width + 'px';
+        refImg.style.height = mainC.height + 'px';
+        refImg.style.display = 'block';
+      } else {
+        refImg.style.display = 'none';
+      }
     }
 
     function renderOverlay(rows, cols) {
@@ -327,6 +358,19 @@ function buildHtml(allData) {
 }
 
 const server = http.createServer((req, res) => {
+  // /img/normal/1.png or /img/sleep/1.png
+  const imgMatch = req.url.match(/^\/img\/(normal|sleep)\/(\d+)\.png$/)
+  if (imgMatch) {
+    const imgPath = path.join(__dirname, imgMatch[1], imgMatch[2] + '.png')
+    if (fs.existsSync(imgPath)) {
+      res.writeHead(200, { 'Content-Type': 'image/png' })
+      res.end(fs.readFileSync(imgPath))
+    } else {
+      res.writeHead(404)
+      res.end()
+    }
+    return
+  }
   const allData = buildAllData()
   const html = buildHtml(allData)
   res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })

@@ -20,22 +20,22 @@ description: 새 포켓몬 픽셀아트 추가 전체 과정을 안내한다. PN
 
 ---
 
-## 2단계: convert.py로 변환
+## 2단계: PNG → anims 데이터 추출
 
-```bash
-cd pixel-art-source
-python convert.py normal/{dexNum}.png normal/{dexNum}-anims.js
-python convert.py sleep/{dexNum}.png sleep/{dexNum}-anims.js
-```
+`pngjs`로 PNG를 읽고, run-length 분석으로 **원본 셀 크기를 감지**하여 실제 그리드 크기를 산출한다.
 
-**stage3 포켓몬은 32열 고정 필요:**
-```bash
-python convert.py normal/{dexNum}.png normal/{dexNum}-anims.js 20 31
-python convert.py sleep/{dexNum}.png sleep/{dexNum}-anims.js 20 31
-```
+**크기 결정 규칙:**
+- 기준 크기: stage1/2는 20×20 내외, stage3는 32열 고정
+- **원본 그리드가 기준보다 큰 경우** → 원본 크기 그대로 추출 (디테일 보존)
+- **원본 그리드가 기준보다 작은 경우** → 기준 크기에 맞춰 추출
 
-변환 결과 파일(`normal/{dexNum}-anims.js`, `sleep/{dexNum}-anims.js`)을 읽어
-행/열 수와 COLORS 팔레트를 확인한다.
+**추출 절차:**
+1. 감지된(또는 기준) 그리드 크기로 PNG 중앙 샘플링
+2. 흰색(#FFFFFF) 배경 → null 마스킹 (배경과 detail 색상이 같은 경우 이웃 픽셀로 구분)
+3. RGB → closest color key 매핑
+4. `normal/`, `sleep/` 각각 추출
+
+변환 결과의 행/열 수와 COLORS 팔레트를 확인한다.
 
 ---
 

@@ -295,7 +295,8 @@ export function processTurn(battle, playerMoveName) {
     }
 
     if (moveData.category !== '변화' && moveData.fixedDamage) {
-      curWild = { ...curWild, hp: Math.max(0, curWild.hp - moveData.fixedDamage) }
+      const fixedDmg = moveData.fixedDamage === 'level' ? curPlayer.level : moveData.fixedDamage
+      curWild = { ...curWild, hp: Math.max(0, curWild.hp - fixedDmg) }
       snap(null)
     } else if (moveData.category !== '변화' && moveData.power) {
       const atkStat = moveData.category === '물리' ? getEffectiveStat(curPlayer, '공격') : getEffectiveStat(curPlayer, '특수공격')
@@ -403,7 +404,8 @@ export function processTurn(battle, playerMoveName) {
     }
 
     if (wildMoveData.category !== '변화' && wildMoveData.fixedDamage) {
-      curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - wildMoveData.fixedDamage) }
+      const fixedDmg = wildMoveData.fixedDamage === 'level' ? curWild.level : wildMoveData.fixedDamage
+      curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - fixedDmg) }
       snap(null)
     } else if (wildMoveData.category !== '변화' && wildMoveData.power) {
       const atkStat = wildMoveData.category === '물리' ? getEffectiveStat(curWild, '공격')   : getEffectiveStat(curWild, '특수공격')
