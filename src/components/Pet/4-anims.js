@@ -2,9 +2,9 @@
 const _ = null
 
 export const COLORS = {
-  outline: '#313131',
+  outline: '#191919',
   eye: '#196363',
-  grayD: '#525252',
+  grayD: '#191919',
   bodyD: '#AD5242',
   body: '#D66342',
   bodyL: '#F79429',
@@ -30,8 +30,8 @@ export const BASE_BODY = [
 /* row 10 */ [_, 'outline', 'body', 'bodyL', 'bodyL', 'bodyL', 'body', 'body', 'body', 'body', 'body', 'body', 'outline', _, _, _, _, 'outline', 'bodyL', 'outline', _, _],
 /* row 11 */ [_, _, 'outline', 'outline', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'outline', _, _, _, 'outline', 'bodyL', 'bodyL', 'outline', _, _],
 /* row 12 */ [_, _, _, _, 'outline', 'outline', 'belly', 'body', 'body', 'body', 'grayD', 'body', 'body', 'outline', _, 'outline', 'body', 'bodyL', 'outline', _, _, _],
-/* row 13 */ [_, _, _, _, _, 'outline', 'bellyL', 'bellyL', 'grayD', 'grayD', 'bodyD', 'bodyL', 'body', 'body', 'outline', 'body', 'body', 'body', 'outline', _, _, _],
-/* row 14 */ [_, _, _, _, _, 'outline', 'bellyL', 'bellyL', 'grayD', 'grayD', 'bodyL', 'body', 'grayD', 'body', 'body', 'grayD', 'body', 'outline', _, _, _, _],
+/* row 13 */ [_, _, _, _, _, 'outline', 'bellyL', 'bellyL', 'bellyL', 'grayD', 'bodyD', 'bodyL', 'body', 'body', 'outline', 'body', 'body', 'body', 'outline', _, _, _],
+/* row 14 */ [_, _, _, _, _, 'outline', 'bellyL', 'bellyL', 'bellyL', 'grayD', 'bodyL', 'body', 'grayD', 'body', 'body', 'grayD', 'body', 'outline', _, _, _, _],
 /* row 15 */ [_, _, _, _, 'outline', 'bodyD', 'bodyD', 'bellyL', 'bellyL', 'bellyL', 'grayD', 'grayD', 'body', 'body', 'body', 'grayD', 'outline', _, _, _, _, _],
 /* row 16 */ [_, _, _, _, 'outline', 'gray', 'bodyD', 'grayD', 'belly', 'belly', 'belly', 'body', 'body', 'body', 'bodyD', 'outline', _, _, _, _, _, _],
 /* row 17 */ [_, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'outline', 'grayD', 'bodyD', 'body', 'bodyD', 'outline', _, _, _, _, _, _, _],
@@ -40,9 +40,9 @@ export const BASE_BODY = [
 ]
 
 export const SLEEP_COLORS = {
-  outline: '#1E1D19',
-  body: '#323232',
-  bodyL: '#515151',
+  outline: '#191919',
+  body: '#191919',
+  bodyL: '#191919',
   bodyD: '#A74F41',
   belly: '#D05D3E',
   shadow: '#D3735B',
@@ -50,7 +50,6 @@ export const SLEEP_COLORS = {
   highlight: '#EB9E46',
   detail1: '#F1EC1F',
   detail2: '#F3E197',
-  detail3: '#FEFEFE',
 }
 
 // grid: 22×20
@@ -71,8 +70,8 @@ export const SLEEP_BODY = [
 /* row 13 */ [_, _, _, 'body', 'accent', 'belly', 'body', 'bodyD', 'belly', 'shadow', 'body', 'detail2', 'detail2', 'bodyL', 'accent', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'belly', 'body'],
 /* row 14 */ [_, _, 'body', 'belly', 'accent', 'detail1', 'belly', 'body', 'body', 'outline', 'detail3', 'bodyL', 'body', 'bodyL', 'belly', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'belly', 'body'],
 /* row 15 */ [_, _, 'body', 'belly', 'accent', 'detail1', 'belly', 'body', 'detail3', 'detail3', 'body', 'bodyD', 'belly', 'belly', 'belly', 'bodyL', 'bodyL', 'detail2', 'belly', 'bodyD', 'body', _],
-/* row 16 */ [_, _, _, _, 'belly', 'belly', 'accent', 'detail2', 'outline', 'body', 'body', 'body', 'bodyL', 'bodyL', 'bodyL', 'detail2', 'detail2', 'accent', 'belly', 'body', _, _],
-/* row 17 */ [_, _, _, _, _, _, 'body', 'belly', 'accent', 'accent', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'accent', 'belly', 'belly', 'body', _, _, _],
+/* row 16 */ [_, _, _, 'body', 'belly', 'belly', 'accent', 'detail2', 'outline', 'body', 'body', 'body', 'bodyL', 'bodyL', 'bodyL', 'detail2', 'detail2', 'accent', 'belly', 'body', _, _],
+/* row 17 */ [_, _, _, _, 'body', 'body', 'body', 'belly', 'accent', 'accent', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'accent', 'belly', 'belly', 'body', _, _, _],
 /* row 18 */ [_, _, _, _, _, _, _, 'body', 'body', 'body', 'body', 'belly', 'belly', 'belly', 'belly', 'belly', 'body', 'body', _, _, _, _],
 /* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, 'body', 'body', 'body', 'body', 'body', _, _, _, _, _, _],
 ]

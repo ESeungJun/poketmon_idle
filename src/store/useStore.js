@@ -1,6 +1,12 @@
 import { create } from 'zustand'
-import { calcLevel, getPokemon } from '../data/pokemon'
+import { calcLevel, getPokemon, pickWildEncounter } from '../data/pokemon'
+import { buildWildBattler, buildPlayerBattler, processTurn, generatePetStats } from '../data/battleEngine'
+import { SHOP_ITEMS } from '../components/Shop/items'
 
+// 레벨업 시 새로 배울 수 있는 기술을 learnedPool과 moves에 반영
+// prevLevel → newLevel 사이에 learnAt이 걸쳐 있는 기술을 순서대로 추가
+// moves는 최대 4개 슬롯이므로 빈 자리가 있을 때만 자동 세팅
+// 변경이 없으면 null을 반환해 불필요한 store 업데이트를 방지
 function applyLevelUpMoves(petStats, pokemon, prevLevel, newLevel) {
   if (!petStats || !pokemon) return null
   const existingPool = petStats.learnedPool || petStats.moves || []
@@ -22,10 +28,9 @@ const DEFAULT_STATE = {
   points: 0,
   totalPointsEarned: 0,
   purchasedItems: [],
-  equippedItems: [],
   todos: [],
   pomodoroHistory: [],
-  petState: 'idle', // idle | happy | working | sleeping | evolving
+  petState: 'idle', // idle | happy | sleeping | evolving
   lastActiveTime: Date.now(),
   totalWorkMinutes: 0,
   petSpeciesId: null,
@@ -34,8 +39,11 @@ const DEFAULT_STATE = {
   petEVs: { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 },
   ownedTMs: [],
   equippedTool: null,
+  wildBattle: null, // in-memory only, not persisted
 }
 
+// 앱 시작 시 electron-store에서 저장된 데이터를 로드
+// electron 환경이 아니면(브라우저 개발 등) 기본값 반환
 async function loadFromStore() {
   if (!window.electronAPI) return DEFAULT_STATE
   try {
@@ -46,13 +54,14 @@ async function loadFromStore() {
   }
 }
 
+// 비동기로 electron-store에 단일 키 저장
+// ipcRenderer.invoke('set-store')는 Promise를 반환하지만
+// store 업데이트를 블로킹할 필요가 없으므로 에러만 로깅하고 무시
 function saveToStore(key, value) {
   if (!window.electronAPI) return
-  try {
-    window.electronAPI.setStoreSync(key, value)
-  } catch (e) {
+  window.electronAPI.setStoreAsync(key, value).catch(e => {
     console.error('Failed to save to store:', e)
-  }
+  })
 }
 
 const useStore = create((set, get) => ({
@@ -64,20 +73,20 @@ const useStore = create((set, get) => ({
     set({ ...saved, initialized: true })
   },
 
+  // 포인트 추가 + 레벨업/진화 체크
+  // showHappy: false이면 happy 애니메이션 없이 조용히 추가 (집중 중 1분마다 +1pt)
   addPoints: (amount, showHappy = true) => {
     const state = get()
     const prevState = state.petState
     const newPoints = state.points + amount
     const newTotalEarned = (state.totalPointsEarned || 0) + amount
+
+    // 레벨 계산은 totalPointsEarned 기준 (points를 소비해도 레벨은 유지됨)
     const prevLevel = calcLevel(state.totalPointsEarned || 0)
     const newLevel = calcLevel(newTotalEarned)
 
     saveToStore('points', newPoints)
     saveToStore('totalPointsEarned', newTotalEarned)
-
-    if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ points: newPoints, totalPointsEarned: newTotalEarned })
-    }
 
     const update = {
       points: newPoints,
@@ -86,12 +95,14 @@ const useStore = create((set, get) => ({
       ...(showHappy ? { petState: 'happy' } : {}),
     }
 
-    // Check for level-up effects
+    // 레벨업 발생 시 진화 체크 및 신규 기술 습득 처리
     if (newLevel > prevLevel && state.petSpeciesId) {
       const pokemon = getPokemon(state.petSpeciesId)
       if (pokemon) {
-        if (pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
+        // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
+        if (pokemon.evolveAt && prevLevel < pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
           update.petState = 'evolving'
+          update.preEvolvingState = prevState === 'happy' ? 'idle' : prevState
         }
         const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
         if (updatedStats) {
@@ -103,12 +114,25 @@ const useStore = create((set, get) => ({
 
     set(update)
 
-    // Reset happy state after 2s (unless evolving)
+    // 변경된 필드만 골라 다른 창에 동기화
+    if (window.electronAPI) {
+      const syncData = { points: newPoints, totalPointsEarned: newTotalEarned }
+      if (update.petState) syncData.petState = update.petState
+      if (update.petStats) syncData.petStats = update.petStats
+      if (update.preEvolvingState !== undefined) syncData.preEvolvingState = update.preEvolvingState
+      window.electronAPI.sendStateUpdate(syncData)
+    }
+
+    // happy 상태 2초 후 이전 상태로 복귀 (진화 중이면 스킵)
     if (showHappy && update.petState !== 'evolving') {
       setTimeout(() => {
         set(s => {
           if (s.petState === 'happy') {
-            return { petState: prevState === 'happy' ? 'idle' : prevState }
+            const nextState = prevState === 'happy' ? 'idle' : prevState
+            if (window.electronAPI) {
+              window.electronAPI.sendStateUpdate({ petState: nextState })
+            }
+            return { petState: nextState }
           }
           return {}
         })
@@ -128,31 +152,40 @@ const useStore = create((set, get) => ({
     return true
   },
 
+  // 스타터 선택 완료: petStats를 null로 초기화해 PokemonStats에서 새로 생성하게 함
   selectStarter: (speciesId) => {
     set({ petSpeciesId: speciesId, petStats: null })
     saveToStore('petSpeciesId', speciesId)
     saveToStore('petStats', null)
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: speciesId })
-      window.electronAPI.notifyStarterSelected()
+      window.electronAPI.notifyStarterSelected()  // main에 알려 펫 창 표시
     }
   },
 
+  // 진화 확정: App.jsx에서 evolving 상태 3초 후 호출
+  // 새 종 ID로 교체하고 petStats의 speciesId만 갱신 (성격·특성·개체값은 유지)
   confirmEvolution: () => {
-    const { petSpeciesId } = get()
+    const { petSpeciesId, petStats, preEvolvingState } = get()
+    const prevState = preEvolvingState || 'idle'
     const pokemon = getPokemon(petSpeciesId)
     if (!pokemon || !pokemon.evolveTo) return
     const newSpeciesId = pokemon.evolveTo
-    set({ petSpeciesId: newSpeciesId, petStats: null, petState: 'happy' })
+    const newPetStats = petStats
+      ? { ...petStats, speciesId: newSpeciesId }
+      : null
+    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy', preEvolvingState: null })
     saveToStore('petSpeciesId', newSpeciesId)
-    saveToStore('petStats', null)
+    saveToStore('petStats', newPetStats)
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId })
+      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy', petStats: newPetStats })
     }
-    // Return to idle after happy animation
     setTimeout(() => {
       set(s => {
-        if (s.petState === 'happy') return { petState: 'idle' }
+        if (s.petState === 'happy') {
+          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: prevState })
+          return { petState: prevState }
+        }
         return {}
       })
     }, 2000)
@@ -168,24 +201,6 @@ const useStore = create((set, get) => ({
     return true
   },
 
-  toggleEquipItem: (itemId) => {
-    const { equippedItems, purchasedItems } = get()
-    if (!purchasedItems.includes(itemId)) return
-
-    let newEquipped
-    if (equippedItems.includes(itemId)) {
-      newEquipped = equippedItems.filter(id => id !== itemId)
-    } else {
-      newEquipped = [...equippedItems, itemId]
-    }
-    set({ equippedItems: newEquipped })
-    saveToStore('equippedItems', newEquipped)
-
-    if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ equippedItems: newEquipped })
-    }
-  },
-
   addTodo: (text) => {
     const { todos } = get()
     const newTodo = {
@@ -197,6 +212,7 @@ const useStore = create((set, get) => ({
     const newTodos = [...todos, newTodo]
     set({ todos: newTodos })
     saveToStore('todos', newTodos)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
   },
 
   completeTodo: (id) => {
@@ -209,7 +225,8 @@ const useStore = create((set, get) => ({
     )
     set({ todos: newTodos, lastActiveTime: Date.now() })
     saveToStore('todos', newTodos)
-    addPoints(20)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
+    addPoints(30)
   },
 
   deleteTodo: (id) => {
@@ -217,6 +234,7 @@ const useStore = create((set, get) => ({
     const newTodos = todos.filter(t => t.id !== id)
     set({ todos: newTodos })
     saveToStore('todos', newTodos)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
   },
 
   addPomodoroSession: () => {
@@ -226,24 +244,31 @@ const useStore = create((set, get) => ({
       completedAt: Date.now(),
       durationMinutes: 25,
     }
-    const newHistory = [...pomodoroHistory, session]
+    // 최근 100개만 유지해 store 비대화 방지
+    const newHistory = [...pomodoroHistory, session].slice(-100)
     set({ pomodoroHistory: newHistory, lastActiveTime: Date.now() })
     saveToStore('pomodoroHistory', newHistory)
-    addPoints(50)
+    addPoints(75)
   },
 
+  // 집중 타이머 실행 중 1분마다 호출 (happy 애니메이션 없이 조용히 +2pt)
   addWorkMinute: () => {
     const { totalWorkMinutes, addPoints } = get()
     const newTotal = totalWorkMinutes + 1
     set({ totalWorkMinutes: newTotal, lastActiveTime: Date.now() })
     saveToStore('totalWorkMinutes', newTotal)
-    addPoints(1, false) // 매분 포인트는 happy 애니메이션 없이 조용히 추가
+    addPoints(2, false)
   },
 
+  // petState 변경 + 다른 창에 동기화
   setPetState: (state) => {
-    set({ petState: state })
+    const update = { petState: state }
+    if (state === 'evolving') {
+      update.preEvolvingState = get().petState
+    }
+    set(update)
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petState: state })
+      window.electronAPI.sendStateUpdate(update)
     }
   },
 
@@ -253,16 +278,20 @@ const useStore = create((set, get) => ({
     saveToStore('petStats', null)
   },
 
+  // petStats 형식: { speciesId, ivs, natureName, moves, learnedPool, abilityName }
   setPetStats: (stats) => {
     set({ petStats: stats })
     saveToStore('petStats', stats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: stats })
   },
 
   setPetName: (name) => {
     set({ petName: name })
     saveToStore('petName', name)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petName: name })
   },
 
+  // 비타민 사용: 해당 스탯 EV를 10씩 증가 (단일 스탯 max 252, 총합 max 510)
   applyVitamin: (stat, cost) => {
     const { petEVs, spendPoints } = get()
     const cur = petEVs[stat] || 0
@@ -276,6 +305,7 @@ const useStore = create((set, get) => ({
     return true
   },
 
+  // 도구 장착/해제 토글 (구매한 아이템만 장착 가능)
   equipTool: (toolId) => {
     const { equippedTool, purchasedItems } = get()
     if (!purchasedItems.includes(toolId)) return
@@ -294,6 +324,7 @@ const useStore = create((set, get) => ({
     return true
   },
 
+  // TM 사용: learnedPool에 기술명 추가 (moves 슬롯 교체는 swapMove로 별도 처리)
   useTM: (moveName) => {
     const { petStats } = get()
     if (!petStats) return
@@ -302,8 +333,10 @@ const useStore = create((set, get) => ({
     const newStats = { ...petStats, learnedPool: [...pool, moveName] }
     set({ petStats: newStats })
     saveToStore('petStats', newStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
   },
 
+  // 활성 기술 슬롯(0~3)의 기술을 learnedPool에서 선택한 기술로 교체
   swapMove: (activeIdx, newMoveName) => {
     const { petStats } = get()
     if (!petStats) return
@@ -312,6 +345,136 @@ const useStore = create((set, get) => ({
     const newStats = { ...petStats, moves: newMoves }
     set({ petStats: newStats })
     saveToStore('petStats', newStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
+  },
+
+  // ── Wild Battle ─────────────────────────────────────────────────
+
+  startWildBattle: () => {
+    const { petSpeciesId, petEVs, totalPointsEarned, spendPoints } = get()
+    let { petStats } = get()
+    if (!petSpeciesId) return
+    if (!spendPoints(10)) return
+    const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+    // petStats가 null이면 자동 생성 (스탯 탭 미방문 시 대비)
+    if (!petStats) {
+      const pokemon = getPokemon(petSpeciesId)
+      if (!pokemon) return
+      petStats = generatePetStats(pokemon, playerLevel)
+      set({ petStats })
+      saveToStore('petStats', petStats)
+      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats })
+    }
+    const encounter = pickWildEncounter(playerLevel)
+    if (!encounter) {
+      set({ wildBattle: { wild: null, player: null, phase: 'ended', result: null, log: '근처에 야생 포켓몬이 없다...' } })
+      return
+    }
+    const wild   = buildWildBattler(encounter.speciesId, encounter.level)
+    const player = buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEarned, SHOP_ITEMS)
+    if (!wild || !player) return
+    const wildName = getPokemon(wild.speciesId)?.speciesName ?? wild.speciesId
+    set({
+      wildBattle: {
+        wild,
+        player,
+        turn: 1,
+        phase: 'selecting',
+        logLines: [`야생 ${wildName}이(가) 나타났다!`],
+        result: null,
+      },
+    })
+  },
+
+  executePlayerMove: (moveName) => {
+    const { wildBattle } = get()
+    if (!wildBattle || wildBattle.phase !== 'selecting') return
+    const { frames, pointsGained } = processTurn(wildBattle, moveName)
+    if (!frames.length) return
+    set({
+      wildBattle: {
+        ...wildBattle,
+        phase: 'animating',
+        pendingFrames: frames,
+        frameIndex: 0,
+        pendingPointsGained: pointsGained,
+        logLines: [],
+      },
+    })
+  },
+
+  advanceBattleFrame: () => {
+    const { wildBattle } = get()
+    if (!wildBattle || wildBattle.phase !== 'animating') return
+    const { pendingFrames, frameIndex = 0, logLines = [], pendingPointsGained = 0 } = wildBattle
+    if (!pendingFrames || frameIndex >= pendingFrames.length) return
+
+    const frame   = pendingFrames[frameIndex]
+    const nextIdx = frameIndex + 1
+    const isLast  = nextIdx >= pendingFrames.length
+    const newLogLines = frame.addLog ? [...logLines, frame.addLog] : logLines
+
+    const newBattle = {
+      ...wildBattle,
+      wild:     frame.wild,
+      player:   frame.player,
+      logLines: newLogLines,
+      phase:    frame.phase,
+      result:   frame.result,
+      frameIndex: nextIdx,
+      pendingFrames: isLast ? null : pendingFrames,
+      // Increment turn counter when a selecting frame is the last one
+      turn: (isLast && frame.phase === 'selecting') ? wildBattle.turn + 1 : wildBattle.turn,
+    }
+    set({ wildBattle: newBattle })
+
+    if (isLast) {
+      // Save HP/PP to petStats
+      const { petStats } = get()
+      if (petStats && frame.player) {
+        const updatedPetStats = {
+          ...petStats,
+          currentHP: frame.player.hp,
+          movePP: { ...petStats.movePP, ...frame.player.movePP },
+        }
+        set({ petStats: updatedPetStats })
+        saveToStore('petStats', updatedPetStats)
+        if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+      }
+      if (pendingPointsGained > 0) get().addPoints(pendingPointsGained)
+    }
+  },
+
+  fleeFromBattle: () => {
+    const { wildBattle, petStats } = get()
+    if (!wildBattle || wildBattle.phase !== 'selecting') return
+    set({
+      wildBattle: { ...wildBattle, phase: 'ended', result: 'flee', logLines: [...(wildBattle.logLines || []), '도망쳤다!'] },
+    })
+    if (petStats && wildBattle.player) {
+      const updatedPetStats = {
+        ...petStats,
+        currentHP: wildBattle.player.hp,
+        movePP: { ...petStats.movePP, ...wildBattle.player.movePP },
+      }
+      set({ petStats: updatedPetStats })
+      saveToStore('petStats', updatedPetStats)
+      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+    }
+  },
+
+  dismissBattle: () => {
+    set({ wildBattle: null })
+  },
+
+  healAtCenter: () => {
+    const { petStats, spendPoints } = get()
+    if (!petStats) return
+    if (!spendPoints(20)) return
+    const updatedPetStats = { ...petStats, currentHP: null, movePP: null }
+    set({ petStats: updatedPetStats })
+    saveToStore('petStats', updatedPetStats)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
   },
 
   resetAllData: async () => {
@@ -322,16 +485,16 @@ const useStore = create((set, get) => ({
     }
   },
 
-  checkSleepState: () => {
-    const { lastActiveTime, petState } = get()
-    const thirtyMinutes = 30 * 60 * 1000
-    if (Date.now() - lastActiveTime > thirtyMinutes && petState !== 'sleeping') {
-      set({ petState: 'sleeping' })
-    }
-  },
-
+  // 다른 창에서 state-sync IPC로 받은 데이터를 store에 병합
+  // allowed 키 목록으로 필터링해 알 수 없는 키가 store를 오염시키지 않도록 방어
   syncFromOtherWindow: (data) => {
-    set(state => ({ ...state, ...data }))
+    const allowed = [
+      'points', 'totalPointsEarned', 'purchasedItems',
+      'todos', 'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
+      'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+    ]
+    const safe = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
+    if (Object.keys(safe).length > 0) set(safe)
   },
 }))
 
