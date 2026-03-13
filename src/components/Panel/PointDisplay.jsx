@@ -19,7 +19,7 @@ export default function PointDisplay() {
         <div style={styles.stat}>
           <span style={styles.statIcon}>🍅</span>
           <span style={styles.statValue}>{pomodoroHistory.length}</span>
-          <span style={styles.statLabel}>뽀모도로</span>
+          <span style={styles.statLabel}>집중모드</span>
         </div>
         <div style={styles.stat}>
           <span style={styles.statIcon}>✅</span>

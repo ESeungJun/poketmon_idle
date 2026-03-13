@@ -1,0 +1,53 @@
+// normal/18-anims.js — pixel art (auto-converted from 32×29)
+const _ = null
+
+export const COLORS = {
+  outline: '#313131',
+  body: '#525252',
+  bodyL: '#BD3A21',
+  bodyD: '#9C5A3A',
+  belly: '#BD7342',
+  shadow: '#BDA519',
+  accent: '#EF6342',
+  highlight: '#DE9C29',
+  detail1: '#C5737B',
+  detail2: '#EFDE10',
+  detail3: '#CEBD63',
+  detail4: '#E6A5A5',
+  detail5: '#BDBDBD',
+  detail6: '#EFDE84',
+  detail7: '#FFFFFF',
+}
+
+// grid: 32×29
+export const BASE_BODY = [
+/* row  0 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', _, _, _, _],
+/* row  1 */ [_, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'outline', _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'detail4', 'detail4', 'bodyL', 'outline', 'outline', _, _],
+/* row  2 */ [_, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'outline', _, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'detail4', 'detail4', 'bodyL', 'outline', 'outline', _, _],
+/* row  3 */ [_, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'outline', 'outline', 'outline', _, 'outline', 'outline', 'detail4', 'detail4', 'bodyL', 'bodyL', 'accent', 'detail4', 'detail4', 'outline', 'outline', _, _],
+/* row  4 */ [_, _, _, _, 'outline', 'outline', 'bodyL', 'bodyL', 'detail2', 'detail2', 'detail2', 'detail2', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'detail2', 'outline', 'body', 'body', 'accent', 'accent', 'bodyL', 'bodyL', 'accent', 'accent', 'bodyL', 'detail4', 'detail4', 'outline', _],
+/* row  5 */ [_, _, _, 'outline', 'accent', 'bodyL', 'detail2', 'detail2', 'detail2', 'shadow', 'shadow', 'shadow', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'shadow', 'shadow', 'shadow', 'shadow', 'body', 'accent', 'bodyL', 'bodyL', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'detail4', 'outline'],
+/* row  6 */ [_, _, _, 'outline', 'accent', 'shadow', 'detail2', 'detail2', 'shadow', 'detail2', 'detail2', 'detail2', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'body', 'body', 'body', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'accent', 'outline'],
+/* row  7 */ [_, _, _, 'outline', 'accent', 'shadow', 'detail2', 'detail2', 'shadow', 'detail2', 'detail2', 'detail2', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'body', 'body', 'body', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'accent', 'outline'],
+/* row  8 */ [_, 'outline', 'outline', 'accent', 'shadow', 'detail2', 'shadow', 'shadow', 'detail2', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'accent', 'accent', 'accent', 'accent', 'accent', 'body', 'accent', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'accent', 'outline', _],
+/* row  9 */ [_, 'outline', 'outline', 'accent', 'shadow', 'detail2', 'detail2', 'detail2', 'detail2', 'bodyL', 'accent', 'accent', 'accent', 'accent', 'body', 'outline', 'outline', 'bodyL', 'accent', 'body', 'body', 'bodyD', 'bodyD', 'accent', 'accent', 'bodyL', 'accent', 'accent', 'outline', 'outline', _, _],
+/* row 10 */ [_, 'outline', 'outline', 'accent', 'detail2', 'detail2', 'detail2', 'detail2', 'shadow', 'accent', 'accent', 'accent', 'body', 'body', 'outline', 'detail7', 'detail7', 'outline', 'bodyL', 'body', 'body', 'body', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'body', 'outline', _, _, _, _],
+/* row 11 */ [_, 'outline', 'outline', 'accent', 'detail2', 'detail2', 'detail2', 'detail2', 'shadow', 'accent', 'accent', 'accent', 'body', 'body', 'outline', 'detail7', 'detail7', 'outline', 'bodyL', 'body', 'body', 'body', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'body', 'outline', _, _, _, _],
+/* row 12 */ [_, _, _, 'outline', 'detail2', 'detail2', 'shadow', 'shadow', 'accent', 'accent', 'body', 'body', 'body', 'belly', 'belly', 'outline', 'outline', 'belly', 'body', 'bodyL', 'bodyL', 'bodyL', 'body', 'bodyD', 'bodyD', 'bodyD', 'body', 'outline', 'outline', 'outline', 'outline', _],
+/* row 13 */ [_, _, _, 'outline', 'body', 'detail2', 'accent', 'accent', 'body', 'outline', 'detail5', 'detail5', 'body', 'body', 'belly', 'belly', 'belly', 'body', 'body', 'body', 'body', 'body', 'bodyD', 'bodyD', 'bodyD', 'body', 'body', 'detail6', 'detail6', 'detail6', 'detail6', 'outline'],
+/* row 14 */ [_, 'outline', 'outline', 'detail4', 'detail4', 'body', 'body', 'body', 'detail5', 'outline', 'detail7', 'detail7', 'body', 'body', 'body', 'belly', 'belly', 'belly', 'highlight', 'highlight', 'highlight', 'body', 'body', 'body', 'body', 'detail6', 'detail6', 'detail6', 'body', 'body', 'body', 'outline'],
+/* row 15 */ ['outline', 'detail4', 'detail4', 'detail4', 'detail4', 'detail4', 'body', 'body', 'body', 'detail3', 'detail3', 'detail3', 'detail6', 'body', 'body', 'belly', 'belly', 'highlight', 'belly', 'bodyD', 'bodyD', 'highlight', 'highlight', 'detail6', 'detail6', 'detail6', 'body', 'body', 'detail3', 'detail3', 'outline', _],
+/* row 16 */ ['outline', 'detail4', 'detail4', 'detail4', 'detail4', 'detail4', 'body', 'body', 'body', 'detail3', 'detail3', 'detail3', 'detail6', 'body', 'body', 'belly', 'belly', 'highlight', 'belly', 'bodyD', 'bodyD', 'highlight', 'highlight', 'detail6', 'detail6', 'detail6', 'body', 'body', 'detail3', 'detail3', 'outline', _],
+/* row 17 */ ['outline', 'detail4', 'detail4', 'detail1', 'body', 'body', 'detail1', 'detail1', 'body', 'detail6', 'detail6', 'detail6', 'detail6', 'body', 'highlight', 'highlight', 'highlight', 'belly', 'highlight', 'highlight', 'highlight', 'highlight', 'highlight', 'highlight', 'highlight', 'detail6', 'detail3', 'detail3', 'detail3', 'detail3', 'outline', _],
+/* row 18 */ [_, 'outline', 'outline', 'body', 'body', 'body', 'detail1', 'detail1', 'body', 'detail6', 'detail6', 'detail6', 'detail6', 'belly', 'highlight', 'bodyD', 'bodyD', 'highlight', 'highlight', 'highlight', 'highlight', 'highlight', 'detail6', 'detail6', 'detail6', 'detail3', 'body', 'body', 'outline', 'outline', _, _],
+/* row 19 */ [_, _, _, 'outline', 'outline', 'detail1', 'body', 'body', 'detail3', 'detail3', 'detail6', 'detail6', 'detail6', 'detail6', 'belly', 'body', 'body', 'highlight', 'highlight', 'highlight', 'highlight', 'belly', 'belly', 'detail3', 'detail3', 'detail3', 'detail3', 'outline', _, _, _, _],
+/* row 20 */ [_, _, _, 'outline', 'outline', 'detail1', 'body', 'body', 'detail3', 'detail3', 'detail6', 'detail6', 'detail6', 'detail6', 'belly', 'body', 'body', 'highlight', 'highlight', 'highlight', 'highlight', 'belly', 'belly', 'detail3', 'detail3', 'detail3', 'detail3', 'outline', _, _, _, _],
+/* row 21 */ [_, _, _, _, _, 'outline', 'outline', 'outline', 'body', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'body', 'body', 'body', 'belly', 'belly', 'belly', 'belly', 'belly', 'detail3', 'detail3', 'detail3', 'detail3', 'outline', _, _, _, _],
+/* row 22 */ [_, _, _, _, _, _, _, _, 'outline', 'body', 'body', 'body', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'body', 'body', 'belly', 'belly', 'belly', 'detail3', 'detail3', 'detail3', 'outline', 'outline', _, _, _, _, _],
+/* row 23 */ [_, _, _, _, _, _, 'outline', 'outline', 'detail5', 'bodyD', 'bodyD', 'bodyD', 'outline', 'body', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'body', 'body', 'outline', 'outline', 'outline', 'outline', _, _, _, _, _, _, _],
+/* row 24 */ [_, _, _, _, _, _, 'outline', 'outline', 'detail5', 'bodyD', 'bodyD', 'bodyD', 'outline', 'body', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'body', 'body', 'outline', 'outline', 'outline', 'outline', _, _, _, _, _, _, _],
+/* row 25 */ [_, _, _, _, _, _, 'outline', 'outline', 'outline', 'outline', 'outline', 'outline', 'detail7', 'outline', 'detail1', 'bodyD', 'bodyD', 'bodyD', 'detail3', 'outline', 'outline', _, _, _, _, _, _, _, _, _, _, _],
+/* row 26 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'detail7', 'bodyD', 'detail1', 'detail1', 'detail1', 'outline', _, _, _, _, _, _, _, _, _, _, _, _, _],
+/* row 27 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'body', 'detail7', 'detail7', 'outline', _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+/* row 28 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, 'outline', 'outline', 'outline', _, _, _, _, _, _, _, _, _, _, _, _, _, _, _],
+]

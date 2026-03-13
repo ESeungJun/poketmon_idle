@@ -4,11 +4,13 @@ import TodoList from './TodoList'
 import PointDisplay from './PointDisplay'
 import Shop from '../Shop/Shop'
 import PokemonStats from './PokemonStats'
+import Battle from './Battle'
+import PokeCenter from './PokeCenter'
 import StarterSelect from './StarterSelect'
 import Settings from './Settings'
 import useStore from '../../store/useStore'
 
-const TABS = ['홈', '샵', '스탯', '설정']
+const TABS = ['홈', '샵', '스탯', '배틀', '센터', '설정']
 
 export default function Panel() {
   const [tab, setTab] = useState(0)
@@ -24,7 +26,10 @@ export default function Panel() {
   return (
     <div style={styles.wrapper}>
       <div style={styles.titleBar}>
-        <span style={styles.appName}>🐾 Desktop Pet</span>
+        <div style={styles.appInfo}>
+          <img src="app-icon.png" alt="" style={styles.appIcon} />
+          <span style={styles.appName}>포켓몬키우기</span>
+        </div>
         <button onClick={handleClose} style={styles.closeBtn}>×</button>
       </div>
 
@@ -54,7 +59,9 @@ export default function Panel() {
             </div>
             {tab === 1 && <Shop />}
             {tab === 2 && <PokemonStats />}
-            {tab === 3 && <Settings />}
+            {tab === 3 && <Battle />}
+            <div style={{ display: tab === 4 ? 'block' : 'none' }}><PokeCenter /></div>
+            {tab === 5 && <Settings />}
           </div>
         </>
       )}
@@ -80,6 +87,17 @@ const styles = {
     borderBottom: '1px solid #2a2a3e',
     WebkitAppRegion: 'drag',
     flexShrink: 0,
+  },
+  appInfo: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px',
+  },
+  appIcon: {
+    width: '20px',
+    height: '20px',
+    imageRendering: 'pixelated',
+    borderRadius: '4px',
   },
   appName: {
     fontSize: '14px',

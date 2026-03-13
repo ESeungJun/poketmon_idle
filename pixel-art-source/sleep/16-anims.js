@@ -1,0 +1,43 @@
+// sleep/16-anims.js — pixel art (auto-converted from 21×20)
+const _ = null
+
+export const COLORS = {
+  outline: '#050500',
+  body: '#212121',
+  bodyL: '#4F4F4F',
+  bodyD: '#6E6A44',
+  belly: '#9C5038',
+  shadow: '#BC703F',
+  accent: '#A19156',
+  highlight: '#DD9823',
+  detail1: '#C16E78',
+  detail2: '#CAB95D',
+  detail3: '#E39FA0',
+  detail4: '#F6CB87',
+  detail5: '#F3EC94',
+  detail6: '#D5D5D7',
+}
+
+// grid: 21×20
+export const BASE_BODY = [
+/* row  0 */ [_, _, _, _, _, _, _, 'body', _, _, _, _, _, _, _, _, _, _, _, _, _],
+/* row  1 */ [_, _, 'body', 'body', 'body', _, 'body', 'highlight', 'body', 'detail6', _, _, _, _, _, _, _, _, _, _, _],
+/* row  2 */ [_, _, 'body', 'body', 'detail5', 'body', 'highlight', 'highlight', 'body', 'detail6', _, 'body', 'body', _, _, _, _, 'body', 'body', 'body', _],
+/* row  3 */ [_, _, 'body', 'body', 'detail5', 'body', 'highlight', 'highlight', 'body', 'detail6', _, 'body', 'body', _, _, _, _, 'body', 'body', 'body', _],
+/* row  4 */ [_, _, 'body', 'body', 'detail5', 'bodyL', 'highlight', 'highlight', 'bodyL', 'body', 'body', 'detail5', 'body', _, 'body', 'body', 'body', 'shadow', 'shadow', 'body', _],
+/* row  5 */ [_, _, 'body', 'body', 'detail5', 'shadow', 'highlight', 'highlight', 'shadow', 'detail4', 'detail5', 'detail5', 'body', 'body', 'shadow', 'bodyL', 'bodyL', 'shadow', 'bodyL', 'shadow', 'body'],
+/* row  6 */ [_, 'body', 'detail5', 'detail5', 'shadow', 'highlight', 'highlight', 'shadow', 'detail5', 'detail5', 'detail5', 'bodyL', 'shadow', 'shadow', 'bodyL', 'shadow', 'shadow', 'bodyL', 'shadow', 'shadow', 'body'],
+/* row  7 */ [_, 'body', 'detail5', 'detail5', 'shadow', 'highlight', 'shadow', 'detail5', 'detail5', 'detail2', 'detail2', 'detail2', 'belly', 'shadow', 'shadow', 'bodyL', 'bodyL', 'shadow', 'body', 'body', _],
+/* row  8 */ [_, 'body', 'detail5', 'detail5', 'highlight', 'shadow', 'detail5', 'detail2', 'detail2', 'shadow', 'shadow', 'bodyL', 'shadow', 'shadow', 'shadow', 'shadow', 'shadow', 'body', _, _, _],
+/* row  9 */ [_, _, 'outline', 'outline', 'highlight', 'detail5', 'detail2', 'bodyL', 'bodyL', 'belly', 'shadow', 'shadow', 'bodyL', 'belly', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'outline', _, _],
+/* row 10 */ [_, _, 'body', 'body', 'highlight', 'detail5', 'detail2', 'bodyL', 'bodyL', 'belly', 'shadow', 'shadow', 'bodyL', 'belly', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'body', _, _],
+/* row 11 */ [_, 'body', 'detail3', 'detail3', 'detail3', 'bodyL', 'bodyL', 'bodyL', 'body', 'bodyL', 'bodyL', 'shadow', 'belly', 'highlight', 'highlight', 'detail5', 'detail5', 'bodyL', 'detail1', 'body', _],
+/* row 12 */ ['body', 'detail3', 'detail3', 'detail3', 'detail3', 'detail3', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'bodyL', 'belly', 'highlight', 'highlight', 'highlight', 'shadow', 'shadow', 'detail5', 'bodyL', 'detail3', 'body'],
+/* row 13 */ ['body', 'detail3', 'detail1', 'detail1', 'detail1', 'detail1', 'detail5', 'detail5', 'detail5', 'bodyD', 'bodyL', 'shadow', 'highlight', 'highlight', 'shadow', 'detail2', 'detail2', 'detail2', 'bodyL', 'detail1', 'body'],
+/* row 14 */ [_, 'body', 'detail1', 'detail1', 'detail1', 'detail2', 'detail5', 'detail5', 'detail5', 'detail5', 'detail5', 'bodyL', 'bodyL', 'shadow', 'shadow', 'shadow', 'shadow', 'bodyL', 'body', 'body', _],
+/* row 15 */ [_, _, 'body', 'body', 'body', 'detail2', 'accent', 'detail2', 'detail2', 'accent', 'accent', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'body', 'body', 'body', _, _, _],
+/* row 16 */ [_, _, 'body', 'body', 'body', 'detail2', 'accent', 'detail2', 'detail2', 'accent', 'accent', 'detail2', 'bodyL', 'bodyL', 'bodyL', 'body', 'body', 'body', _, _, _],
+/* row 17 */ [_, _, _, _, _, 'body', 'body', 'body', 'detail2', 'detail3', 'detail3', 'detail1', 'detail1', 'body', 'body', _, _, _, _, _, _],
+/* row 18 */ [_, _, _, _, _, _, _, _, 'body', 'body', 'body', 'detail3', 'body', _, _, _, _, _, _, _, _],
+/* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, 'body', _, _, _, _, _, _, _, _, _],
+]

@@ -2,9 +2,9 @@
 const _ = null
 
 export const COLORS = {
-  outline: '#313131',
+  outline: '#191919',
   bodyD: '#42733A',
-  grayD: '#525252',
+  grayD: '#191919',
   nose: '#BD4A42',
   body: '#639C63',
   red: '#E64A42',
@@ -38,10 +38,10 @@ export const BASE_BODY = [
 ]
 
 export const SLEEP_COLORS = {
-  outline: '#1D1C18',
-  body: '#333333',
+  outline: '#191919',
+  body: '#191919',
   bodyL: '#43723C',
-  bodyD: '#525252',
+  bodyD: '#191919',
   belly: '#568855',
   shadow: '#B84844',
   accent: '#DF4841',
@@ -49,20 +49,18 @@ export const SLEEP_COLORS = {
   detail1: '#7BCA77',
   detail2: '#9CD699',
   detail3: '#BAB9B7',
-  detail4: '#A0C5D8',
-  detail5: '#C3DEEF',
   detail6: '#FFFFFF',
 }
 
 // grid: 21×20
 export const SLEEP_BODY = [
 /* row  0 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, 'body', _, 'body', _, _, _, _, _],
-/* row  1 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'body', 'detail1', 'body', 'detail1', 'body', 'detail5', _, _, _],
-/* row  2 */ [_, _, _, _, _, _, _, _, _, _, _, 'body', 'body', 'highlight', 'detail1', 'highlight', 'body', 'detail5', _, _, _],
-/* row  3 */ [_, _, _, _, _, _, _, _, 'outline', 'body', 'body', 'highlight', 'bodyL', 'bodyL', 'highlight', 'detail4', 'highlight', 'body', 'body', _, _],
+/* row  1 */ [_, _, _, _, _, _, _, _, _, _, _, _, 'body', 'detail1', 'body', 'detail1', 'body', _, _, _, _],
+/* row  2 */ [_, _, _, _, _, _, _, _, _, _, _, 'body', 'body', 'highlight', 'detail1', 'highlight', 'body', _, _, _, _],
+/* row  3 */ [_, _, _, _, _, _, _, _, 'outline', 'body', 'body', 'highlight', 'bodyL', 'bodyL', 'highlight', 'bodyL', 'highlight', 'body', 'body', _, _],
 /* row  4 */ [_, _, _, _, _, _, _, 'body', 'highlight', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'bodyL', 'body', _],
-/* row  5 */ [_, _, _, 'body', _, _, 'body', 'belly', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'detail5', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'bodyL', 'body'],
-/* row  6 */ [_, _, 'body', 'detail1', 'body', 'body', 'bodyD', 'bodyD', 'body', 'body', 'belly', 'highlight', 'highlight', 'detail5', 'highlight', 'highlight', 'highlight', 'bodyL', 'highlight', 'belly', 'body'],
+/* row  5 */ [_, _, _, 'body', _, _, 'body', 'belly', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'bodyL', 'body'],
+/* row  6 */ [_, _, 'body', 'detail1', 'body', 'body', 'bodyD', 'bodyD', 'body', 'body', 'belly', 'highlight', 'highlight', 'bodyL', 'highlight', 'highlight', 'highlight', 'bodyL', 'highlight', 'belly', 'body'],
 /* row  7 */ [_, _, 'body', 'detail1', 'detail1', 'detail1', 'detail1', 'detail1', 'belly', 'belly', 'body', 'body', 'body', 'highlight', 'highlight', 'highlight', 'highlight', 'bodyL', 'belly', 'belly', 'body'],
 /* row  8 */ [_, _, 'body', 'detail1', 'detail1', 'belly', 'bodyL', 'detail1', 'bodyL', 'bodyD', 'detail2', 'detail2', 'body', 'bodyL', 'bodyL', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'body'],
 /* row  9 */ [_, _, 'body', 'detail1', 'detail1', 'highlight', 'bodyL', 'detail1', 'body', 'bodyD', 'detail1', 'detail1', 'body', 'belly', 'belly', 'belly', 'belly', 'bodyL', 'belly', 'belly', 'body'],

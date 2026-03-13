@@ -2,6 +2,11 @@
 // electron-builder가 바이너리를 수정해서 크래시가 발생하므로
 // node_modules의 원본 Electron.app 전체를 기반으로 앱 번들을 재구성한다.
 
+if (process.platform !== 'darwin') {
+  console.log('macOS 전용 번들 픽스 스킵 (현재 플랫폼:', process.platform + ')');
+  process.exit(0);
+}
+
 const { execSync, spawnSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
@@ -9,6 +14,7 @@ const crypto = require('crypto');
 const os = require('os');
 
 const APP = path.resolve('release/mac-universal/poketmon-idle.app');
+const APP_ARM64 = path.resolve('release/mac-arm64/poketmon-idle.app');
 const NODE_ELECTRON = path.resolve('node_modules/electron/dist/Electron.app');
 const ENTITLEMENTS = path.resolve('entitlements.plist');
 
@@ -43,6 +49,15 @@ for (const suffix of ['', ' (GPU)', ' (Renderer)', ' (Plugin)']) {
 // app.asar 복원
 fs.copyFileSync(asarTmp, path.join(APP, 'Contents/Resources/app.asar'));
 fs.unlinkSync(asarTmp);
+
+// 커스텀 아이콘 복사 (Electron.app 원본 아이콘 덮어쓰기)
+const iconSrc = path.resolve('build/icon.icns');
+if (fs.existsSync(iconSrc)) {
+  fs.copyFileSync(iconSrc, path.join(APP, 'Contents/Resources/electron.icns'));
+  if (fs.existsSync(path.join(APP_ARM64, 'Contents/Resources'))) {
+    fs.copyFileSync(iconSrc, path.join(APP_ARM64, 'Contents/Resources/electron.icns'));
+  }
+}
 
 // Info.plist 설정
 const plistPath = path.join(APP, 'Contents/Info.plist');
