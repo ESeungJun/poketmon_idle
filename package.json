@@ -8,7 +8,7 @@
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && electron .",
     "build": "vite build && electron-builder",
-    "postbuild": "node scripts/fix-app-bundle.js",
+    "postbuild": "node scripts/fix-app-bundle.js && node scripts/create-dmg.js",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -48,12 +48,6 @@
           "arch": [
             "universal"
           ]
-        },
-        {
-          "target": "dir",
-          "arch": [
-            "arm64"
-          ]
         }
       ]
     },
@@ -62,6 +56,12 @@
       "target": [
         {
           "target": "dir",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "nsis",
           "arch": [
             "x64"
           ]
