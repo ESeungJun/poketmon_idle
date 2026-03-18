@@ -5,6 +5,7 @@
   "main": "electron/main.js",
   "scripts": {
     "dev": "concurrently \"npm run vite\" \"npm run electron:dev\"",
+    "dev:local": "bash scripts/dev.sh",
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && electron .",
     "build": "vite build && electron-builder",
