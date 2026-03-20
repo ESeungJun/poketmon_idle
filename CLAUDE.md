@@ -1,170 +1,107 @@
 # Desktop Pet — Claude 작업 가이드
 
-## 프로젝트 개요
-데스크탑 위에 항상 떠있는 픽셀아트 포켓몬 키우기 앱.
-집중모드(타이머)·할일 완료로 포인트를 모아 아이템 샵에서 캐릭터를 꾸밀 수 있다.
-스타터 포켓몬(이상해씨/파이리/꼬부기) 중 하나를 선택해 레벨업·진화시킨다.
-
-## 기술 스택
-- **Electron 28** — 투명 frameless 창, always-on-top, 멀티모니터
-- **React 18 + Vite 5** — UI
-- **Zustand 4** — 전역 상태
-- **electron-store 8** — 데이터 영구 저장 (메인 프로세스)
-- **HTML Canvas** — 픽셀아트 렌더링 (`imageRendering: pixelated`)
-
 ## 핵심 파일
 | 파일 | 역할 |
 |------|------|
 | `electron/main.js` | 메인 프로세스: BrowserWindow 2개, IPC, wander/drag 로직 |
 | `electron/preload.js` | contextBridge → `window.electronAPI` |
 | `src/App.jsx` | 라우팅: `?view=pet` / `?view=panel` |
-| `src/store/useStore.js` | Zustand: points, items, todos, petState |
+| `src/store/useStore.js` | Zustand: points, items, petState |
 | `src/data/pokemon.js` | 포켓몬 종 데이터 (스탯, 기술, 진화 정보) |
-| `src/components/Pet/pokemonDraw.js` | `drawPokemon`, `DEFAULT_ANIMATIONS` |
 | `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 (PixelArtCanvas / sprite img 분기) |
-| `src/components/Pet/1-anims.js` | 이상해씨 픽셀 데이터 (BASE_BODY, COLORS, SLEEP_BODY, SLEEP_COLORS) |
-| `src/components/Pet/4-anims.js` | 파이리 픽셀 데이터 |
-| `src/components/Pet/7-anims.js` | 꼬부기 픽셀 데이터 |
+| `src/components/Pet/pokemonDraw.js` | `drawPokemon`, `DEFAULT_ANIMATIONS` |
 | `src/components/Panel/PomodoroTimer.jsx` | 집중모드 타이머 (wall-clock 기반) |
-| `src/components/Panel/StarterSelect.jsx` | 스타터 포켓몬 선택 UI |
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
+| `src/components/Panel/StarterSelect.jsx` | 스타터 포켓몬 선택 UI |
+| `src/components/Panel/Box.jsx` | 보관함 UI (잡은 포켓몬 목록, 파트너 교체, 놓아주기) |
 | `src/components/Shop/items.js` | 아이템 카탈로그 |
 | `src/data/typeChart.js` | 18타입 상성 테이블 (`getTypeEffectiveness`) |
-| `src/components/Panel/Box.jsx` | 보관함 UI (잡은 포켓몬 목록, 파트너 교체, 놓아주기) |
 | `src/data/battleEngine.js` | 배틀 순수 로직: 스탯 계산, 데미지, 상태이상, `processTurn`, 포획 확률 |
 
+## 기술 스택
+Electron 28 · React 18 + Vite 5 · Zustand 4 · electron-store 8 · HTML Canvas (`imageRendering: pixelated`)
+
+## 창 구성
+- Pet 창: `100×100px`, `transparent: true`, `backgroundColor: '#00000000'`, `roundedCorners: false`
+- Panel 창: `380×580px`
+- 두 창은 IPC `state-update` / `state-sync`로 상태 동기화
+- 스타터 미선택 시 Pet 창 숨김 (`petSpeciesId` 없으면 `null` 반환)
+
 ## 크로스플랫폼 원칙
-이 프로젝트는 **macOS와 Windows 두 환경을 동시에 지원**한다. 코드 작성 시 항상 양쪽을 고려한다.
+macOS + Windows 동시 지원. 코드 작성 시 항상 양쪽을 고려한다.
 
-- macOS 전용 Electron API(`setVisibleOnAllWorkspaces`, `roundedCorners` 등)는 `process.platform !== 'win32'` 가드 필수
-- macOS 전용 shell 명령어(`codesign`, `PlistBuddy`, `pkill`, `open` 등)는 `process.platform !== 'darwin'` 가드 또는 플랫폼 분기 처리
-- 경로 구분자는 `path.join()`/`path.sep` 사용 (하드코딩 금지)
-- hooks·스크립트의 node 경로: `PATH="$PATH:/c/Program Files/nodejs:/usr/local/bin:/opt/homebrew/bin" node`
+- macOS 전용 API(`setVisibleOnAllWorkspaces`, `roundedCorners` 등)는 `process.platform !== 'win32'` 가드 필수
+- macOS 전용 shell 명령어는 `process.platform !== 'darwin'` 가드 또는 분기 처리
+- 경로 구분자: `path.join()`/`path.sep` (하드코딩 금지)
+- hooks·스크립트 node 경로: `PATH="$PATH:/c/Program Files/nodejs:/usr/local/bin:/opt/homebrew/bin" node`
 
-## 필수 규칙
+## 빌드 & 실행
 
-### 빌드 종류 (중요)
+`빌드해줘` 기본값은 `npm run dev`. `npm run build`(릴리즈)는 명시 요청 시에만.
 
-- **로컬 빌드** (`빌드해줘` 등 기본 요청): `npm run dev` — Vite HMR + Electron 동시 실행, 코드 변경 즉시 반영
-- **릴리즈 빌드** (`릴리즈 빌드해줘`라고 명시할 때만): `npm run build` — 인스톨러/패키지 생성
-
-> "빌드해줘"는 항상 `npm run dev`(로컬). `npm run build`(릴리즈)는 명시적 요청 시에만.
-
-### 빌드 및 검증 절차
-
-코드 수정 후 PR 올리기 전까지 반드시 아래 순서를 따른다:
-
-1. **빌드** — 성공 여부 확인
-2. **앱 실행** — 기존 프로세스 종료 후 실행, 변경사항 직접 확인
-3. **사용자 확인** — PR을 올려도 되는지 사용자에게 먼저 물어본다
-4. **PR 생성** — 승인 후에만 커밋·푸시·PR 진행
-
-> PR 없이 dev에 바로 push하는 경우(docs 등)도 사용자 확인 후 진행한다.
-
-**로컬 빌드 실행 (기본)**
 ```bash
-npm run dev
+npm run dev      # 로컬 (Vite HMR + Electron)
+npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 ```
 
-**릴리즈 빌드 결과물** (명시 요청 시에만): `release/mac-universal/poketmon-idle.app` (macOS) / `release/win-unpacked/` (Windows)
+앱 실행 전 기존 프로세스 먼저 종료:
+- **macOS**: `pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"`
+- **Windows**: `powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "release/win-unpacked/poketmon-idle.exe"`
 
-앱을 실행할 때는 기존 프로세스를 먼저 종료한다.
+코드 수정 후 PR 전 절차: **빌드 → 실행 확인 → 사용자 확인 → PR 생성**
+> dev 직접 push도 사용자 확인 후 진행.
 
-**macOS**
-```bash
-pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"
-```
-
-**Windows**
-```bash
-powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "release/win-unpacked/poketmon-idle.exe"
-```
-
-
-### 창 구성
-- Pet 창: 100×100px, `transparent: true`, `backgroundColor: '#00000000'`, `roundedCorners: false`
-- Panel 창: 380×580px, 일반 창
-- 두 창은 IPC `state-update` / `state-sync` 로 상태 동기화
-- 스타터 미선택 시 Pet 창은 표시하지 않음 (`petSpeciesId` 없으면 `null` 반환)
-
-### IPC 규칙
-- `ipcRenderer.sendSync` 사용 금지 → 반드시 `ipcRenderer.invoke` (async)
+## IPC 규칙
+- `ipcRenderer.sendSync` 금지 → `ipcRenderer.invoke` (async) 사용
 - `ipcRenderer.on` 등록 시 반드시 cleanup 함수 반환 (메모리 누수 방지)
-- store 키 allowlist: `ALLOWED_STORE_KEYS` (main.js) — 미허가 키 접근 차단
+- store 키 allowlist: `ALLOWED_STORE_KEYS` (main.js) — 미허가 키 차단
 - 상태 변경 시 `sendStateUpdate` 호출로 다른 창에 동기화
 
-### petState 종류
-- `idle` — 기본 상태 (wandering 활성)
+## petState
+- `idle` — 기본 (wandering 활성)
 - `happy` — 포인트 획득 시 2초간
-- `sleeping` — 집중모드 타이머 실행 중 (wandering 비활성)
+- `sleeping` — 집중모드 실행 중 (wandering 비활성)
 - `evolving` — 진화 연출 3초간
 
-### 멀티모니터 드래그
-- drag 시작: `setVisibleOnAllWorkspaces(false)` → 다른 디스플레이로 `setPosition()` 가능
-- drag 종료: `setVisibleOnAllWorkspaces(true)` + `setBackgroundColor('#00000000')` + `force-remount` IPC (보조 디스플레이 흰 배경 방지)
-- `cachedDisplay`: wander 루프에서 디스플레이 재계산 최소화 (경계 ±20px에서만 갱신)
+## 기타 아키텍처 규칙
+- **타이머**: `setInterval` 틱 카운팅 금지 → `Date.now()` wall-clock 기반 (Chromium 스로틀링 우회)
+- **멀티모니터 드래그**: drag 시작 시 `setVisibleOnAllWorkspaces(false)`, 종료 시 `true` + `setBackgroundColor('#00000000')` + `force-remount` IPC. `cachedDisplay`로 경계 ±20px에서만 재계산.
 
-### 타이머
-`setInterval` 틱 카운팅 금지 → `Date.now()` wall-clock 기반으로 계산 (패널 숨김 시 Chromium 스로틀링 우회)
+## 픽셀아트 시스템
 
-### 포켓몬 픽셀 데이터 구조
-각 포켓몬 anims 파일에서 export:
-- `COLORS` / `SLEEP_COLORS` — 색상 팔레트
-- `BASE_BODY` — 기본 상태 픽셀 그리드
-- `SLEEP_BODY` — 수면(집중모드) 상태 픽셀 그리드
+### anims 파일 구조
+각 포켓몬 `*-anims.js`에서 export: `COLORS`, `SLEEP_COLORS`, `BASE_BODY`, `SLEEP_BODY`
 
 PetCanvas 렌더링 분기:
-1. `speciesId`가 `PIXEL_ART` 맵에 있으면 → `PixelArtCanvas` (커스텀 도트)
-2. `dexNum`이 있으면 → PokeAPI CDN 스프라이트 img 태그
+1. `PIXEL_ART` 맵에 `speciesId` 있으면 → `PixelArtCanvas` (커스텀 도트)
+2. `dexNum` 있으면 → PokeAPI CDN 스프라이트 img 태그
 3. 둘 다 없으면 → `null`
 
-> `animations.js` (팬텀 레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 파일 추가 후 `PIXEL_ART` 맵에 등록.
+> `animations.js` (레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 추가 후 `PIXEL_ART` 맵에 등록.
 
-#### 픽셀 데이터 작성 규칙
-- **outline 색상**: 반드시 `'#191919'` 고정 (모든 anims 파일 통일)
-- **외곽 픽셀**: 스프라이트 가장자리(null과 맞닿는 픽셀)는 `'body'` 대신 `'outline'` 사용
-- **그리드 크기**: stage1/2는 20×20 내외, stage3는 32열 고정 (rows는 스프라이트에 맞게 조정)
-  - 6-anims.js (리자몽): 32×27
-  - 3-anims.js (이상해꽃): 32×25
-  - 9-anims.js (거북왕): 32×29
+### 작성 규칙
+- outline 색상: `'#191919'` 고정 (모든 anims 파일 통일)
+- 외곽 픽셀 (null과 맞닿는 픽셀): `'body'` 대신 `'outline'`
+- 그리드: stage1/2는 20×20 내외, stage3는 32열 고정 (rows는 스프라이트에 맞게)
+  - 6-anims.js (리자몽): 32×27 / 3-anims.js (이상해꽃): 32×25 / 9-anims.js (거북왕): 32×29
 
-#### 픽셀아트 미리보기 서버
+### 미리보기 서버
 ```bash
-cd pixel-art-source
-node generate-preview.js
-# → http://localhost:3131
+cd pixel-art-source && node generate-preview.js   # → http://localhost:3131
 ```
-- anims 파일 수정 후 F5 새로고침하면 즉시 반영
-- 픽셀 hover 시 [row, col] 좌표 + 색상키 표시, 클릭하면 클립보드 복사
-- Normal / Sleep 모드 전환, 그리드 오버레이, 스케일 슬라이더 지원
+anims 파일 수정 후 F5 새로고침으로 즉시 반영. 픽셀 hover 시 좌표·색상키 표시.
 
-## 새 포켓몬 픽셀아트 추가 절차
+## 새 포켓몬 추가
+전체 과정은 `/add-pokemon-sprite` 스킬로 진행.
 
-전체 과정은 `/add-pokemon-sprite` 스킬로 진행한다.
+**창 크기**: stage1 = 100px / stage2 = 120px / stage3 = 160px
+진화 시 `petSpeciesId` 변경 → `App.jsx` `resizePetWindow` useEffect가 자동 조정.
 
-### 현재 창 크기 기준
-| 단계 | 창 크기 | 배율 |
-|------|---------|------|
-| stage1 (스타터) | 100px | 1× |
-| stage2 | 120px | 1.2× |
-| stage3 | 160px | 1.6× |
+**진화 시 petStats 보존**: `confirmEvolution`은 `speciesId`만 교체. `natureName`, `abilityName`, `ivs`, `moves`, `learnedPool` 유지.
 
-진화 시 `petSpeciesId` 변경 → `App.jsx`의 `resizePetWindow` useEffect가 자동으로 창 크기 조정.
+**스탯창 이미지**: `size={Math.round(getWinSize(petSpeciesId) * 0.56)}` (stage1=56px / stage2=67px / stage3=90px)
 
-#### 진화 시 petStats 보존
-`confirmEvolution` (useStore.js)은 `petStats`의 `speciesId`만 교체하고 나머지는 유지한다:
-- **유지**: `natureName`, `abilityName`, `ivs`, `moves`, `learnedPool`
-- **교체**: `speciesId` → `newSpeciesId`
-- 포켓몬 게임과 동일하게 진화해도 성격·특성·개체값은 바뀌지 않음
-
-#### PokemonStats 스탯창 이미지 크기
-스탯창의 픽셀아트 미리보기는 진화 단계에 비례해 크기 조정:
-```js
-size={Math.round(getWinSize(petSpeciesId) * 0.56)}
-// stage1 → 56px, stage2 → 67px, stage3 → 90px
-```
-
-### 현재 등록된 포켓몬
+## 현재 등록된 포켓몬
 | speciesId | 파일 | 단계 |
 |-----------|------|------|
 | bulbasaur | 1-anims.js | stage1 |
@@ -178,66 +115,33 @@ size={Math.round(getWinSize(petSpeciesId) * 0.56)}
 | blastoise | 9-anims.js | stage3 |
 
 ## 브랜치 전략
-- `master` — 프로덕션. 직접 push 불가
-- `dev` — 통합 브랜치. 직접 push 불가
-- `feature/*` — 작업 브랜치. dev에서 분기, PR로 dev에 병합
+- `master` — 프로덕션 (직접 push 불가)
+- `dev` — 통합 브랜치 (직접 push 불가)
+- `feature/*` — 작업 브랜치. `bash scripts/new-feature.sh <name>`으로 생성
 
-새 기능 작업:
-```bash
-bash scripts/new-feature.sh <feature-name>
-```
-
-## PR 전 문서 최신화 체크리스트
-
-커밋·PR을 올리기 전에 아래 두 파일이 실제 구현 상태와 일치하는지 반드시 확인하고 업데이트한다.
-
-### ROADMAP.md
-- 이번 작업으로 완료된 항목은 `- [ ]` → `- [x]` 로 변경
-- 새로 추가된 기능/데이터가 로드맵에 없으면 적절한 Phase에 항목 추가
-
-### CLAUDE.md
-- 새 포켓몬이 추가됐으면 "현재 등록된 포켓몬" 표에 행 추가
-- 새 파일이 추가됐으면 "핵심 파일" 표에 행 추가
-- 새 공식 한국어 명칭이 확인됐으면 소스 코드에 반영 확인
-
-> 문서 업데이트는 별도 커밋 없이 기능 커밋에 함께 포함한다.
+## PR 전 체크리스트
+- `ROADMAP.md`: 완료 항목 `[ ]` → `[x]`, 신규 항목 추가
+- `CLAUDE.md`: 새 포켓몬·핵심 파일 추가 시 표 업데이트
+- 문서 업데이트는 기능 커밋에 함께 포함 (별도 커밋 불필요)
 
 ## 포켓몬 데이터 규칙
 
-### 정보 검증 (필수)
+포켓몬 이름·기술·아이템·타입·스탯 추가·수정 시 **반드시 `pokemon-expert` 에이전트로 검증**. 기억·추측으로 작성 금지.
 
-포켓몬 이름·기술·아이템·타입·스탯 등 **포켓몬에 관한 모든 정보**를 추가·수정·언급할 때는 **반드시 `pokemon-expert` 에이전트를 사용해 사실 확인**한다. 기억이나 추측으로 작성하지 않는다.
-
-- 이름·기술명·아이템명 → `pokemon-expert` 에이전트 또는 `/verify-pokemon-ko` 스킬로 검증
-- 스탯·타입·특성·진화 조건 등 게임 데이터 → `pokemon-expert` 에이전트로 PokeAPI 조회
-- 아무리 확실해 보여도 에이전트 확인 없이 포켓몬 데이터를 작성하지 않는다
-
-### 한국어 공식 명칭
-
-- 기준: PokeAPI names 배열의 `"ko"` 항목
-- 직역·영어 음차·일본어 음차 사용 금지 (예: `보디슬램` ❌ → `누르기` ✓, `겐가르` ❌ → `팬텀` ✓)
-
-### 기술 데이터 기준 세대
-
-- **7세대(울트라썬·울트라문, USUM)** 기준. 7세대에 없는 포켓몬은 최초 등장 세대 기준.
-- `pokemon-expert` 에이전트 요청 시 **한 번에 몰아서 요청** (포켓몬별 분리 금지, 토큰 절약)
-
-## 로드맵
-작업 전 `ROADMAP.md`를 확인하고, 완료된 항목은 `- [ ]` → `- [x]` 로 업데이트한다.
+- 이름·기술명·아이템명 → `/verify-pokemon-ko` 스킬 또는 `pokemon-expert` 에이전트
+- **한국어 기준**: PokeAPI `"ko"` 항목 (직역·영어 음차·일본어 음차 금지. 예: `보디슬램` ❌ → `누르기` ✓)
+- **기술 데이터 기준**: 7세대(USUM). 에이전트 요청은 포켓몬별 분리 금지, 한 번에 몰아서.
 
 ## 작업 스타일
-- 수정 범위는 요청한 것만. 불필요한 리팩터링·주석·타입 추가 하지 않는다.
-- 코드 읽기 전에 수정 제안하지 않는다.
-- 답변은 짧고 직관적으로. 긴 설명보다 코드와 결과 중심.
-- 빌드 후 결과(성공/실패)를 항상 보고한다.
+- 요청한 것만 수정. 불필요한 리팩터링·주석·타입 추가 금지.
+- 코드 읽기 전에 수정 제안 금지.
+- 빌드 결과(성공/실패) 항상 보고.
 
 ### 코드 리뷰 (필수)
-코드를 수정한 뒤에는 **반드시** 수정된 로직에 대한 코드 리뷰를 출력한다.
-
-리뷰 항목:
+코드 수정 후 반드시 리뷰 출력:
 - **변경 요약**: 무엇을 왜 바꿨는지
-- **핵심 로직**: 수정된 부분의 동작 방식 (복잡한 로직은 단계별로 설명)
-- **부작용 / 주의사항**: 다른 코드에 미치는 영향, 엣지 케이스
+- **핵심 로직**: 동작 방식 (복잡한 로직은 단계별)
+- **부작용 / 주의사항**: 다른 코드 영향, 엣지 케이스
 - **검증**: 빌드·실행으로 확인한 내용
 
-단순 텍스트·스타일 변경은 간략하게, 로직·알고리즘·IPC·상태 흐름 변경은 상세하게 작성한다.
+단순 텍스트·스타일 변경은 간략하게, 로직·IPC·상태 흐름 변경은 상세하게.
