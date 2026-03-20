@@ -2,7 +2,7 @@ import { useState } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from './items'
 
-const TABS = ['도구', '강화 아이템', '기술머신']
+const TABS = ['몬스터볼', '도구', '강화 아이템', '기술머신']
 
 export default function Shop() {
   const [tab, setTab] = useState(0)
@@ -12,10 +12,12 @@ export default function Shop() {
   const equippedTool   = useStore(s => s.equippedTool)
   const petEVs         = useStore(s => s.petEVs)
   const ownedTMs       = useStore(s => s.ownedTMs)
+  const ballInventory  = useStore(s => s.ballInventory)
   const purchaseItem   = useStore(s => s.purchaseItem)
   const equipTool      = useStore(s => s.equipTool)
   const applyVitamin   = useStore(s => s.applyVitamin)
   const buyTM          = useStore(s => s.buyTM)
+  const buyBall        = useStore(s => s.buyBall)
 
   const totalEVs = Object.values(petEVs).reduce((s, v) => s + v, 0)
 
@@ -35,8 +37,42 @@ export default function Shop() {
         ))}
       </div>
 
-      {/* ── 도구 탭 ── */}
+      {/* ── 몬스터볼 탭 ── */}
       {tab === 0 && (
+        <div style={st.section}>
+          <div style={st.sectionDesc}>
+            배틀 중 야생 포켓몬에게 사용 · 볼 종류에 따라 포획률 상승
+          </div>
+          <div style={st.grid2}>
+            {SHOP_ITEMS.filter(i => i.category === 'ball').map(item => {
+              const count = ballInventory?.[item.id] || 0
+              const canAfford = points >= item.cost
+              return (
+                <div key={item.id} style={st.tmCard}>
+                  <div style={st.tmHeader}>
+                    <span style={st.tmEmoji}>{item.emoji}</span>
+                    <span style={st.tmName}>{item.name}</span>
+                    <span style={{ fontSize: '11px', color: '#FFD700', marginLeft: 'auto' }}>×{count}</span>
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#888', marginBottom: '6px' }}>{item.description}</div>
+                  <button
+                    onClick={() => buyBall(item.id, item.cost)}
+                    disabled={!canAfford}
+                    style={{
+                      ...st.btn,
+                      background: canAfford ? '#667eea' : '#2a2a3e',
+                      color: canAfford ? '#FFF' : '#555',
+                      cursor: canAfford ? 'pointer' : 'not-allowed',
+                    }}>⭐ {item.cost.toLocaleString()}</button>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
+
+      {/* ── 도구 탭 ── */}
+      {tab === 1 && (
         <div style={st.section}>
           <div style={st.sectionDesc}>
             한 번에 하나만 지닐 수 있습니다 · 스탯 탭에서 효과 확인
@@ -82,7 +118,7 @@ export default function Shop() {
       )}
 
       {/* ── 강화 아이템 탭 ── */}
-      {tab === 1 && (
+      {tab === 2 && (
         <div style={st.section}>
           <div style={st.evTotal}>
             총 EV: {totalEVs} / 510
@@ -131,7 +167,7 @@ export default function Shop() {
       )}
 
       {/* ── 기술머신 탭 ── */}
-      {tab === 2 && (
+      {tab === 3 && (
         <div style={st.section}>
           <div style={st.sectionDesc}>
             구매 후 스탯 탭에서 사용 가능
