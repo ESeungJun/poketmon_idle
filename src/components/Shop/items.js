@@ -1,4 +1,9 @@
 export const SHOP_ITEMS = [
+  // ── 몬스터볼 ───────────────────────────────────────────────────────
+  { id: 'ball_pokeball',  name: '몬스터볼',  category: 'ball', emoji: '🔴', cost: 30,  ballModifier: 1,   description: '야생 포켓몬을 잡을 수 있는 볼' },
+  { id: 'ball_superball', name: '슈퍼볼',    category: 'ball', emoji: '🔵', cost: 80,  ballModifier: 1.5, description: '몬스터볼보다 잡기 쉬운 볼' },
+  { id: 'ball_hyperball', name: '하이퍼볼',  category: 'ball', emoji: '🟡', cost: 150, ballModifier: 2,   description: '슈퍼볼보다 잡기 쉬운 볼' },
+
   // ── 도구 (지니기 아이템) ────────────────────────────────────────────
   { id: 'tool_lifejewel',   name: '생명의구슬',    category: 'tool', emoji: '🔮', cost: 500, effect: '기술 위력 ×1.3', description: '매 턴 최대HP 1/10 감소' },
   { id: 'tool_specs',       name: '구애안경',      category: 'tool', emoji: '👓', cost: 400, effect: '특수공격 ×1.5', description: '처음 선택한 기술만 사용 가능' },

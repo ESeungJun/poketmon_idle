@@ -30,7 +30,8 @@
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
 | `src/components/Shop/items.js` | 아이템 카탈로그 |
 | `src/data/typeChart.js` | 18타입 상성 테이블 (`getTypeEffectiveness`) |
-| `src/data/battleEngine.js` | 배틀 순수 로직: 스탯 계산, 데미지, 상태이상, `processTurn` |
+| `src/components/Panel/Box.jsx` | 보관함 UI (잡은 포켓몬 목록, 파트너 교체, 놓아주기) |
+| `src/data/battleEngine.js` | 배틀 순수 로직: 스탯 계산, 데미지, 상태이상, `processTurn`, 포획 확률 |
 
 ## 크로스플랫폼 원칙
 이 프로젝트는 **macOS와 Windows 두 환경을 동시에 지원**한다. 코드 작성 시 항상 양쪽을 고려한다.

@@ -327,6 +327,7 @@ const ALLOWED_STORE_KEYS = new Set([
   'points', 'totalPointsEarned', 'purchasedItems',
   'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
   'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+  'ballInventory', 'caughtPokemon',
 ])
 
 ipcMain.handle('get-store', (_, key) => {

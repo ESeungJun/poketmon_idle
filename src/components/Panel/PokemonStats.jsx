@@ -229,8 +229,8 @@ export default function PokemonStats() {
                 autoFocus maxLength={10} />
             ) : (
               <div style={s.nameRow}>
-                <span style={s.name}>{petName || pokemon.speciesName}</span>
-                <button onClick={() => { setNameInput(petName || pokemon.speciesName); setEditing(true) }} style={s.editBtn}>✏️</button>
+                <span style={s.name}>{petStats.nickname || petName || pokemon.speciesName}</span>
+                <button onClick={() => { setNameInput(petStats.nickname || petName || pokemon.speciesName); setEditing(true) }} style={s.editBtn}>✏️</button>
               </div>
             )}
             <div style={s.dex}>#{String(pokemon.dexNum).padStart(3, '0')} · Lv.{currentLevel}</div>
