@@ -28,7 +28,6 @@ const DEFAULT_STATE = {
   points: 0,
   totalPointsEarned: 0,
   purchasedItems: [],
-  todos: [],
   pomodoroHistory: [],
   petState: 'idle', // idle | happy | sleeping | evolving
   lastActiveTime: Date.now(),
@@ -44,13 +43,36 @@ const DEFAULT_STATE = {
   wildBattle: null, // in-memory only, not persisted
 }
 
+// 저장된 데이터의 타입을 검증해 DEFAULT_STATE 기준으로 안전한 값만 반환
+// config.json 직접 편집 등으로 잘못된 타입이 유입되는 것을 방어
+function validateStore(saved) {
+  const d = DEFAULT_STATE
+  const v = { ...d }
+  if (typeof saved.points === 'number' && isFinite(saved.points))           v.points = Math.max(0, saved.points)
+  if (typeof saved.totalPointsEarned === 'number' && isFinite(saved.totalPointsEarned)) v.totalPointsEarned = Math.max(0, saved.totalPointsEarned)
+  if (typeof saved.totalWorkMinutes === 'number' && isFinite(saved.totalWorkMinutes))   v.totalWorkMinutes  = Math.max(0, saved.totalWorkMinutes)
+  if (Array.isArray(saved.purchasedItems))  v.purchasedItems  = saved.purchasedItems.filter(x => typeof x === 'string')
+  if (Array.isArray(saved.pomodoroHistory)) v.pomodoroHistory = saved.pomodoroHistory
+  if (Array.isArray(saved.ownedTMs))        v.ownedTMs        = saved.ownedTMs.filter(x => typeof x === 'string')
+  if (Array.isArray(saved.caughtPokemon))   v.caughtPokemon   = saved.caughtPokemon
+  if (typeof saved.petSpeciesId === 'string' || saved.petSpeciesId === null) v.petSpeciesId = saved.petSpeciesId
+  if (typeof saved.petName === 'string' || saved.petName === null)           v.petName      = saved.petName
+  if (typeof saved.equippedTool === 'string' || saved.equippedTool === null) v.equippedTool = saved.equippedTool
+  if (saved.petStats && typeof saved.petStats === 'object')                  v.petStats     = saved.petStats
+  if (saved.petEVs   && typeof saved.petEVs   === 'object')                  v.petEVs       = { ...d.petEVs, ...saved.petEVs }
+  if (saved.ballInventory && typeof saved.ballInventory === 'object')        v.ballInventory = { ...d.ballInventory, ...saved.ballInventory }
+  const VALID_STATES = new Set(['idle', 'happy', 'sleeping', 'evolving'])
+  if (typeof saved.petState === 'string' && VALID_STATES.has(saved.petState)) v.petState = saved.petState
+  return v
+}
+
 // 앱 시작 시 electron-store에서 저장된 데이터를 로드
 // electron 환경이 아니면(브라우저 개발 등) 기본값 반환
 async function loadFromStore() {
   if (!window.electronAPI) return DEFAULT_STATE
   try {
     const saved = await window.electronAPI.getAllStore()
-    return saved && Object.keys(saved).length > 0 ? { ...DEFAULT_STATE, ...saved } : DEFAULT_STATE
+    return saved && Object.keys(saved).length > 0 ? validateStore(saved) : DEFAULT_STATE
   } catch {
     return DEFAULT_STATE
   }
@@ -222,40 +244,21 @@ const useStore = create((set, get) => ({
     return true
   },
 
-  addTodo: (text) => {
-    const { todos } = get()
-    const newTodo = {
-      id: Date.now(),
-      text,
-      completed: false,
-      createdAt: Date.now(),
+  // 진화 아이템 사용: 현재 펫의 evolveItem과 일치하면 진화 시작 + 아이템 소모
+  useEvoStone: (itemId) => {
+    const { purchasedItems, petSpeciesId, petState } = get()
+    if (!purchasedItems.includes(itemId)) return false
+    if (petState === 'evolving') return false
+    const pokemon = getPokemon(petSpeciesId)
+    if (!pokemon || pokemon.evolveItem !== itemId || !pokemon.evolveTo) return false
+    const prevState = petState === 'happy' ? 'idle' : petState
+    const newPurchased = purchasedItems.filter(id => id !== itemId)
+    set({ purchasedItems: newPurchased, petState: 'evolving', preEvolvingState: prevState })
+    saveToStore('purchasedItems', newPurchased)
+    if (window.electronAPI) {
+      window.electronAPI.sendStateUpdate({ petState: 'evolving', purchasedItems: newPurchased })
     }
-    const newTodos = [...todos, newTodo]
-    set({ todos: newTodos })
-    saveToStore('todos', newTodos)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
-  },
-
-  completeTodo: (id) => {
-    const { todos, addPoints } = get()
-    const todo = todos.find(t => t.id === id)
-    if (!todo || todo.completed) return
-
-    const newTodos = todos.map(t =>
-      t.id === id ? { ...t, completed: true, completedAt: Date.now() } : t
-    )
-    set({ todos: newTodos, lastActiveTime: Date.now() })
-    saveToStore('todos', newTodos)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
-    addPoints(30)
-  },
-
-  deleteTodo: (id) => {
-    const { todos } = get()
-    const newTodos = todos.filter(t => t.id !== id)
-    set({ todos: newTodos })
-    saveToStore('todos', newTodos)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ todos: newTodos })
+    return true
   },
 
   addPomodoroSession: () => {
@@ -549,6 +552,8 @@ const useStore = create((set, get) => ({
         phase: 'selecting',
         logLines: [`야생 ${wildName}이(가) 나타났다!`],
         result: null,
+        weather: null,
+        weatherTurns: 0,
       },
     })
   },
@@ -583,13 +588,15 @@ const useStore = create((set, get) => ({
 
     const newBattle = {
       ...wildBattle,
-      wild:     frame.wild,
-      player:   frame.player,
-      logLines: newLogLines,
-      phase:    frame.phase,
-      result:   frame.result,
-      ballState: frame.ballState ?? null,
-      frameIndex: nextIdx,
+      wild:         frame.wild,
+      player:       frame.player,
+      weather:      frame.weather ?? wildBattle.weather ?? null,
+      weatherTurns: frame.weatherTurns ?? wildBattle.weatherTurns ?? 0,
+      logLines:     newLogLines,
+      phase:        frame.phase,
+      result:       frame.result,
+      ballState:    frame.ballState ?? null,
+      frameIndex:   nextIdx,
       pendingFrames: isLast ? null : pendingFrames,
       // Increment turn counter when a selecting frame is the last one
       turn: (isLast && frame.phase === 'selecting') ? wildBattle.turn + 1 : wildBattle.turn,
@@ -683,7 +690,7 @@ const useStore = create((set, get) => ({
   syncFromOtherWindow: (data) => {
     const allowed = [
       'points', 'totalPointsEarned', 'purchasedItems',
-      'todos', 'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
+      'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
       'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
       'ballInventory', 'caughtPokemon',
     ]
