@@ -502,10 +502,15 @@ export function getUpcomingMoves(pokemon, level) {
 }
 
 // Resolve a move name to full move data.
-// Searches species baseMoves first, then TM items list.
+// Searches: current species baseMoves → evolution line baseMoves → TM items list
 export function resolveMove(moveName, pokemon, shopItems) {
   const base = pokemon.baseMoves.find(m => m.name === moveName)
   if (base) return base
+  // 진화 라인 전체 검색 (이전 진화체에서 배운 기술이 현재 종 baseMoves에 없을 수 있음)
+  for (const [, poke] of Object.entries(POKEMON_DB)) {
+    const found = poke.baseMoves.find(m => m.name === moveName)
+    if (found) return found
+  }
   const tm = shopItems.find(i => i.category === 'tm' && i.moveName === moveName)
   if (tm) return { name: tm.moveName, type: tm.moveType, category: tm.moveCategory, power: tm.movePower }
   return null
