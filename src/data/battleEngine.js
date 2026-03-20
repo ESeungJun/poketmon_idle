@@ -1,4 +1,4 @@
-import { getPokemon, MOVE_META, getMovesUpToLevel, calcLevel, getMaxPP } from './pokemon'
+import { getPokemon, MOVE_META, getMovesUpToLevel, calcLevel, getMaxPP, resolveMove } from './pokemon'
 import { getTypeEffectiveness } from './typeChart'
 
 // Auto-generate petStats when null (same logic as PokemonStats.jsx generate())
@@ -165,6 +165,8 @@ export function buildWildBattler(speciesId, level) {
   // Take up to last 4 moves (most recently learned are more powerful)
   const moves = learnedMoves.slice(-4)
   if (!moves.length && pokemon.baseMoves[0]) moves.push(pokemon.baseMoves[0].name)
+  const nature = NATURES[Math.floor(Math.random() * NATURES.length)]
+  const ability = pokemon.abilities?.[Math.floor(Math.random() * (pokemon.abilities?.length || 1))]
   return {
     speciesId,
     level,
@@ -174,6 +176,10 @@ export function buildWildBattler(speciesId, level) {
     hp: maxHP,
     stats,
     moves,
+    ivs,
+    natureName: nature.name,
+    abilityName: ability?.name ?? null,
+    learnedPool: [...learnedMoves],
     stages: { ...INITIAL_STAGES },
     status: null,
     statusTurns: 0,
@@ -195,13 +201,10 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEa
     stats[k] = calcStat(bs[k], ivs[k] || 0, evs[k] || 0, k, nature, playerLevel)
   })
   // Resolve move names → full move data (power, type, category)
+  // resolveMove: 현재 종 → 전체 DB → TM 순서로 검색 (진화 전 기술도 찾을 수 있도록)
   const resolvedMoves = (petStats.moves || []).map(name => {
-    const base = pokemon.baseMoves.find(m => m.name === name)
-    if (base) return base
-    if (shopItems) {
-      const tm = shopItems.find(i => i.category === 'tm' && i.moveName === name)
-      if (tm) return { name, type: tm.moveType, category: tm.moveCategory, power: tm.movePower }
-    }
+    const found = resolveMove(name, pokemon, shopItems)
+    if (found) return found
     return null
   }).filter(Boolean)
   // Build movePP: use stored value or initialize to max
@@ -518,4 +521,120 @@ export function processTurn(battle, playerMoveName) {
     frames[frames.length - 1] = { ...frames[frames.length - 1], phase: 'selecting' }
   }
   return { frames, pointsGained }
+}
+
+// ── Catch rate calculation ──────────────────────────────────────
+// HP가 낮을수록, 볼 보정이 높을수록 포획 확률 상승
+// 최소 5%, 최대 95%
+export function calcCatchRate(wildHP, wildMaxHP, ballModifier) {
+  const BASE_RATE = 0.4
+  const hpFactor = 1 - (wildHP / wildMaxHP)  // 0 at full HP, ~1 at 1 HP
+  const rate = (0.1 + hpFactor * 0.9) * ballModifier * BASE_RATE
+  return Math.min(0.95, Math.max(0.05, rate))
+}
+
+// ── Wild-only turn (after failed ball throw) ────────────────────
+// 볼 투척 실패 시 야생 포켓몬만 반격하는 턴 (플레이어 공격 없음)
+export function processWildOnlyTurn(battle) {
+  const { wild, player } = battle
+  const wildPokemon = getPokemon(wild.speciesId)
+  const myPokemon   = getPokemon(player.speciesId)
+  if (!wildPokemon || !myPokemon) return { frames: [], pointsGained: 0 }
+
+  let curWild   = { ...wild }
+  let curPlayer = { ...player }
+  const frames  = []
+
+  const wildMoveName = wild.moves.length > 0
+    ? wild.moves[Math.floor(Math.random() * wild.moves.length)]
+    : null
+  const wildMoveData = wildMoveName ? wildPokemon.baseMoves.find(m => m.name === wildMoveName) : null
+
+  const snap = (addLog, phase = 'animating', result = null) => {
+    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, phase, result })
+  }
+
+  if (!wildMoveData) {
+    snap(null, 'selecting')
+    return { frames, pointsGained: 0 }
+  }
+
+  // Wild status check
+  const wCheck = checkStatusAction(curWild.status, curWild.statusTurns)
+  if (wCheck.cleared) {
+    const old = curWild.status
+    curWild = { ...curWild, status: null, statusTurns: 0 }
+    snap(`야생 ${wildPokemon.speciesName}의 ${STATUS_KO[old]}이(가) 풀렸다!`)
+  } else {
+    curWild = { ...curWild, statusTurns: wCheck.newTurns }
+  }
+
+  if (wCheck.prevented) {
+    const msg = { sleep: '잠들어 있다!', paralysis: '마비로 움직일 수 없다!', freeze: '꽁꽁 얼어 있다!' }
+    snap(`야생 ${wildPokemon.speciesName}은(는) ${msg[curWild.status] || '움직일 수 없다!'}`, 'selecting')
+    return { frames, pointsGained: 0 }
+  }
+
+  snap(`야생 ${wildPokemon.speciesName}은(는) ${wildMoveName}을(를) 사용했다!`)
+
+  const wildMoveMeta = MOVE_META[wildMoveName]
+  const wildMoveAcc = wildMoveMeta?.accuracy ?? 100
+  if (wildMoveAcc !== null) {
+    const accMul = getAccEvaMultiplier(curWild.stages?.['명중률'] ?? 0)
+    const evaMul = getAccEvaMultiplier(curPlayer.stages?.['회피율'] ?? 0)
+    const finalAcc = wildMoveAcc * (accMul / evaMul)
+    if (Math.random() * 100 >= finalAcc) {
+      snap('빗나갔다!', 'selecting')
+      return { frames, pointsGained: 0 }
+    }
+  }
+
+  if (wildMoveData.category !== '변화' && wildMoveData.power) {
+    const atkStat = wildMoveData.category === '물리' ? getEffectiveStat(curWild, '공격')   : getEffectiveStat(curWild, '특수공격')
+    const defStat = wildMoveData.category === '물리' ? getEffectiveStat(curPlayer, '방어') : getEffectiveStat(curPlayer, '특수방어')
+    const typeEff = getTypeEffectiveness(wildMoveData.type, myPokemon.types)
+    if (typeEff === 0) {
+      snap('효과가 없다!', 'selecting')
+    } else {
+      const dmg = Math.max(1, Math.floor(wildMoveData.power * (atkStat / defStat) * typeEff * 0.5))
+      if (typeEff > 1)      snap('효과는 굉장했다!')
+      else if (typeEff < 1) snap('효과가 별로인 것 같다...')
+      curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
+      snap(null)
+      const wEff = getMoveStatusEffect(wildMoveName)
+      if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
+        curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+        snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
+      }
+      if (curPlayer.hp <= 0) {
+        snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+        return { frames, pointsGained: 0 }
+      }
+    }
+  } else if (wildMoveData.category === '변화') {
+    // 변화 기술은 간단 처리
+    const wEff = getMoveStatusEffect(wildMoveName)
+    if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
+      curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+      snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
+    }
+  }
+
+  // End-of-turn status damage
+  if (curPlayer.status === 'burn' || curPlayer.status === 'poison') {
+    const dmg = calcStatusDamage(curPlayer.status, curPlayer.maxHP)
+    snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[curPlayer.status]} 피해를 입었다!`)
+    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
+    snap(null)
+    if (curPlayer.hp <= 0) {
+      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+      return { frames, pointsGained: 0 }
+    }
+  }
+
+  // Mark last frame as selecting
+  if (frames.length > 0) {
+    frames[frames.length - 1] = { ...frames[frames.length - 1], phase: 'selecting' }
+  }
+  return { frames, pointsGained: 0 }
 }

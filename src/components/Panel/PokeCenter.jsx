@@ -8,6 +8,7 @@ export default function PokeCenter() {
   const totalPointsEarned  = useStore(s => s.totalPointsEarned)
   const points             = useStore(s => s.points)
   const healAtCenter       = useStore(s => s.healAtCenter)
+  const wildBattle         = useStore(s => s.wildBattle)
   const [healed, setHealed] = useState(false)
 
   const pokemon    = getPokemon(petSpeciesId)
@@ -15,6 +16,7 @@ export default function PokeCenter() {
   const isFullHP   = petStats?.currentHP == null
   const isFullPP   = petStats?.movePP == null
   const noPoints   = points < 20
+  const inBattle   = wildBattle != null
 
   const handleHeal = () => {
     healAtCenter()
@@ -49,7 +51,9 @@ export default function PokeCenter() {
           </div>
         )}
 
-        {healed ? (
+        {inBattle ? (
+          <div style={s.costWarning}>배틀 중에는 회복할 수 없습니다</div>
+        ) : healed ? (
           <div style={s.healedMsg}>
             {pokemon?.speciesName ?? '포켓몬'}이(가) 원기를 회복했다!
           </div>

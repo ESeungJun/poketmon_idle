@@ -1,6 +1,6 @@
 import { create } from 'zustand'
-import { calcLevel, getPokemon, pickWildEncounter } from '../data/pokemon'
-import { buildWildBattler, buildPlayerBattler, processTurn, generatePetStats } from '../data/battleEngine'
+import { calcLevel, getPokemon, pickWildEncounter, getMovesUpToLevel } from '../data/pokemon'
+import { buildWildBattler, buildPlayerBattler, processTurn, processWildOnlyTurn, calcCatchRate, generatePetStats } from '../data/battleEngine'
 import { SHOP_ITEMS } from '../components/Shop/items'
 
 // 레벨업 시 새로 배울 수 있는 기술을 learnedPool과 moves에 반영
@@ -39,6 +39,8 @@ const DEFAULT_STATE = {
   petEVs: { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 },
   ownedTMs: [],
   equippedTool: null,
+  ballInventory: { ball_pokeball: 0, ball_superball: 0, ball_hyperball: 0 },
+  caughtPokemon: [],  // { speciesId, dexNum, level, natureName, abilityName, ivs, moves, learnedPool, evs, currentHP, movePP, caughtAt }
   wildBattle: null, // in-memory only, not persisted
 }
 
@@ -100,7 +102,8 @@ const useStore = create((set, get) => ({
       const pokemon = getPokemon(state.petSpeciesId)
       if (pokemon) {
         // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
-        if (pokemon.evolveAt && prevLevel < pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
+        // 이미 진화 레벨을 넘겼어도 레벨업 시 진화 (한 단계씩)
+        if (pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
           update.petState = 'evolving'
           update.preEvolvingState = prevState === 'happy' ? 'idle' : prevState
         }
@@ -166,14 +169,32 @@ const useStore = create((set, get) => ({
   // 진화 확정: App.jsx에서 evolving 상태 3초 후 호출
   // 새 종 ID로 교체하고 petStats의 speciesId만 갱신 (성격·특성·개체값은 유지)
   confirmEvolution: () => {
-    const { petSpeciesId, petStats, preEvolvingState } = get()
+    const { petSpeciesId, petStats, preEvolvingState, totalPointsEarned } = get()
     const prevState = preEvolvingState || 'idle'
     const pokemon = getPokemon(petSpeciesId)
     if (!pokemon || !pokemon.evolveTo) return
     const newSpeciesId = pokemon.evolveTo
-    const newPetStats = petStats
+    const newPokemon = getPokemon(newSpeciesId)
+    let newPetStats = petStats
       ? { ...petStats, speciesId: newSpeciesId }
       : null
+    // 진화형의 현재 레벨 이하 기술을 learnedPool에 추가
+    if (newPetStats && newPokemon) {
+      const currentLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+      const evoMoves = getMovesUpToLevel(newPokemon, currentLevel).map(m => m.name)
+      const pool = newPetStats.learnedPool || newPetStats.moves || []
+      const newPool = [...pool]
+      for (const moveName of evoMoves) {
+        if (!newPool.includes(moveName)) newPool.push(moveName)
+      }
+      // moves 슬롯에 빈 자리가 있으면 새 기술 자동 세팅
+      const moves = [...(newPetStats.moves || [])]
+      for (const moveName of newPool) {
+        if (moves.length >= 4) break
+        if (!moves.includes(moveName)) moves.push(moveName)
+      }
+      newPetStats = { ...newPetStats, learnedPool: newPool, moves }
+    }
     set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy', preEvolvingState: null })
     saveToStore('petSpeciesId', newSpeciesId)
     saveToStore('petStats', newPetStats)
@@ -285,10 +306,15 @@ const useStore = create((set, get) => ({
     if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: stats })
   },
 
+  // 닉네임을 petStats.nickname에 저장 (개별 포켓몬에 귀속)
   setPetName: (name) => {
-    set({ petName: name })
+    const { petStats } = get()
+    if (!petStats) return
+    const newStats = { ...petStats, nickname: name || null }
+    set({ petStats: newStats, petName: name })
+    saveToStore('petStats', newStats)
     saveToStore('petName', name)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petName: name })
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats, petName: name })
   },
 
   // 비타민 사용: 해당 스탯 EV를 10씩 증가 (단일 스탯 max 252, 총합 max 510)
@@ -322,6 +348,147 @@ const useStore = create((set, get) => ({
     set({ ownedTMs: newOwned })
     saveToStore('ownedTMs', newOwned)
     return true
+  },
+
+  // ── 몬스터볼 ─────────────────────────────────────────────────────
+
+  buyBall: (ballId, cost) => {
+    const { spendPoints, ballInventory } = get()
+    if (!spendPoints(cost)) return false
+    const newInventory = { ...ballInventory, [ballId]: (ballInventory[ballId] || 0) + 1 }
+    set({ ballInventory: newInventory })
+    saveToStore('ballInventory', newInventory)
+    return true
+  },
+
+  throwBall: (ballId, ballModifier) => {
+    const { wildBattle, ballInventory } = get()
+    if (!wildBattle || wildBattle.phase !== 'selecting') return
+    if ((ballInventory[ballId] || 0) <= 0) return
+
+    const { wild, player } = wildBattle
+    const wildPokemon = getPokemon(wild.speciesId)
+    const wildName = wildPokemon?.speciesName ?? wild.speciesId
+
+    const catchRate = calcCatchRate(wild.hp, wild.maxHP, ballModifier)
+    const caught = Math.random() < catchRate
+
+    // 흔들림 프레임 생성 (공식 포켓몬 포획 연출)
+    // ballState: 'thrown' → 볼 등장, 'shaking' → 흔들림, 'caught' → 포획 확정, 'break' → 튀어나옴, null → 포켓몬 표시
+    const frames = []
+    const snap = (addLog, phase = 'animating', result = null, ballState = null) => {
+      frames.push({ addLog, wild: { ...wild }, player: { ...player }, phase, result, ballState })
+    }
+
+    snap(`몬스터볼을 던졌다!`, 'animating', null, 'thrown')
+
+    if (caught) {
+      snap('... 흔들 흔들 ...', 'animating', null, 'shaking')
+      snap('... 흔들 흔들 ...', 'animating', null, 'shaking')
+      snap('... 흔들 흔들 ...', 'animating', null, 'shaking')
+      snap(`딸깍! 야생 ${wildName}을(를) 잡았다!`, 'ended', 'caught', 'caught')
+    } else {
+      // catchRate에 비례해서 흔들림 횟수 결정 (0~2회)
+      const shakeCount = catchRate > 0.6 ? 2 : catchRate > 0.3 ? 1 : 0
+      for (let i = 0; i < shakeCount; i++) {
+        snap('... 흔들 흔들 ...', 'animating', null, 'shaking')
+      }
+      snap(`아깝다! ${wildName}이(가) 튀어나왔다!`, 'animating', null, 'break')
+
+      // 야생 반격 프레임 추가 (ballState: null → 포켓몬 다시 표시)
+      const tempBattle = { ...wildBattle, wild: { ...wild }, player: { ...player } }
+      const { frames: wildFrames } = processWildOnlyTurn(tempBattle)
+      for (const wf of wildFrames) frames.push(wf)
+    }
+
+    // 볼 소비 + 배틀 애니메이션 시작을 하나의 set으로 원자적 업데이트
+    const newInventory = { ...ballInventory, [ballId]: ballInventory[ballId] - 1 }
+    saveToStore('ballInventory', newInventory)
+    set({
+      ballInventory: newInventory,
+      wildBattle: {
+        ...wildBattle,
+        phase: 'animating',
+        pendingFrames: frames,
+        frameIndex: 0,
+        pendingPointsGained: 0,
+        logLines: [],
+        ballState: null,
+      },
+    })
+  },
+
+  // ── 보관함 파트너 교체 ────────────────────────────────────────────
+
+  swapPartner: (boxIndex) => {
+    const { caughtPokemon, petSpeciesId, petStats, petName, petEVs, totalPointsEarned, wildBattle } = get()
+    if (wildBattle) return  // 배틀 중 교체 금지
+    if (boxIndex < 0 || boxIndex >= caughtPokemon.length) return
+    if (!petSpeciesId) return
+
+    const boxPoke = caughtPokemon[boxIndex]
+    const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+
+    // 현재 파트너 → 보관함에 저장
+    const currentToBox = {
+      speciesId: petSpeciesId,
+      dexNum: getPokemon(petSpeciesId)?.dexNum ?? null,
+      level: playerLevel,
+      nickname: petStats?.nickname ?? petName ?? null,
+      natureName: petStats?.natureName ?? '개구쟁이',
+      abilityName: petStats?.abilityName ?? null,
+      ivs: petStats?.ivs ?? {},
+      moves: petStats?.moves ?? [],
+      learnedPool: petStats?.learnedPool ?? [],
+      evs: { ...petEVs },
+      currentHP: petStats?.currentHP ?? null,
+      movePP: petStats?.movePP ?? null,
+      caughtAt: Date.now(),
+    }
+
+    // 보관함 포켓몬 → 파트너로
+    const newSpeciesId = boxPoke.speciesId
+    const newNickname = boxPoke.nickname ?? null
+    const newPetStats = {
+      speciesId: newSpeciesId,
+      nickname: newNickname,
+      ivs: boxPoke.ivs ?? {},
+      natureName: boxPoke.natureName ?? '개구쟁이',
+      abilityName: boxPoke.abilityName ?? null,
+      moves: boxPoke.moves ?? [],
+      learnedPool: boxPoke.learnedPool ?? [],
+      currentHP: boxPoke.currentHP ?? null,
+      movePP: boxPoke.movePP ?? null,
+    }
+    const newEVs = boxPoke.evs ?? { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 }
+
+    // 보관함 업데이트
+    const newCaught = [...caughtPokemon]
+    newCaught[boxIndex] = currentToBox
+
+    set({
+      petSpeciesId: newSpeciesId,
+      petStats: newPetStats,
+      petName: newNickname,
+      petEVs: newEVs,
+      caughtPokemon: newCaught,
+    })
+    saveToStore('petSpeciesId', newSpeciesId)
+    saveToStore('petStats', newPetStats)
+    saveToStore('petName', newNickname)
+    saveToStore('petEVs', newEVs)
+    saveToStore('caughtPokemon', newCaught)
+    if (window.electronAPI) {
+      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs })
+    }
+  },
+
+  releaseFromBox: (boxIndex) => {
+    const { caughtPokemon } = get()
+    if (boxIndex < 0 || boxIndex >= caughtPokemon.length) return
+    const newCaught = caughtPokemon.filter((_, i) => i !== boxIndex)
+    set({ caughtPokemon: newCaught })
+    saveToStore('caughtPokemon', newCaught)
   },
 
   // TM 사용: learnedPool에 기술명 추가 (moves 슬롯 교체는 swapMove로 별도 처리)
@@ -421,6 +588,7 @@ const useStore = create((set, get) => ({
       logLines: newLogLines,
       phase:    frame.phase,
       result:   frame.result,
+      ballState: frame.ballState ?? null,
       frameIndex: nextIdx,
       pendingFrames: isLast ? null : pendingFrames,
       // Increment turn counter when a selecting frame is the last one
@@ -442,6 +610,31 @@ const useStore = create((set, get) => ({
         if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
       }
       if (pendingPointsGained > 0) get().addPoints(pendingPointsGained)
+
+      // 포획 성공 시 보관함에 저장
+      if (frame.result === 'caught') {
+        const { caughtPokemon } = get()
+        const wild = frame.wild
+        if (wild) {
+          const caughtData = {
+            speciesId: wild.speciesId,
+            dexNum: wild.dexNum,
+            level: wild.level,
+            natureName: wild.natureName ?? '개구쟁이',
+            abilityName: wild.abilityName ?? null,
+            ivs: wild.ivs ?? {},
+            moves: [...wild.moves],
+            learnedPool: wild.learnedPool ? [...wild.learnedPool] : [...wild.moves],
+            evs: { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 },
+            currentHP: null,
+            movePP: null,
+            caughtAt: Date.now(),
+          }
+          const newCaught = [...caughtPokemon, caughtData]
+          set({ caughtPokemon: newCaught })
+          saveToStore('caughtPokemon', newCaught)
+        }
+      }
     }
   },
 
@@ -492,6 +685,7 @@ const useStore = create((set, get) => ({
       'points', 'totalPointsEarned', 'purchasedItems',
       'todos', 'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
       'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+      'ballInventory', 'caughtPokemon',
     ]
     const safe = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
     if (Object.keys(safe).length > 0) set(safe)
