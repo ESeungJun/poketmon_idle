@@ -1,6 +1,8 @@
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from './items'
+import BallCanvas from './BallCanvas'
+import { getPokemon } from '../../data/pokemon'
 
 const TABS = ['몬스터볼', '도구', '강화 아이템', '기술머신']
 
@@ -13,13 +15,15 @@ export default function Shop() {
   const petEVs         = useStore(s => s.petEVs)
   const ownedTMs       = useStore(s => s.ownedTMs)
   const ballInventory  = useStore(s => s.ballInventory)
+  const petSpeciesId   = useStore(s => s.petSpeciesId)
   const purchaseItem   = useStore(s => s.purchaseItem)
   const equipTool      = useStore(s => s.equipTool)
   const applyVitamin   = useStore(s => s.applyVitamin)
   const buyTM          = useStore(s => s.buyTM)
   const buyBall        = useStore(s => s.buyBall)
+  const useEvoStone    = useStore(s => s.useEvoStone)
 
-  const totalEVs = Object.values(petEVs).reduce((s, v) => s + v, 0)
+  const totalEVs = useMemo(() => Object.values(petEVs).reduce((s, v) => s + v, 0), [petEVs])
 
   return (
     <div style={st.container}>
@@ -50,7 +54,7 @@ export default function Shop() {
               return (
                 <div key={item.id} style={st.tmCard}>
                   <div style={st.tmHeader}>
-                    <span style={st.tmEmoji}>{item.emoji}</span>
+                    <BallCanvas ballId={item.id} size={32} />
                     <span style={st.tmName}>{item.name}</span>
                     <span style={{ fontSize: '11px', color: '#FFD700', marginLeft: 'auto' }}>×{count}</span>
                   </div>
@@ -116,6 +120,59 @@ export default function Shop() {
           </div>
         </div>
       )}
+
+      {/* ── 진화 아이템 섹션 (도구 탭 하단) ── */}
+      {tab === 1 && (() => {
+        const evoItems = SHOP_ITEMS.filter(i => i.category === 'evostone')
+        const currentPokemon = getPokemon(petSpeciesId)
+        return evoItems.length > 0 ? (
+          <div style={{ ...st.section, marginTop: '8px' }}>
+            <div style={{ fontSize: '11px', color: '#888', marginBottom: '8px', borderTop: '1px solid #2a2a3e', paddingTop: '10px' }}>
+              진화 아이템 · 사용 시 소모됨
+            </div>
+            <div style={st.grid2}>
+              {evoItems.map(item => {
+                const owned = purchasedItems.includes(item.id)
+                const canAfford = points >= item.cost
+                const canUse = owned && currentPokemon?.evolveItem === item.id && !!currentPokemon?.evolveTo
+                return (
+                  <div key={item.id} style={{ ...st.tmCard, ...(owned ? st.tmOwned : {}) }}>
+                    <div style={st.tmHeader}>
+                      <span style={st.tmEmoji}>{item.emoji}</span>
+                      <span style={st.tmName}>{item.name}</span>
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px' }}>{item.description}</div>
+                    {owned ? (
+                      <button
+                        onClick={() => useEvoStone(item.id)}
+                        disabled={!canUse}
+                        style={{
+                          ...st.btn,
+                          background: canUse ? '#FFD700' : '#2a2a3e',
+                          color: canUse ? '#1a1a2e' : '#555',
+                          fontWeight: canUse ? 'bold' : 'normal',
+                          cursor: canUse ? 'pointer' : 'not-allowed',
+                        }}>
+                        {canUse ? '사용' : '보유 중 (사용 불가)'}
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => purchaseItem(item.id, item.cost)}
+                        disabled={!canAfford}
+                        style={{
+                          ...st.btn,
+                          background: canAfford ? '#667eea' : '#2a2a3e',
+                          color: canAfford ? '#FFF' : '#555',
+                          cursor: canAfford ? 'pointer' : 'not-allowed',
+                        }}>⭐ {item.cost.toLocaleString()}</button>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null
+      })()}
 
       {/* ── 강화 아이템 탭 ── */}
       {tab === 2 && (
