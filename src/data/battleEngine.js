@@ -32,8 +32,13 @@ export const STATUS_KO = {
   freeze:    '얼음',
 }
 
-// Same NATURES as PokemonStats.jsx
-const NATURES = [
+// Korean weather names/messages
+export const WEATHER_KO = {
+  sunny_day:  { name: '쾌청', start: '날씨가 맑아졌다!', end: '날씨가 원래대로 돌아왔다.' },
+  rain_dance: { name: '비', start: '비가 내리기 시작했다!', end: '비가 그쳤다.' },
+}
+
+export const NATURES = [
   { name: '개구쟁이',   up: null,        down: null },
   { name: '외로움',     up: '공격',      down: '방어' },
   { name: '용감한',     up: '공격',      down: '스피드' },
@@ -96,6 +101,19 @@ function getEffectiveStat(battler, statName) {
   const base = battler.stats[statName] ?? 0
   const stage = battler.stages?.[statName] ?? 0
   return Math.max(1, Math.floor(base * getStageMultiplier(stage)))
+}
+
+// 날씨에 따른 기술 위력 보정 배율
+function getWeatherModifier(moveType, weather) {
+  if (weather === 'sunny_day') {
+    if (moveType === '불꽃') return 1.5
+    if (moveType === '물')   return 0.5
+  }
+  if (weather === 'rain_dance') {
+    if (moveType === '물')   return 1.5
+    if (moveType === '불꽃') return 0.5
+  }
+  return 1
 }
 
 // 스탯 단계 변화 적용 (불변성 유지)
@@ -225,6 +243,7 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEa
     stats,
     resolvedMoves,
     movePP,
+    abilityName: petStats.abilityName ?? null,
     stages: { ...INITIAL_STAGES },
     status: null,
     statusTurns: 0,
@@ -232,20 +251,23 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEa
 }
 
 // Execute one full turn, returning animation frames instead of a single final state.
-// Each frame = { addLog, wild, player, phase, result }
+// Each frame = { addLog, wild, player, weather, weatherTurns, phase, result }
 //   addLog: string → append to log box; null → silent HP-bar update only
 //   phase: 'animating' | 'selecting' | 'ended'
 // Speed determines who attacks first (ties go to player).
 // Returns { frames, pointsGained }
 export function processTurn(battle, playerMoveName) {
   const { wild, player } = battle
+  if (!wild || !player) return { frames: [], pointsGained: 0 }
   const myPokemon   = getPokemon(player.speciesId)
   const wildPokemon = getPokemon(wild.speciesId)
 
-  let curWild   = { ...wild }
-  let curPlayer = { ...player }
-  const frames  = []
-  let pointsGained = 0
+  let curWild         = { ...wild }
+  let curPlayer       = { ...player }
+  let curWeather      = battle.weather ?? null
+  let curWeatherTurns = battle.weatherTurns ?? 0
+  const frames        = []
+  let pointsGained    = 0
 
   // Pre-select wild's move for the whole turn so it's consistent across frames
   const wildMoveName = wild.moves.length > 0
@@ -253,9 +275,9 @@ export function processTurn(battle, playerMoveName) {
     : null
   const wildMoveData = wildMoveName ? wildPokemon.baseMoves.find(m => m.name === wildMoveName) : null
 
-  // Snapshot current curWild/curPlayer state as one frame
+  // Snapshot current state as one frame
   const snap = (addLog, phase = 'animating', result = null) => {
-    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, phase, result })
+    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, weather: curWeather, weatherTurns: curWeatherTurns, phase, result })
   }
 
   // ── Player action ──────────────────────────────────────────────
@@ -308,7 +330,10 @@ export function processTurn(battle, playerMoveName) {
       if (typeEff === 0) {
         snap('효과가 없다!')
       } else {
-        const dmg = Math.max(1, Math.floor(moveData.power * (atkStat / defStat) * typeEff * 0.5))
+        const weatherMod = getWeatherModifier(moveData.type, curWeather)
+        // 태양의힘: 맑은 날씨에 특수기술 위력 1.5배
+        const abilityMod = (curPlayer.abilityName === '태양의힘' && curWeather === 'sunny_day' && moveData.category === '특수') ? 1.5 : 1
+        const dmg = Math.max(1, Math.floor(moveData.power * (atkStat / defStat) * typeEff * weatherMod * abilityMod * 0.5))
         if (typeEff > 1)      snap('효과는 굉장했다!')
         else if (typeEff < 1) snap('효과가 별로인 것 같다...')
         curWild = { ...curWild, hp: Math.max(0, curWild.hp - dmg) }
@@ -320,12 +345,31 @@ export function processTurn(battle, playerMoveName) {
         }
       }
     } else if (moveData.category === '변화') {
-      // 1) special 기술
-      if (moveMeta?.special === 'roar') {
+      // 1) 날씨 기술
+      if (moveMeta?.special === 'sunny_day') {
+        if (curWeather === 'sunny_day') {
+          snap('날씨는 이미 맑다!')
+        } else {
+          curWeather = 'sunny_day'
+          curWeatherTurns = 5
+          snap(WEATHER_KO.sunny_day.start)
+        }
+      } else if (moveMeta?.special === 'rain_dance') {
+        if (curWeather === 'rain_dance') {
+          snap('이미 비가 내리고 있다!')
+        } else {
+          curWeather = 'rain_dance'
+          curWeatherTurns = 5
+          snap(WEATHER_KO.rain_dance.start)
+        }
+      // 2) special 기술
+      } else if (moveMeta?.special === 'roar') {
         snap('야생 포켓몬이 도망쳤다!', 'ended', 'flee_roar')
         return true
       } else if (moveMeta?.special === 'synthesis') {
-        const heal = Math.floor(curPlayer.maxHP * 0.5)
+        // 날씨에 따라 회복량 변동: 맑음 2/3, 비 1/4, 평상시 1/2
+        const healFraction = curWeather === 'sunny_day' ? 2/3 : curWeather ? 0.25 : 0.5
+        const heal = Math.floor(curPlayer.maxHP * healFraction)
         curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
         snap(`${myPokemon.speciesName}은(는) HP를 회복했다!`)
       } else if (moveMeta?.special === 'rest') {
@@ -345,7 +389,7 @@ export function processTurn(battle, playerMoveName) {
           snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
           return true
         }
-      // 2) statEffect 기술
+      // 3) statEffect 기술
       } else if (moveMeta?.statEffect) {
         const se = moveMeta.statEffect
         const target = se.target === 'self' ? curPlayer : curWild
@@ -353,7 +397,7 @@ export function processTurn(battle, playerMoveName) {
         const { battler: updated, logs } = applyStatChanges(target, se.changes, targetName)
         if (se.target === 'self') curPlayer = updated; else curWild = updated
         for (const log of logs) snap(log)
-      // 3) statusEffect 기술
+      // 4) statusEffect 기술
       } else {
         const eff = getMoveStatusEffect(playerMoveName)
         if (eff && !curWild.status && Math.random() < eff.chance) {
@@ -417,7 +461,8 @@ export function processTurn(battle, playerMoveName) {
       if (typeEff === 0) {
         snap('효과가 없다!')
       } else {
-        const dmg = Math.max(1, Math.floor(wildMoveData.power * (atkStat / defStat) * typeEff * 0.5))
+        const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
+        const dmg = Math.max(1, Math.floor(wildMoveData.power * (atkStat / defStat) * typeEff * weatherMod * 0.5))
         if (typeEff > 1)      snap('효과는 굉장했다!')
         else if (typeEff < 1) snap('효과가 별로인 것 같다...')
         curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
@@ -429,9 +474,27 @@ export function processTurn(battle, playerMoveName) {
         }
       }
     } else if (wildMoveData.category === '변화') {
-      // 1) special 기술
-      if (wildMoveMeta?.special === 'roar') {
-        snap(`${myPokemon.speciesName}은(는) 도망쳤다!`, 'ended', 'flee_roar')
+      // 1) 날씨 기술
+      if (wildMoveMeta?.special === 'sunny_day') {
+        if (curWeather === 'sunny_day') {
+          snap('날씨는 이미 맑다!')
+        } else {
+          curWeather = 'sunny_day'
+          curWeatherTurns = 5
+          snap(WEATHER_KO.sunny_day.start)
+        }
+      } else if (wildMoveMeta?.special === 'rain_dance') {
+        if (curWeather === 'rain_dance') {
+          snap('이미 비가 내리고 있다!')
+        } else {
+          curWeather = 'rain_dance'
+          curWeatherTurns = 5
+          snap(WEATHER_KO.rain_dance.start)
+        }
+      // 2) special 기술
+      } else if (wildMoveMeta?.special === 'roar') {
+        // 야생이 울부짖기를 쓸 경우 배틀 종료 대신 무효 처리
+        snap('하지만 효과가 없는 것 같다...')
         return true
       } else if (wildMoveMeta?.special === 'synthesis') {
         const heal = Math.floor(curWild.maxHP * 0.5)
@@ -454,7 +517,7 @@ export function processTurn(battle, playerMoveName) {
           pointsGained = 30
           return true
         }
-      // 2) statEffect 기술
+      // 3) statEffect 기술
       } else if (wildMoveMeta?.statEffect) {
         const se = wildMoveMeta.statEffect
         const target = se.target === 'self' ? curWild : curPlayer
@@ -462,7 +525,7 @@ export function processTurn(battle, playerMoveName) {
         const { battler: updated, logs } = applyStatChanges(target, se.changes, targetName)
         if (se.target === 'self') curWild = updated; else curPlayer = updated
         for (const log of logs) snap(log)
-      // 3) statusEffect 기술
+      // 4) statusEffect 기술
       } else {
         const wEff = getMoveStatusEffect(wildMoveName)
         if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
@@ -481,8 +544,10 @@ export function processTurn(battle, playerMoveName) {
     return false
   }
 
-  // ── Speed ordering ─────────────────────────────────────────────
-  const playerFirst = getEffectiveStat(curPlayer, '스피드') >= getEffectiveStat(curWild, '스피드')
+  // ── Speed ordering (엽록소: 맑은 날씨에 스피드 2배) ────────────────
+  const playerSpd = getEffectiveStat(curPlayer, '스피드') * (curWeather === 'sunny_day' && curPlayer.abilityName === '엽록소' ? 2 : 1)
+  const wildSpd   = getEffectiveStat(curWild,   '스피드') * (curWeather === 'sunny_day' && curWild.abilityName   === '엽록소' ? 2 : 1)
+  const playerFirst = playerSpd >= wildSpd
 
   if (playerFirst) {
     if (processPlayerAction()) return { frames, pointsGained }
@@ -516,6 +581,37 @@ export function processTurn(battle, playerMoveName) {
     }
   }
 
+  // ── End-of-turn ability effects ────────────────────────────────
+  // 빗속준비: 비 날씨에 매 턴 HP 1/16 회복
+  if (curWeather === 'rain_dance' && curPlayer.abilityName === '빗속준비') {
+    const heal = Math.max(1, Math.floor(curPlayer.maxHP / 16))
+    curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
+    snap(`${myPokemon.speciesName}은(는) 빗속준비로 체력을 회복했다!`)
+  }
+
+  // 태양의힘: 맑은 날씨에 매 턴 HP 1/8 소모
+  if (curWeather === 'sunny_day' && curPlayer.abilityName === '태양의힘') {
+    const drain = Math.max(1, Math.floor(curPlayer.maxHP / 8))
+    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - drain) }
+    snap(`${myPokemon.speciesName}은(는) 태양의힘으로 체력을 소모했다!`)
+    snap(null)
+    if (curPlayer.hp <= 0) {
+      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+      return { frames, pointsGained }
+    }
+  }
+
+  // ── End-of-turn weather countdown ─────────────────────────────
+  if (curWeather) {
+    curWeatherTurns--
+    if (curWeatherTurns <= 0) {
+      const msg = WEATHER_KO[curWeather]?.end ?? '날씨가 원래대로 돌아왔다.'
+      curWeather = null
+      curWeatherTurns = 0
+      snap(msg)
+    }
+  }
+
   // ── Turn complete: mark last frame as selecting ─────────────────
   if (frames.length > 0) {
     frames[frames.length - 1] = { ...frames[frames.length - 1], phase: 'selecting' }
@@ -541,9 +637,11 @@ export function processWildOnlyTurn(battle) {
   const myPokemon   = getPokemon(player.speciesId)
   if (!wildPokemon || !myPokemon) return { frames: [], pointsGained: 0 }
 
-  let curWild   = { ...wild }
-  let curPlayer = { ...player }
-  const frames  = []
+  let curWild         = { ...wild }
+  let curPlayer       = { ...player }
+  let curWeather      = battle.weather ?? null
+  let curWeatherTurns = battle.weatherTurns ?? 0
+  const frames        = []
 
   const wildMoveName = wild.moves.length > 0
     ? wild.moves[Math.floor(Math.random() * wild.moves.length)]
@@ -551,7 +649,7 @@ export function processWildOnlyTurn(battle) {
   const wildMoveData = wildMoveName ? wildPokemon.baseMoves.find(m => m.name === wildMoveName) : null
 
   const snap = (addLog, phase = 'animating', result = null) => {
-    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, phase, result })
+    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, weather: curWeather, weatherTurns: curWeatherTurns, phase, result })
   }
 
   if (!wildMoveData) {
@@ -596,7 +694,8 @@ export function processWildOnlyTurn(battle) {
     if (typeEff === 0) {
       snap('효과가 없다!', 'selecting')
     } else {
-      const dmg = Math.max(1, Math.floor(wildMoveData.power * (atkStat / defStat) * typeEff * 0.5))
+      const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
+      const dmg = Math.max(1, Math.floor(wildMoveData.power * (atkStat / defStat) * typeEff * weatherMod * 0.5))
       if (typeEff > 1)      snap('효과는 굉장했다!')
       else if (typeEff < 1) snap('효과가 별로인 것 같다...')
       curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
@@ -629,6 +728,36 @@ export function processWildOnlyTurn(battle) {
     if (curPlayer.hp <= 0) {
       snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
       return { frames, pointsGained: 0 }
+    }
+  }
+
+  // 빗속준비 HP 회복
+  if (curWeather === 'rain_dance' && curPlayer.abilityName === '빗속준비') {
+    const heal = Math.max(1, Math.floor(curPlayer.maxHP / 16))
+    curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
+    snap(`${myPokemon.speciesName}은(는) 빗속준비로 체력을 회복했다!`)
+  }
+
+  // 태양의힘 HP 소모
+  if (curWeather === 'sunny_day' && curPlayer.abilityName === '태양의힘') {
+    const drain = Math.max(1, Math.floor(curPlayer.maxHP / 8))
+    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - drain) }
+    snap(`${myPokemon.speciesName}은(는) 태양의힘으로 체력을 소모했다!`)
+    snap(null)
+    if (curPlayer.hp <= 0) {
+      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
+      return { frames, pointsGained: 0 }
+    }
+  }
+
+  // Weather countdown
+  if (curWeather) {
+    curWeatherTurns--
+    if (curWeatherTurns <= 0) {
+      const msg = WEATHER_KO[curWeather]?.end ?? '날씨가 원래대로 돌아왔다.'
+      curWeather = null
+      curWeatherTurns = 0
+      snap(msg)
     }
   }
 

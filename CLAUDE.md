@@ -43,6 +43,13 @@
 
 ## 필수 규칙
 
+### 빌드 종류 (중요)
+
+- **로컬 빌드** (`빌드해줘` 등 기본 요청): `npm run dev` — Vite HMR + Electron 동시 실행, 코드 변경 즉시 반영
+- **릴리즈 빌드** (`릴리즈 빌드해줘`라고 명시할 때만): `npm run build` — 인스톨러/패키지 생성
+
+> "빌드해줘"는 항상 `npm run dev`(로컬). `npm run build`(릴리즈)는 명시적 요청 시에만.
+
 ### 빌드 및 검증 절차
 
 코드 수정 후 PR 올리기 전까지 반드시 아래 순서를 따른다:
@@ -54,10 +61,12 @@
 
 > PR 없이 dev에 바로 push하는 경우(docs 등)도 사용자 확인 후 진행한다.
 
+**로컬 빌드 실행 (기본)**
 ```bash
-npm run build
+npm run dev
 ```
-빌드 결과물: `release/mac-universal/poketmon-idle.app` (macOS) / `release/win-unpacked/` (Windows)
+
+**릴리즈 빌드 결과물** (명시 요청 시에만): `release/mac-universal/poketmon-idle.app` (macOS) / `release/win-unpacked/` (Windows)
 
 앱을 실행할 때는 기존 프로세스를 먼저 종료한다.
 

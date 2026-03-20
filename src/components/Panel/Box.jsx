@@ -1,90 +1,12 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import useStore from '../../store/useStore'
 import { getPokemon, calcLevel } from '../../data/pokemon'
-import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
+import { TYPE_COLOR } from '../../constants/typeColors'
+import StaticPokemonSprite from '../Pet/StaticPokemonSprite'
 
-// Pixel art imports (same map as Battle.jsx)
-import * as squirtleData    from '../Pet/7-anims'
-import * as charmanderData  from '../Pet/4-anims'
-import * as bulbasaurData   from '../Pet/1-anims'
-import * as ivysaurData     from '../Pet/2-anims'
-import * as venusaurData    from '../Pet/3-anims'
-import * as charmeleonData  from '../Pet/5-anims'
-import * as charizardData   from '../Pet/6-anims'
-import * as wartortleData   from '../Pet/8-anims'
-import * as blastoiseData   from '../Pet/9-anims'
-import * as pidgeyData      from '../Pet/16-anims'
-import * as pidgeottoData   from '../Pet/17-anims'
-import * as pidgeotData     from '../Pet/18-anims'
-import * as pikachuData     from '../Pet/25-anims'
-import * as raichuData      from '../Pet/26-anims'
-import * as gastlyData      from '../Pet/92-anims'
-import * as haunterData     from '../Pet/93-anims'
-import * as gengarData      from '../Pet/94-anims'
-import * as eeveeData       from '../Pet/133-anims'
-import * as snorlaxData     from '../Pet/143-anims'
-import { spriteUrl } from '../../data/pokemon'
-
-const PIXEL_ART = {
-  squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData,
-  ivysaur: ivysaurData,   venusaur: venusaurData,
-  charmeleon: charmeleonData, charizard: charizardData,
-  wartortle: wartortleData,   blastoise: blastoiseData,
-  pidgey: pidgeyData, pidgeotto: pidgeottoData, pidgeot: pidgeotData,
-  pikachu: pikachuData, raichu: raichuData,
-  gastly: gastlyData, haunter: haunterData, gengar: gengarData,
-  eevee: eeveeData, snorlax: snorlaxData,
-}
-
-const TYPE_COLOR = {
-  고스트: '#735797', 악: '#5C5365',    격투: '#C03028', 풀: '#3a8a30',
-  전기: '#C8A800',   에스퍼: '#cc3366', 노말: '#6a6a50', 독: '#A040A0',
-  얼음: '#4a9898',   불꽃: '#c05010',   땅: '#b08828',   물: '#3868c8',
-  바위: '#887840',   강철: '#607890',   비행: '#6890f0', 드래곤: '#7038F8',
-}
-
-function MiniSprite({ speciesId, dexNum, size = 40 }) {
-  const canvasRef = useRef(null)
-  const data = PIXEL_ART[speciesId]
-
-  useEffect(() => {
-    if (!data) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d', { alpha: true })
-    ctx.imageSmoothingEnabled = false
-    const rows = data.BASE_BODY.length
-    const cols = data.BASE_BODY[0]?.length ?? rows
-    const scale = Math.floor(size / Math.max(rows, cols))
-    const frame = DEFAULT_ANIMATIONS.idle.frames[0]
-    drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
-  }, [speciesId, size])
-
-  if (data) {
-    const rows = data.BASE_BODY.length
-    const cols = data.BASE_BODY[0]?.length ?? rows
-    const scale = Math.floor(size / Math.max(rows, cols))
-    return (
-      <canvas
-        ref={canvasRef}
-        width={cols * scale}
-        height={rows * scale}
-        style={{ imageRendering: 'pixelated', display: 'block' }}
-      />
-    )
-  }
-  if (dexNum) {
-    return (
-      <img
-        src={spriteUrl(dexNum)}
-        alt={speciesId}
-        draggable={false}
-        style={{ width: size, height: size, imageRendering: 'pixelated', objectFit: 'contain', display: 'block' }}
-      />
-    )
-  }
-  return <div style={{ width: size, height: size, background: '#2a2a3e', borderRadius: '8px' }} />
-}
+const MiniSprite = ({ speciesId, dexNum, size = 40 }) => (
+  <StaticPokemonSprite speciesId={speciesId} dexNum={dexNum} size={size} />
+)
 
 export default function Box() {
   const caughtPokemon   = useStore(s => s.caughtPokemon)

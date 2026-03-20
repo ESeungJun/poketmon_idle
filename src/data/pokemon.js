@@ -340,7 +340,7 @@ export const POKEMON_DB = {
       { name: '번개', type: '전기', category: '특수', power: 110, learnAt: 37 },
     ],
     learnableTMs: ['tm17', 'tm24', 'tm25', 'tm44', 'tm87', 'tm90'],
-    evolveAt: null, evolveTo: null,
+    evolveAt: null, evolveTo: 'raichu', evolveItem: 'evostone_thunder',
   },
   raichu: {
     id: 'raichu', dexNum: 26, speciesName: '라이츄',
@@ -560,6 +560,9 @@ export const MOVE_META = {
   '광합성':          { accuracy: null, special: 'synthesis' },
   '잠자기':          { accuracy: null, special: 'rest' },
   '아픔나누기':      { accuracy: null, special: 'pain_split' },
+  // 날씨 기술
+  '쾌청':            { accuracy: null, special: 'sunny_day' },
+  '비바라기':        { accuracy: null, special: 'rain_dance' },
 }
 
 // Move PP values (Gen 7 USUM standard)
