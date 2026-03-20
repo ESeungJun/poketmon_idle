@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import PomodoroTimer from './PomodoroTimer'
-import TodoList from './TodoList'
 import PointDisplay from './PointDisplay'
 import Shop from '../Shop/Shop'
 import PokemonStats from './PokemonStats'
@@ -56,7 +55,6 @@ export default function Panel() {
             <div style={{ display: tab === 0 ? 'block' : 'none' }}>
               <PointDisplay />
               <PomodoroTimer />
-              <TodoList />
             </div>
             {tab === 1 && <Shop />}
             {tab === 2 && <PokemonStats />}
