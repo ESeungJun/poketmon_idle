@@ -20,7 +20,7 @@ export const STARTERS = ['bulbasaur', 'charmander', 'squirtle']
 export const POKEMON_DB = {
   // ── 이상해씨 계열 ───────────────────────────────────────────────────
   bulbasaur: {
-    id: 'bulbasaur', dexNum: 1, speciesName: '이상해씨',
+    id: 'bulbasaur', dexNum: 1, speciesName: '이상해씨', catchRate: 45,
     types: ['풀', '독'],
     baseStats: { HP: 45, 공격: 49, 방어: 49, 특수공격: 65, 특수방어: 65, 스피드: 45 },
     abilities: [
@@ -47,7 +47,7 @@ export const POKEMON_DB = {
     evolveAt: 16, evolveTo: 'ivysaur',
   },
   ivysaur: {
-    id: 'ivysaur', dexNum: 2, speciesName: '이상해풀',
+    id: 'ivysaur', dexNum: 2, speciesName: '이상해풀', catchRate: 45,
     types: ['풀', '독'],
     baseStats: { HP: 60, 공격: 60, 방어: 62, 특수공격: 80, 특수방어: 80, 스피드: 60 },
     abilities: [
@@ -74,7 +74,7 @@ export const POKEMON_DB = {
     evolveAt: 32, evolveTo: 'venusaur',
   },
   venusaur: {
-    id: 'venusaur', dexNum: 3, speciesName: '이상해꽃',
+    id: 'venusaur', dexNum: 3, speciesName: '이상해꽃', catchRate: 45,
     types: ['풀', '독'],
     baseStats: { HP: 80, 공격: 82, 방어: 83, 특수공격: 100, 특수방어: 100, 스피드: 80 },
     abilities: [
@@ -105,7 +105,7 @@ export const POKEMON_DB = {
 
   // ── 파이리 계열 ───────────────────────────────────────────────────
   charmander: {
-    id: 'charmander', dexNum: 4, speciesName: '파이리',
+    id: 'charmander', dexNum: 4, speciesName: '파이리', catchRate: 45,
     types: ['불꽃'],
     baseStats: { HP: 39, 공격: 52, 방어: 43, 특수공격: 60, 특수방어: 50, 스피드: 65 },
     abilities: [
@@ -130,7 +130,7 @@ export const POKEMON_DB = {
     evolveAt: 16, evolveTo: 'charmeleon',
   },
   charmeleon: {
-    id: 'charmeleon', dexNum: 5, speciesName: '리자드',
+    id: 'charmeleon', dexNum: 5, speciesName: '리자드', catchRate: 45,
     types: ['불꽃'],
     baseStats: { HP: 58, 공격: 64, 방어: 58, 특수공격: 80, 특수방어: 65, 스피드: 80 },
     abilities: [
@@ -155,7 +155,7 @@ export const POKEMON_DB = {
     evolveAt: 36, evolveTo: 'charizard',
   },
   charizard: {
-    id: 'charizard', dexNum: 6, speciesName: '리자몽',
+    id: 'charizard', dexNum: 6, speciesName: '리자몽', catchRate: 45,
     types: ['불꽃', '비행'],
     baseStats: { HP: 78, 공격: 84, 방어: 78, 특수공격: 109, 특수방어: 85, 스피드: 100 },
     abilities: [
@@ -185,7 +185,7 @@ export const POKEMON_DB = {
 
   // ── 꼬부기 계열 ───────────────────────────────────────────────────
   squirtle: {
-    id: 'squirtle', dexNum: 7, speciesName: '꼬부기',
+    id: 'squirtle', dexNum: 7, speciesName: '꼬부기', catchRate: 45,
     types: ['물'],
     baseStats: { HP: 44, 공격: 48, 방어: 65, 특수공격: 50, 특수방어: 64, 스피드: 43 },
     abilities: [
@@ -212,7 +212,7 @@ export const POKEMON_DB = {
     evolveAt: 16, evolveTo: 'wartortle',
   },
   wartortle: {
-    id: 'wartortle', dexNum: 8, speciesName: '어니부기',
+    id: 'wartortle', dexNum: 8, speciesName: '어니부기', catchRate: 45,
     types: ['물'],
     baseStats: { HP: 59, 공격: 63, 방어: 80, 특수공격: 65, 특수방어: 80, 스피드: 58 },
     abilities: [
@@ -239,7 +239,7 @@ export const POKEMON_DB = {
     evolveAt: 36, evolveTo: 'blastoise',
   },
   blastoise: {
-    id: 'blastoise', dexNum: 9, speciesName: '거북왕',
+    id: 'blastoise', dexNum: 9, speciesName: '거북왕', catchRate: 45,
     types: ['물'],
     baseStats: { HP: 79, 공격: 83, 방어: 100, 특수공격: 85, 특수방어: 105, 스피드: 78 },
     abilities: [
@@ -269,7 +269,7 @@ export const POKEMON_DB = {
 
   // ── 구구 계열 ─────────────────────────────────────────────────────
   pidgey: {
-    id: 'pidgey', dexNum: 16, speciesName: '구구',
+    id: 'pidgey', dexNum: 16, speciesName: '구구', catchRate: 255,
     types: ['노말', '비행'],
     baseStats: { HP: 40, 공격: 45, 방어: 40, 특수공격: 35, 특수방어: 35, 스피드: 56 },
     abilities: [
@@ -287,7 +287,7 @@ export const POKEMON_DB = {
     evolveAt: 18, evolveTo: 'pidgeotto',
   },
   pidgeotto: {
-    id: 'pidgeotto', dexNum: 17, speciesName: '피죤',
+    id: 'pidgeotto', dexNum: 17, speciesName: '피죤', catchRate: 120,
     types: ['노말', '비행'],
     baseStats: { HP: 63, 공격: 60, 방어: 55, 특수공격: 50, 특수방어: 50, 스피드: 71 },
     abilities: [
@@ -305,7 +305,7 @@ export const POKEMON_DB = {
     evolveAt: 36, evolveTo: 'pidgeot',
   },
   pidgeot: {
-    id: 'pidgeot', dexNum: 18, speciesName: '피죤투',
+    id: 'pidgeot', dexNum: 18, speciesName: '피죤투', catchRate: 45,
     types: ['노말', '비행'],
     baseStats: { HP: 83, 공격: 80, 방어: 75, 특수공격: 70, 특수방어: 70, 스피드: 101 },
     abilities: [
@@ -325,7 +325,7 @@ export const POKEMON_DB = {
 
   // ── 피카츄 계열 ───────────────────────────────────────────────────
   pikachu: {
-    id: 'pikachu', dexNum: 25, speciesName: '피카츄',
+    id: 'pikachu', dexNum: 25, speciesName: '피카츄', catchRate: 190,
     types: ['전기'],
     baseStats: { HP: 35, 공격: 55, 방어: 40, 특수공격: 50, 특수방어: 50, 스피드: 90 },
     abilities: [
@@ -343,7 +343,7 @@ export const POKEMON_DB = {
     evolveAt: null, evolveTo: 'raichu', evolveItem: 'evostone_thunder',
   },
   raichu: {
-    id: 'raichu', dexNum: 26, speciesName: '라이츄',
+    id: 'raichu', dexNum: 26, speciesName: '라이츄', catchRate: 75,
     types: ['전기'],
     baseStats: { HP: 60, 공격: 90, 방어: 55, 특수공격: 90, 특수방어: 80, 스피드: 110 },
     abilities: [
@@ -364,7 +364,7 @@ export const POKEMON_DB = {
 
   // ── 고오스 계열 ───────────────────────────────────────────────────
   gastly: {
-    id: 'gastly', dexNum: 92, speciesName: '고오스',
+    id: 'gastly', dexNum: 92, speciesName: '고오스', catchRate: 190,
     types: ['고스트', '독'],
     baseStats: { HP: 30, 공격: 35, 방어: 30, 특수공격: 100, 특수방어: 35, 스피드: 80 },
     abilities: [
@@ -381,7 +381,7 @@ export const POKEMON_DB = {
     evolveAt: 25, evolveTo: 'haunter',
   },
   haunter: {
-    id: 'haunter', dexNum: 93, speciesName: '고우스트',
+    id: 'haunter', dexNum: 93, speciesName: '고우스트', catchRate: 90,
     types: ['고스트', '독'],
     baseStats: { HP: 45, 공격: 50, 방어: 45, 특수공격: 115, 특수방어: 55, 스피드: 95 },
     abilities: [
@@ -398,7 +398,7 @@ export const POKEMON_DB = {
     evolveAt: 36, evolveTo: 'gengar',
   },
   gengar: {
-    id: 'gengar', dexNum: 94, speciesName: '팬텀',
+    id: 'gengar', dexNum: 94, speciesName: '팬텀', catchRate: 45,
     types: ['고스트', '독'],
     baseStats: { HP: 60, 공격: 65, 방어: 60, 특수공격: 130, 특수방어: 75, 스피드: 110 },
     abilities: [
@@ -423,7 +423,7 @@ export const POKEMON_DB = {
 
   // ── 이브이 ────────────────────────────────────────────────────────
   eevee: {
-    id: 'eevee', dexNum: 133, speciesName: '이브이',
+    id: 'eevee', dexNum: 133, speciesName: '이브이', catchRate: 45,
     types: ['노말'],
     baseStats: { HP: 55, 공격: 55, 방어: 50, 특수공격: 45, 특수방어: 65, 스피드: 55 },
     abilities: [
@@ -443,7 +443,7 @@ export const POKEMON_DB = {
 
   // ── 잠만보 ────────────────────────────────────────────────────────
   snorlax: {
-    id: 'snorlax', dexNum: 143, speciesName: '잠만보',
+    id: 'snorlax', dexNum: 143, speciesName: '잠만보', catchRate: 25,
     types: ['노말'],
     baseStats: { HP: 160, 공격: 110, 방어: 65, 특수공격: 65, 특수방어: 110, 스피드: 30 },
     abilities: [
@@ -464,7 +464,7 @@ export const POKEMON_DB = {
 
   // ── 뮤 ───────────────────────────────────────────────────────────
   mew: {
-    id: 'mew', dexNum: 151, speciesName: '뮤',
+    id: 'mew', dexNum: 151, speciesName: '뮤', catchRate: 45,
     types: ['에스퍼'],
     baseStats: { HP: 100, 공격: 100, 방어: 100, 특수공격: 100, 특수방어: 100, 스피드: 100 },
     abilities: [
