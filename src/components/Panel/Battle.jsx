@@ -160,6 +160,7 @@ export default function Battle() {
   const ballInventory       = useStore(s => s.ballInventory)
   const petSpeciesId        = useStore(s => s.petSpeciesId)
   const petStats            = useStore(s => s.petStats)
+  const petState            = useStore(s => s.petState)
   const points              = useStore(s => s.points)
   const [thrownBallId, setThrownBallId] = useState(null)
 
@@ -178,7 +179,8 @@ export default function Battle() {
   if (!wildBattle) {
     const fainted = petStats?.currentHP === 0
     const noPoints = points < 10
-    const cannotStart = fainted || noPoints
+    const isEvolving = petState === 'evolving'
+    const cannotStart = fainted || noPoints || isEvolving
     return (
       <div style={s.center}>
         <div style={s.emptyIcon}>⚔️</div>
