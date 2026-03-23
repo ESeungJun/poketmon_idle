@@ -30,7 +30,9 @@ export default function Box() {
     )
   }
 
-  const selectedPoke = selected !== null ? caughtPokemon[selected] : null
+  // 놓아주기 후 인덱스 범위 초과 방지
+  if (selected !== null && selected >= caughtPokemon.length) setSelected(null)
+  const selectedPoke = selected !== null && selected < caughtPokemon.length ? caughtPokemon[selected] : null
   const selectedInfo = selectedPoke ? getPokemon(selectedPoke.speciesId) : null
 
   return (
