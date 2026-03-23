@@ -509,7 +509,6 @@ export function processTurn(battle, playerMoveName) {
       } else if (wildMoveMeta?.special === 'roar') {
         // 야생이 울부짖기를 쓸 경우 배틀 종료 대신 무효 처리
         snap('하지만 효과가 없는 것 같다...')
-        return true
       } else if (wildMoveMeta?.special === 'synthesis') {
         const heal = Math.floor(curWild.maxHP * 0.5)
         curWild = { ...curWild, hp: Math.min(curWild.maxHP, curWild.hp + heal) }
