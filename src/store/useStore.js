@@ -58,7 +58,21 @@ function validateStore(saved) {
   if (typeof saved.petSpeciesId === 'string' || saved.petSpeciesId === null) v.petSpeciesId = saved.petSpeciesId
   if (typeof saved.petName === 'string' || saved.petName === null)           v.petName      = saved.petName
   if (typeof saved.equippedTool === 'string' || saved.equippedTool === null) v.equippedTool = saved.equippedTool
-  if (saved.petStats && typeof saved.petStats === 'object')                  v.petStats     = saved.petStats
+  if (saved.petStats && typeof saved.petStats === 'object') {
+    const ps = saved.petStats
+    // petStats 핵심 필드 검증 — 손상된 데이터 방어
+    if (typeof ps.speciesId === 'string' && Array.isArray(ps.moves)) {
+      v.petStats = {
+        ...ps,
+        moves: ps.moves.filter(m => typeof m === 'string'),
+        learnedPool: Array.isArray(ps.learnedPool) ? ps.learnedPool.filter(m => typeof m === 'string') : ps.moves.filter(m => typeof m === 'string'),
+        ivs: (ps.ivs && typeof ps.ivs === 'object') ? ps.ivs : {},
+        currentHP: typeof ps.currentHP === 'number' ? Math.max(0, ps.currentHP) : null,
+        movePP: (ps.movePP && typeof ps.movePP === 'object') ? ps.movePP : null,
+      }
+    }
+    // speciesId나 moves가 손상됐으면 petStats = null → 자동 재생성됨
+  }
   if (saved.petEVs   && typeof saved.petEVs   === 'object')                  v.petEVs       = { ...d.petEVs, ...saved.petEVs }
   if (saved.ballInventory && typeof saved.ballInventory === 'object')        v.ballInventory = { ...d.ballInventory, ...saved.ballInventory }
   const VALID_STATES = new Set(['idle', 'happy', 'sleeping', 'evolving'])
@@ -373,7 +387,8 @@ const useStore = create((set, get) => ({
     const wildPokemon = getPokemon(wild.speciesId)
     const wildName = wildPokemon?.speciesName ?? wild.speciesId
 
-    const catchRate = calcCatchRate(wild.hp, wild.maxHP, ballModifier)
+    const speciesCatchRate = wildPokemon?.catchRate ?? 100
+    const catchRate = calcCatchRate(wild.hp, wild.maxHP, ballModifier, speciesCatchRate, wild.status)
     const caught = Math.random() < catchRate
 
     // 흔들림 프레임 생성 (공식 포켓몬 포획 연출)
@@ -432,7 +447,7 @@ const useStore = create((set, get) => ({
     const boxPoke = caughtPokemon[boxIndex]
     const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
 
-    // 현재 파트너 → 보관함에 저장
+    // 현재 파트너 → 보관함에 저장 (원래 포획 시점 보존)
     const currentToBox = {
       speciesId: petSpeciesId,
       dexNum: getPokemon(petSpeciesId)?.dexNum ?? null,
@@ -446,7 +461,7 @@ const useStore = create((set, get) => ({
       evs: { ...petEVs },
       currentHP: petStats?.currentHP ?? null,
       movePP: petStats?.movePP ?? null,
-      caughtAt: Date.now(),
+      caughtAt: petStats?.caughtAt ?? Date.now(),
     }
 
     // 보관함 포켓몬 → 파트너로
@@ -521,9 +536,13 @@ const useStore = create((set, get) => ({
   // ── Wild Battle ─────────────────────────────────────────────────
 
   startWildBattle: () => {
-    const { petSpeciesId, petEVs, totalPointsEarned, spendPoints } = get()
+    const { petSpeciesId, petEVs, totalPointsEarned, spendPoints, petState } = get()
     let { petStats } = get()
     if (!petSpeciesId) return
+    // 진화 중 배틀 시작 금지
+    if (petState === 'evolving') return
+    // HP 0이면 배틀 불가 (petStats 존재 시)
+    if (petStats?.currentHP === 0) return
     if (!spendPoints(10)) return
     const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
     // petStats가 null이면 자동 생성 (스탯 탭 미방문 시 대비)
