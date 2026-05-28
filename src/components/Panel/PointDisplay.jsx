@@ -3,10 +3,7 @@ import useStore from '../../store/useStore'
 export default function PointDisplay() {
   const points = useStore(s => s.points)
   const pomodoroHistory = useStore(s => s.pomodoroHistory)
-  const todos = useStore(s => s.todos)
   const totalWorkMinutes = useStore(s => s.totalWorkMinutes)
-
-  const completedTodos = todos.filter(t => t.completed).length
 
   return (
     <div style={styles.container}>
@@ -20,11 +17,6 @@ export default function PointDisplay() {
           <span style={styles.statIcon}>🍅</span>
           <span style={styles.statValue}>{pomodoroHistory.length}</span>
           <span style={styles.statLabel}>집중모드</span>
-        </div>
-        <div style={styles.stat}>
-          <span style={styles.statIcon}>✅</span>
-          <span style={styles.statValue}>{completedTodos}</span>
-          <span style={styles.statLabel}>할일 완료</span>
         </div>
         <div style={styles.stat}>
           <span style={styles.statIcon}>⏱️</span>

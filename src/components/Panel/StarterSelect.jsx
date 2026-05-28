@@ -3,15 +3,8 @@ import useStore from '../../store/useStore'
 import { STARTERS, getPokemon } from '../../data/pokemon'
 
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
-import * as squirtleData from '../Pet/7-anims'
-import * as charmanderData from '../Pet/4-anims'
-import * as bulbasaurData from '../Pet/1-anims'
-
-const PIXEL_ART = {
-  squirtle: squirtleData,
-  charmander: charmanderData,
-  bulbasaur: bulbasaurData,
-}
+import { PIXEL_ART } from '../Pet/pixelArtRegistry'
+import { TYPE_COLOR } from '../../constants/typeColors'
 
 function PixelArtPreview({ speciesId, size = 56 }) {
   const canvasRef = useRef(null)
@@ -56,12 +49,6 @@ function PixelArtPreview({ speciesId, size = 56 }) {
       style={{ imageRendering: 'pixelated', display: 'block' }}
     />
   )
-}
-
-const TYPE_COLOR = {
-  풀: '#3a8a30', 독: '#A040A0', 불꽃: '#c05010', 물: '#3868c8',
-  노말: '#6a6a50', 비행: '#6890f0', 전기: '#C8A800', 고스트: '#735797',
-  에스퍼: '#cc3366', 강철: '#607890',
 }
 
 const STARTER_DATA = STARTERS.map(id => getPokemon(id))
