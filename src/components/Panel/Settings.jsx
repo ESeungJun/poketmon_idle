@@ -47,31 +47,33 @@ export default function Settings() {
           앱 종료
         </button>
       </div>
-      <div style={styles.section}>
-        <button style={styles.devToggle} onClick={() => setDevOpen(v => !v)}>
-          🛠 개발자 모드 {devOpen ? '▲' : '▼'}
-        </button>
-        {devOpen && (
-          <div style={styles.devContent}>
-            <div style={styles.devLabel}>포인트 추가</div>
-            <div style={styles.devRow}>
-              {[100, 500, 1000, 5000].map(n => (
-                <button key={n} style={styles.devBtn} onClick={() => addPoints(n, false)}>
-                  +{n.toLocaleString()}
-                </button>
-              ))}
+      {import.meta.env.DEV && (
+        <div style={styles.section}>
+          <button style={styles.devToggle} onClick={() => setDevOpen(v => !v)}>
+            🛠 개발자 모드 {devOpen ? '▲' : '▼'}
+          </button>
+          {devOpen && (
+            <div style={styles.devContent}>
+              <div style={styles.devLabel}>포인트 추가</div>
+              <div style={styles.devRow}>
+                {[100, 500, 1000, 5000].map(n => (
+                  <button key={n} style={styles.devBtn} onClick={() => addPoints(n, false)}>
+                    +{n.toLocaleString()}
+                  </button>
+                ))}
+              </div>
+              <div style={styles.devLabel}>진화</div>
+              <button
+                style={{ ...styles.devBtn, opacity: canEvolve ? 1 : 0.4, cursor: canEvolve ? 'pointer' : 'default' }}
+                onClick={handleForceEvolve}
+                disabled={!canEvolve}
+              >
+                강제 진화 {canEvolve ? `→ ${getPokemon(pokemon.evolveTo)?.speciesName ?? pokemon.evolveTo}` : '(최종 진화형)'}
+              </button>
             </div>
-            <div style={styles.devLabel}>진화</div>
-            <button
-              style={{ ...styles.devBtn, opacity: canEvolve ? 1 : 0.4, cursor: canEvolve ? 'pointer' : 'default' }}
-              onClick={handleForceEvolve}
-              disabled={!canEvolve}
-            >
-              강제 진화 {canEvolve ? `→ ${getPokemon(pokemon.evolveTo)?.speciesName ?? pokemon.evolveTo}` : '(최종 진화형)'}
-            </button>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

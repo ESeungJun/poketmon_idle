@@ -1,54 +1,12 @@
 import { useEffect, useRef } from 'react'
 import { drawPokemon, DEFAULT_ANIMATIONS } from './pokemonDraw'
-import * as squirtleData from './7-anims'
-import * as charmanderData from './4-anims'
-import * as bulbasaurData from './1-anims'
-import * as ivysaurData from './2-anims'
-import * as charmeleonData from './5-anims'
-import * as venusaurData from './3-anims'
-import * as charizardData from './6-anims'
-import * as wartortleData from './8-anims'
-import * as blastoiseData from './9-anims'
-import * as pidgeyData from './16-anims'
-import * as pidgeottoData from './17-anims'
-import * as pidgeotData from './18-anims'
-import * as pikachuData from './25-anims'
-import * as raichuData from './26-anims'
-import * as gastlyData from './92-anims'
-import * as haunterData from './93-anims'
-import * as gengarData from './94-anims'
-import * as eeveeData from './133-anims'
-import * as snorlaxData from './143-anims'
+import { PIXEL_ART } from './pixelArtRegistry'
 import { spriteUrl } from '../../data/pokemon'
-
-// 커스텀 도트 데이터가 있는 포켓몬 목록
-// 새 포켓몬 도트를 추가할 때: *-anims.js 파일 만들고 여기에 등록
-const PIXEL_ART = {
-  squirtle:   squirtleData,
-  charmander: charmanderData,
-  bulbasaur:  bulbasaurData,
-  ivysaur:    ivysaurData,
-  charmeleon: charmeleonData,
-  venusaur:   venusaurData,
-  charizard:  charizardData,
-  wartortle:  wartortleData,
-  blastoise:  blastoiseData,
-  pidgey:     pidgeyData,
-  pidgeotto:  pidgeottoData,
-  pidgeot:    pidgeotData,
-  pikachu:    pikachuData,
-  raichu:     raichuData,
-  gastly:     gastlyData,
-  haunter:    haunterData,
-  gengar:     gengarData,
-  eevee:      eeveeData,
-  snorlax:    snorlaxData,
-}
 
 // 진화 단계별 펫 창 크기 (stage2 = 1.5×, stage3 = 2.25×)
 // ※ 새 포켓몬 추가 시 electron/main.js의 STAGE2_SPECIES/STAGE3_SPECIES도 함께 수정할 것
 const STAGE2 = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
-const STAGE3 = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
+const STAGE3 = new Set(['venusaur','charizard','blastoise','pidgeot','gengar','snorlax'])
 export function getWinSize(speciesId) {
   if (STAGE3.has(speciesId)) return 160
   if (STAGE2.has(speciesId)) return 120

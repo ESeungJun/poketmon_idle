@@ -11,7 +11,7 @@ const WIN_SIZE = 100
 // 진화 단계별 윈도우 크기 (stage2 = 1.5×, stage3 = 1.5²×)
 // ※ 새 포켓몬 추가 시 PetCanvas.jsx의 STAGE2/STAGE3 Set도 함께 수정할 것
 const STAGE2_SPECIES = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
-const STAGE3_SPECIES = new Set(['venusaur','charizard','blastoise','pidgeot','gengar'])
+const STAGE3_SPECIES = new Set(['venusaur','charizard','blastoise','pidgeot','gengar','snorlax'])
 function getWinSizeForSpecies(speciesId) {
   if (STAGE3_SPECIES.has(speciesId)) return 160
   if (STAGE2_SPECIES.has(speciesId)) return 120
@@ -325,8 +325,9 @@ ipcMain.handle('toggle-panel', () => {
 // renderer가 임의 키를 읽거나 쓰는 것을 방지하는 허용 키 목록
 const ALLOWED_STORE_KEYS = new Set([
   'points', 'totalPointsEarned', 'purchasedItems',
-  'todos', 'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
+  'pomodoroHistory', 'petState', 'lastActiveTime', 'totalWorkMinutes',
   'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
+  'ballInventory', 'caughtPokemon',
 ])
 
 ipcMain.handle('get-store', (_, key) => {
@@ -355,7 +356,8 @@ ipcMain.handle('starter-selected', () => {
 // visibleOnAllWorkspaces를 드래그 중에 false로 해제해야
 // macOS에서 다른 물리적 디스플레이로 setPosition()이 허용됨
 ipcMain.handle('start-drag', (_, { offsetX, offsetY }) => {
-  if (typeof offsetX !== 'number' || typeof offsetY !== 'number') return
+  if (!Number.isFinite(offsetX) || !Number.isFinite(offsetY)) return
+  if (offsetX < 0 || offsetY < 0 || offsetX > 10000 || offsetY > 10000) return
   dragOffsetX = offsetX
   dragOffsetY = offsetY
   stopWandering()
