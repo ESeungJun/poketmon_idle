@@ -7,6 +7,33 @@
 
 ---
 
+## ⚡ 빠른 시작 — 한 줄 복붙으로 프로덕션 앱 실행
+
+Node.js 18+ / npm / Git 만 설치되어 있으면, 아래 명령어 한 줄을 터미널에 복붙하면 **클론 → 의존성 설치 → 프로덕션 빌드 → 앱 실행**까지 자동으로 진행된다.
+
+### 🪟 Windows (cmd / PowerShell)
+
+```cmd
+git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && start "" "release\win-unpacked\poketmon-idle.exe"
+```
+
+### 🍎 macOS (Terminal / zsh)
+
+```bash
+git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && open release/mac-universal/포켓몬키우기.app
+```
+
+> 첫 실행 시 의존성 설치 + Electron 빌드까지 **수 분 정도** 걸린다. 다음 실행부터는 빌드된 앱(`release/...`)을 바로 더블클릭하면 된다.
+>
+> macOS에서 "확인되지 않은 개발자" 또는 "손상되었습니다" 경고가 뜨면 아래 명령으로 격리속성 제거 후 다시 실행:
+> ```bash
+> xattr -cr release/mac-universal/포켓몬키우기.app && open release/mac-universal/포켓몬키우기.app
+> ```
+
+단계별 설명·옵션·문제 해결이 필요하면 아래 [상세 가이드](#-설치-및-실행-사용자-가이드)를 참고.
+
+---
+
 ## 📦 설치 및 실행 (사용자 가이드)
 
 git에서 소스를 받아 직접 빌드하여 실행할 수 있다.
