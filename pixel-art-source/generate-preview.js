@@ -6,8 +6,15 @@ const path = require('path')
 const vm   = require('vm')
 const http = require('http')
 
-const SRC_DIR = path.resolve(__dirname, '../src/components/Pet')
-const PORT    = 3131
+const SRC_DIR  = path.resolve(__dirname, '../src/components/Pet')
+const SHOP_DIR = path.resolve(__dirname, '../src/components/Shop')
+const PORT     = 3131
+
+const ITEMS = [
+  { file: 'ball-anims.js',      name: '몬스터볼 [볼]',  refPng: 'ball.png' },
+  { file: 'superball-anims.js', name: '슈퍼볼 [볼]',    refPng: 'superball.png' },
+  { file: 'hyperball-anims.js', name: '하이퍼볼 [볼]',  refPng: 'hyperball.png' },
+]
 
 const POKEMON = [
   { file: '1-anims.js',          name: '이상해씨 (1)' },
@@ -54,6 +61,12 @@ function loadData(filePath) {
 
 function buildAllData() {
   const allData = {}
+  for (const item of ITEMS) {
+    const fp = path.join(SHOP_DIR, item.file)
+    if (!fs.existsSync(fp)) continue
+    const d = loadData(fp)
+    if (d) allData[item.name] = { ...d, _refPng: item.refPng }
+  }
   for (const p of POKEMON) {
     const fp = path.join(SRC_DIR, p.file)
     if (!fs.existsSync(fp)) continue
@@ -223,16 +236,24 @@ function buildHtml(allData) {
       renderOverlay(rows, cols);
 
       // 원본 PNG 표시 — 캔버스와 같은 높이
-      const dexMatch = sel.value.match(/\\((\\d+)\\)/);
-      if (dexMatch) {
-        const dexNum = dexMatch[1];
-        const folder = mode === 'sleep' ? 'sleep' : 'normal';
-        refImg.src = '/img/' + folder + '/' + dexNum + '.png';
+      const d = DATA[sel.value];
+      if (d && d._refPng) {
+        refImg.src = '/img/item/' + d._refPng;
         refImg.style.width = mainC.width + 'px';
         refImg.style.height = mainC.height + 'px';
         refImg.style.display = 'block';
       } else {
-        refImg.style.display = 'none';
+        const dexMatch = sel.value.match(/\\((\\d+)\\)/);
+        if (dexMatch) {
+          const dexNum = dexMatch[1];
+          const folder = mode === 'sleep' ? 'sleep' : 'normal';
+          refImg.src = '/img/' + folder + '/' + dexNum + '.png';
+          refImg.style.width = mainC.width + 'px';
+          refImg.style.height = mainC.height + 'px';
+          refImg.style.display = 'block';
+        } else {
+          refImg.style.display = 'none';
+        }
       }
     }
 
@@ -358,6 +379,19 @@ function buildHtml(allData) {
 }
 
 const server = http.createServer((req, res) => {
+  // /img/item/<name>.png
+  const itemMatch = req.url.match(/^\/img\/item\/(.+\.png)$/)
+  if (itemMatch) {
+    const imgPath = path.join(__dirname, 'item', itemMatch[1])
+    if (fs.existsSync(imgPath)) {
+      res.writeHead(200, { 'Content-Type': 'image/png' })
+      res.end(fs.readFileSync(imgPath))
+    } else {
+      res.writeHead(404)
+      res.end()
+    }
+    return
+  }
   // /img/normal/1.png or /img/sleep/1.png
   const imgMatch = req.url.match(/^\/img\/(normal|sleep)\/(\d+)\.png$/)
   if (imgMatch) {

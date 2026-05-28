@@ -2,66 +2,14 @@ import { useEffect, useRef, useState } from 'react'
 import useStore from '../../store/useStore'
 import { SHOP_ITEMS } from '../Shop/items'
 import { getPokemon, resolveMove, calcLevel, expForLevel, getMovesUpToLevel } from '../../data/pokemon'
-import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
-import { spriteUrl } from '../../data/pokemon'
-import * as squirtleData from '../Pet/7-anims'
-import * as charmanderData from '../Pet/4-anims'
-import * as bulbasaurData from '../Pet/1-anims'
-import * as ivysaurData from '../Pet/2-anims'
-import * as venusaurData from '../Pet/3-anims'
-import * as charmeleonData from '../Pet/5-anims'
-import * as charizardData from '../Pet/6-anims'
-import * as wartortleData from '../Pet/8-anims'
-import * as blastoiseData from '../Pet/9-anims'
-import * as pidgeyData from '../Pet/16-anims'
-import * as pidgeottoData from '../Pet/17-anims'
-import * as pidgeotData from '../Pet/18-anims'
-import * as pikachuData from '../Pet/25-anims'
-import * as raichuData from '../Pet/26-anims'
-import * as gastlyData from '../Pet/92-anims'
-import * as haunterData from '../Pet/93-anims'
-import * as gengarData from '../Pet/94-anims'
-import * as eeveeData from '../Pet/133-anims'
-import * as snorlaxData from '../Pet/143-anims'
 import { getWinSize } from '../Pet/PetCanvas'
+import StaticPokemonSprite from '../Pet/StaticPokemonSprite'
+import { TYPE_COLOR } from '../../constants/typeColors'
+import { NATURES } from '../../data/battleEngine'
 
-const PIXEL_ART = {
-  squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData,
-  ivysaur: ivysaurData, venusaur: venusaurData,
-  charmeleon: charmeleonData, charizard: charizardData,
-  wartortle: wartortleData, blastoise: blastoiseData,
-  pidgey: pidgeyData, pidgeotto: pidgeottoData, pidgeot: pidgeotData,
-  pikachu: pikachuData, raichu: raichuData,
-  gastly: gastlyData, haunter: haunterData, gengar: gengarData,
-  eevee: eeveeData, snorlax: snorlaxData,
-}
-
-function StaticPixelArt({ speciesId, dexNum, size = 56 }) {
-  const canvasRef = useRef(null)
-  const data = PIXEL_ART[speciesId]
-  useEffect(() => {
-    if (!data) return
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d', { alpha: true })
-    ctx.imageSmoothingEnabled = false
-    const rows = data.BASE_BODY.length
-    const cols = data.BASE_BODY[0]?.length ?? rows
-    const scale = Math.floor(size / Math.max(rows, cols))
-    const frame = DEFAULT_ANIMATIONS.idle.frames[0]
-    drawPokemon(ctx, data.BASE_BODY, data.COLORS, frame, scale)
-  }, [speciesId, size])
-  if (data) {
-    const rows = data.BASE_BODY.length
-    const cols = data.BASE_BODY[0]?.length ?? rows
-    const scale = Math.floor(size / Math.max(rows, cols))
-    return <canvas ref={canvasRef} width={cols * scale} height={rows * scale} style={{ imageRendering: 'pixelated', display: 'block' }} />
-  }
-  if (dexNum) {
-    return <img src={spriteUrl(dexNum)} alt={speciesId} draggable={false} style={{ width: size, height: size, imageRendering: 'pixelated', objectFit: 'contain', display: 'block' }} />
-  }
-  return null
-}
+const StaticPixelArt = ({ speciesId, dexNum, size = 56 }) => (
+  <StaticPokemonSprite speciesId={speciesId} dexNum={dexNum} size={size} />
+)
 
 const STAT_KEYS = ['HP', '공격', '방어', '특수공격', '특수방어', '스피드']
 const STAT_COLOR = {
@@ -70,40 +18,6 @@ const STAT_COLOR = {
 }
 const BAR_MAX = 220
 
-const NATURES = [
-  { name: '개구쟁이', up: null, down: null },
-  { name: '외로움',   up: '공격',    down: '방어' },
-  { name: '용감한',   up: '공격',    down: '스피드' },
-  { name: '개구진',   up: '공격',    down: '특수방어' },
-  { name: '장난꾸러기', up: '방어',  down: '특수공격' },
-  { name: '대담한',   up: '방어',    down: '공격' },
-  { name: '온순한',   up: null,      down: null },
-  { name: '느긋한',   up: '방어',    down: '스피드' },
-  { name: '장난기',   up: '방어',    down: '특수공격' },
-  { name: '촐랑대는', up: '방어',    down: '특수공격' },
-  { name: '성급한',   up: '스피드',  down: '방어' },
-  { name: '서두른',   up: '스피드',  down: '공격' },
-  { name: '진지한',   up: null,      down: null },
-  { name: '기쁜',     up: '스피드',  down: '특수공격' },
-  { name: '덜렁대는', up: '스피드',  down: '특수방어' },
-  { name: '냉정한',   up: '특수공격', down: '공격' },
-  { name: '온화한',   up: '특수공격', down: '방어' },
-  { name: '조용한',   up: '특수공격', down: '스피드' },
-  { name: '솔직한',   up: null,      down: null },
-  { name: '건방진',   up: '특수공격', down: '특수방어' },
-  { name: '차분한',   up: '특수방어', down: '공격' },
-  { name: '온후한',   up: '특수방어', down: '방어' },
-  { name: '신중한',   up: '특수방어', down: '특수공격' },
-  { name: '주의깊은', up: '특수방어', down: '스피드' },
-  { name: '이상한',   up: null,      down: null },
-]
-
-const TYPE_COLOR = {
-  고스트: '#735797', 악: '#5C5365', 격투: '#C03028', 풀: '#3a8a30',
-  전기: '#C8A800', 에스퍼: '#cc3366', 노말: '#6a6a50', 독: '#A040A0',
-  얼음: '#4a9898', 불꽃: '#c05010', 땅: '#b08828', 물: '#3868c8',
-  바위: '#887840', 강철: '#607890', 비행: '#6890f0',
-}
 
 function calcStat(base, iv, ev, key, nature, level = 1) {
   const evBonus = Math.floor((ev || 0) / 4)
@@ -229,8 +143,8 @@ export default function PokemonStats() {
                 autoFocus maxLength={10} />
             ) : (
               <div style={s.nameRow}>
-                <span style={s.name}>{petName || pokemon.speciesName}</span>
-                <button onClick={() => { setNameInput(petName || pokemon.speciesName); setEditing(true) }} style={s.editBtn}>✏️</button>
+                <span style={s.name}>{petStats.nickname || petName || pokemon.speciesName}</span>
+                <button onClick={() => { setNameInput(petStats.nickname || petName || pokemon.speciesName); setEditing(true) }} style={s.editBtn}>✏️</button>
               </div>
             )}
             <div style={s.dex}>#{String(pokemon.dexNum).padStart(3, '0')} · Lv.{currentLevel}</div>
@@ -325,7 +239,7 @@ export default function PokemonStats() {
       </div>
       <div style={s.moveGrid}>
         {moves.map((m, idx) => (
-          <div key={m.name} style={{ ...s.moveCard, ...(swapSlot === idx ? s.moveCardSel : {}) }}>
+          <div key={m.name} style={{ ...s.moveCard, borderColor: swapSlot === idx ? '#667eea' : (TYPE_COLOR[m.type] || '#555') }}>
             <div style={s.moveTop}>
               <span style={{ ...s.typeBadge, background: TYPE_COLOR[m.type] || '#555', fontSize: '10px' }}>{m.type}</span>
               <span style={s.moveCat}>{m.category}</span>
