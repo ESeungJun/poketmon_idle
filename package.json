@@ -9,7 +9,7 @@
     "vite": "vite",
     "electron:dev": "wait-on http://localhost:5173 && electron .",
     "build": "vite build && electron-builder",
-    "postbuild": "node scripts/fix-app-bundle.js && node scripts/create-dmg.js",
+    "postbuild": "node scripts/fix-app-bundle.js",
     "preview": "vite preview"
   },
   "dependencies": {
