@@ -20,19 +20,14 @@ git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && 
 ### 🍎 macOS (Terminal / zsh)
 
 ```bash
-git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && open release/포켓몬키우기-1.0.0-universal.dmg
+git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && xattr -cr release/mac-universal/poketmon-idle.app && open release/mac-universal/poketmon-idle.app
 ```
 
-빌드가 끝나면 DMG가 열린다 → 안에 있는 **`설치.command`** 더블클릭 → 자동으로 `/Applications`에 설치 + 실행.
+빌드 완료 후 격리속성(quarantine) 제거 + 앱 바로 실행까지 한 번에 처리. `release/mac-universal/poketmon-idle.app` 파일을 그대로 사용한다.
 
-> macOS 26부터 Finder의 드래그&드롭 설치 시 코드서명 검증 크래시가 발생해서, 이 프로젝트는 `cp -R` 방식으로 설치하는 `설치.command`를 DMG에 포함시킨다.
->
-> 빌드 직후 바로 테스트만 해보고 싶으면 (설치 없이):
-> ```bash
-> xattr -cr release/mac-universal/poketmon-idle.app && open release/mac-universal/poketmon-idle.app
-> ```
->
 > 첫 실행 시 의존성 설치 + 빌드(universal x64+arm64 + ad-hoc 사이닝)까지 **3~7분 정도** 걸린다.
+>
+> 다음부터는 `release/mac-universal/poketmon-idle.app`을 Finder에서 직접 더블클릭하거나, 원하면 `/Applications`로 끌어다 놓고 사용하면 된다.
 
 단계별 설명·옵션·문제 해결이 필요하면 아래 [상세 가이드](#-설치-및-실행-사용자-가이드)를 참고.
 
@@ -90,10 +85,9 @@ npm run build
 
 빌드 결과물 위치:
 
-| OS | 산출물 경로 | 권장 사용법 |
-|----|-------------|-------------|
-| macOS (배포용) | `release/포켓몬키우기-1.0.0-universal.dmg` | DMG 열기 → **`설치.command`** 더블클릭 → 자동으로 `/Applications` 설치 + 실행 |
-| macOS (테스트용) | `release/mac-universal/poketmon-idle.app` | `open` 명령으로 직접 실행 (설치 없이) |
+| OS | 산출물 경로 | 사용법 |
+|----|-------------|--------|
+| macOS | `release/mac-universal/poketmon-idle.app` | Finder에서 더블클릭 또는 `open` 명령으로 실행 |
 | Windows (압축X) | `release\win-unpacked\poketmon-idle.exe` | `.exe` 더블클릭 |
 | Windows (인스톨러) | `release\포켓몬키우기 Setup 1.0.0.exe` | 인스톨러 실행 |
 
@@ -103,6 +97,8 @@ npm run build
 > xattr -cr release/mac-universal/poketmon-idle.app && open release/mac-universal/poketmon-idle.app
 > ```
 > 또는 `시스템 설정 → 개인정보 보호 및 보안`에서 "확인 없이 열기" 클릭.
+>
+> 빌드한 Mac이 아닌 **다른 Mac으로 옮겨서 실행하는 것은 권장하지 않는다** — ad-hoc 서명이라 다른 환경에서 Gatekeeper가 거부할 수 있다. 다른 Mac에서 쓰려면 그 Mac에서 직접 위 빠른 시작 명령으로 빌드.
 
 ### 4. 처음 실행 시
 
@@ -362,7 +358,7 @@ bash scripts/new-feature.sh <name> # dev에서 feature 브랜치 생성
 ```bash
 xattr -cr release/mac-universal/poketmon-idle.app
 ```
-실행 후 다시 열기. (DMG로 설치한 경우는 `xattr -cr /Applications/poketmon-idle.app`)
+실행 후 다시 열기.
 
 **Q. Pet 창이 안 보임**
 스타터 미선택 상태이거나 화면 밖으로 드래그됨. Panel 창에서 스타터 선택 또는 설정에서 위치 초기화.
