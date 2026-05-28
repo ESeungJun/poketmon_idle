@@ -1,48 +1,31 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import useStore from '../../store/useStore'
 import { getPokemon, spriteUrl, getMaxPP } from '../../data/pokemon'
-import { STATUS_KO } from '../../data/battleEngine'
+import { SHOP_ITEMS } from '../Shop/items'
+import { STATUS_KO, WEATHER_KO } from '../../data/battleEngine'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
 import { getWinSize } from '../Pet/PetCanvas'
+import BallCanvas from '../Shop/BallCanvas'
 
-// Pixel art imports (same map as PokemonStats)
-import * as squirtleData    from '../Pet/7-anims'
-import * as charmanderData  from '../Pet/4-anims'
-import * as bulbasaurData   from '../Pet/1-anims'
-import * as ivysaurData     from '../Pet/2-anims'
-import * as venusaurData    from '../Pet/3-anims'
-import * as charmeleonData  from '../Pet/5-anims'
-import * as charizardData   from '../Pet/6-anims'
-import * as wartortleData   from '../Pet/8-anims'
-import * as blastoiseData   from '../Pet/9-anims'
-import * as pidgeyData      from '../Pet/16-anims'
-import * as pidgeottoData   from '../Pet/17-anims'
-import * as pidgeotData     from '../Pet/18-anims'
-import * as pikachuData     from '../Pet/25-anims'
-import * as raichuData      from '../Pet/26-anims'
-import * as gastlyData      from '../Pet/92-anims'
-import * as haunterData     from '../Pet/93-anims'
-import * as gengarData      from '../Pet/94-anims'
-import * as eeveeData       from '../Pet/133-anims'
-import * as snorlaxData     from '../Pet/143-anims'
-
-const PIXEL_ART = {
-  squirtle: squirtleData, charmander: charmanderData, bulbasaur: bulbasaurData,
-  ivysaur: ivysaurData,   venusaur: venusaurData,
-  charmeleon: charmeleonData, charizard: charizardData,
-  wartortle: wartortleData,   blastoise: blastoiseData,
-  pidgey: pidgeyData, pidgeotto: pidgeottoData, pidgeot: pidgeotData,
-  pikachu: pikachuData, raichu: raichuData,
-  gastly: gastlyData, haunter: haunterData, gengar: gengarData,
-  eevee: eeveeData, snorlax: snorlaxData,
+// 볼 흔들림 keyframes 주입 (한 번만)
+if (typeof document !== 'undefined' && !document.getElementById('ball-shake-style')) {
+  const style = document.createElement('style')
+  style.id = 'ball-shake-style'
+  style.textContent = `
+    @keyframes ballShake {
+      0%   { transform: rotate(0deg); }
+      20%  { transform: rotate(-20deg); }
+      40%  { transform: rotate(20deg); }
+      60%  { transform: rotate(-15deg); }
+      80%  { transform: rotate(10deg); }
+      100% { transform: rotate(0deg); }
+    }
+  `
+  document.head.appendChild(style)
 }
 
-const TYPE_COLOR = {
-  고스트: '#735797', 악: '#5C5365',    격투: '#C03028', 풀: '#3a8a30',
-  전기: '#C8A800',   에스퍼: '#cc3366', 노말: '#6a6a50', 독: '#A040A0',
-  얼음: '#4a9898',   불꽃: '#c05010',   땅: '#b08828',   물: '#3868c8',
-  바위: '#887840',   강철: '#607890',   비행: '#6890f0', 드래곤: '#7038F8',
-}
+import { PIXEL_ART } from '../Pet/pixelArtRegistry'
+import { TYPE_COLOR } from '../../constants/typeColors'
 
 const STATUS_COLOR = {
   burn: '#FF6B6B', poison: '#C77EFF', paralysis: '#FFD700',
@@ -111,14 +94,34 @@ function StatusBadge({ status }) {
   )
 }
 
-function BattlerRow({ battler, isWild }) {
+function BallSprite({ ballId, ballState, size, shakeKey }) {
+  const isShaking = ballState === 'shaking'
+  return (
+    <div
+      key={isShaking ? shakeKey : 'still'}
+      style={{
+        width: size, height: size,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        animation: isShaking ? 'ballShake 0.4s ease-in-out' : 'none',
+      }}
+    >
+      <BallCanvas ballId={ballId || 'ball_pokeball'} size={size} />
+    </div>
+  )
+}
+
+function BattlerRow({ battler, isWild, ballState, frameIndex, thrownBallId }) {
   if (!battler) return null
   const pokemon = getPokemon(battler.speciesId)
   const name = isWild ? `야생 ${pokemon?.speciesName ?? battler.speciesId}` : (pokemon?.speciesName ?? battler.speciesId)
   const spriteSize = Math.round(getWinSize(battler.speciesId) * 0.56)
+  const showBall = isWild && ballState && ballState !== 'break'
   return (
     <div style={s.battlerRow}>
-      <PokemonSprite speciesId={battler.speciesId} dexNum={battler.dexNum} size={spriteSize} flip={!isWild} />
+      {showBall
+        ? <BallSprite ballId={thrownBallId} ballState={ballState} size={spriteSize} shakeKey={frameIndex} />
+        : <PokemonSprite speciesId={battler.speciesId} dexNum={battler.dexNum} size={spriteSize} flip={!isWild} />
+      }
       <div style={s.battlerInfo}>
         <div style={s.battlerName}>
           {name}
@@ -153,9 +156,13 @@ export default function Battle() {
   const advanceBattleFrame  = useStore(s => s.advanceBattleFrame)
   const fleeFromBattle      = useStore(s => s.fleeFromBattle)
   const dismissBattle       = useStore(s => s.dismissBattle)
+  const throwBall           = useStore(s => s.throwBall)
+  const ballInventory       = useStore(s => s.ballInventory)
   const petSpeciesId        = useStore(s => s.petSpeciesId)
   const petStats            = useStore(s => s.petStats)
+  const petState            = useStore(s => s.petState)
   const points              = useStore(s => s.points)
+  const [thrownBallId, setThrownBallId] = useState(null)
 
   // Play pending frames one by one with 0.5s delay
   useEffect(() => {
@@ -172,7 +179,8 @@ export default function Battle() {
   if (!wildBattle) {
     const fainted = petStats?.currentHP === 0
     const noPoints = points < 10
-    const cannotStart = fainted || noPoints
+    const isEvolving = petState === 'evolving'
+    const cannotStart = fainted || noPoints || isEvolving
     return (
       <div style={s.center}>
         <div style={s.emptyIcon}>⚔️</div>
@@ -189,14 +197,22 @@ export default function Battle() {
     )
   }
 
-  const { wild, player, phase, result, logLines = [], turn } = wildBattle
+  const { wild, player, phase, result, logLines = [], turn, ballState, weather, weatherTurns } = wildBattle
   const ended    = phase === 'ended'
   const animating = phase === 'animating'
 
   return (
     <div style={s.wrap}>
+      {/* Weather indicator */}
+      {weather && (
+        <div style={s.weatherBar}>
+          <span>{weather === 'sunny_day' ? '☀️' : '🌧️'} {WEATHER_KO[weather]?.name}</span>
+          <span style={s.weatherTurns}>{weatherTurns}턴</span>
+        </div>
+      )}
+
       {/* Wild pokemon */}
-      <BattlerRow battler={wild} isWild />
+      <BattlerRow battler={wild} isWild ballState={ballState} frameIndex={wildBattle.frameIndex} thrownBallId={thrownBallId} />
 
       {/* Player pokemon */}
       <BattlerRow battler={player} isWild={false} />
@@ -236,14 +252,40 @@ export default function Battle() {
               )
             })}
           </div>
+          {/* Ball throw buttons */}
+          {(() => {
+            const balls = SHOP_ITEMS.filter(i => i.category === 'ball')
+            const hasBalls = balls.some(b => (ballInventory?.[b.id] || 0) > 0)
+            if (!hasBalls) return null
+            return (
+              <div style={s.ballRow}>
+                {balls.map(ball => {
+                  const count = ballInventory?.[ball.id] || 0
+                  if (count <= 0) return null
+                  return (
+                    <button
+                      key={ball.id}
+                      disabled={animating}
+                      style={{ ...s.ballBtn, opacity: animating ? 0.4 : 1 }}
+                      onClick={() => { setThrownBallId(ball.id); throwBall(ball.id, ball.ballModifier) }}
+                    >
+                      <BallCanvas ballId={ball.id} size={20} />
+                      <span>{ball.name} ×{count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )
+          })()}
           <button style={{ ...s.fleeBtn, opacity: animating ? 0.4 : 1 }} disabled={animating} onClick={fleeFromBattle}>도망가기</button>
         </>
       ) : (
         <div style={s.resultWrap}>
-          <div style={{ ...s.resultText, color: result === 'win' ? '#4CAF50' : result === 'lose' ? '#F44336' : result === 'flee_roar' ? '#9E9E9E' : '#FFC107' }}>
-            {result === 'win'  && '승리! +30 포인트'}
-            {result === 'lose' && '패배...'}
-            {result === 'flee' && '도망쳤다!'}
+          <div style={{ ...s.resultText, color: result === 'win' ? '#4CAF50' : result === 'caught' ? '#667eea' : result === 'lose' ? '#F44336' : result === 'flee_roar' ? '#9E9E9E' : '#FFC107' }}>
+            {result === 'win'    && '승리! +30 포인트'}
+            {result === 'caught' && '포획 성공!'}
+            {result === 'lose'   && '패배...'}
+            {result === 'flee'   && '도망쳤다!'}
             {result === 'flee_roar' && '야생 포켓몬이 도망쳤다!'}
           </div>
           <div style={s.resultButtons}>
@@ -260,6 +302,8 @@ export default function Battle() {
 
 const s = {
   wrap: { display: 'flex', flexDirection: 'column', gap: '10px' },
+  weatherBar: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#1a1a2e', border: '1px solid #2a2a4e', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', color: '#ccc' },
+  weatherTurns: { fontSize: '11px', color: '#888' },
   center: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '14px', paddingTop: '40px' },
   empty: { color: '#888', textAlign: 'center', paddingTop: '40px' },
   emptyIcon: { fontSize: '48px' },
@@ -296,6 +340,12 @@ const s = {
   moveName: { fontSize: '12px', color: '#eee', fontWeight: 'bold' },
   movePower: { fontSize: '10px', color: '#aaa' },
   movePP: { fontSize: '10px', color: '#aaa' },
+  ballRow: { display: 'flex', gap: '6px' },
+  ballBtn: {
+    flex: 1, background: '#1a1a2e', border: '1px solid #667eea', color: '#667eea', borderRadius: '8px',
+    padding: '6px', fontSize: '11px', cursor: 'pointer', fontWeight: 'bold',
+    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px',
+  },
   fleeBtn: {
     background: 'none', border: '1px solid #555', color: '#888', borderRadius: '8px',
     padding: '6px', fontSize: '12px', cursor: 'pointer', width: '100%',
