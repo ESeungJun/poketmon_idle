@@ -5,6 +5,10 @@
 
 > macOS · Windows 동시 지원 · Electron 기반
 
+<p align="center">
+  <img src="docs/screenshots/starters.png" alt="스타터 3종 — 이상해씨 / 파이리 / 꼬부기" width="500" />
+</p>
+
 ---
 
 ## ⚡ 빠른 시작 — 한 줄 복붙으로 프로덕션 앱 실행
@@ -129,6 +133,12 @@ npm run build
 | **Panel 창** | 380×580px | 모든 조작 UI (집중모드 / 스탯 / 배틀 / 보관함 / 상점 / 설정) |
 
 두 창은 IPC로 실시간 상태 동기화. 스타터 미선택 상태에서는 Pet 창이 표시되지 않는다.
+
+<p align="center">
+  <img src="docs/screenshots/panel-stats.png" alt="Panel 창 — 스탯 탭 (팬식이 Lv.61)" width="320" />
+  <br/>
+  <em>Panel 창 스탯 탭 — 종족값/실제 스탯, 성격·특성·지니기, 보유 기술 표시</em>
+</p>
 
 ---
 
