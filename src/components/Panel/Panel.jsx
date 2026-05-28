@@ -1,16 +1,16 @@
 import { useState } from 'react'
 import PomodoroTimer from './PomodoroTimer'
-import TodoList from './TodoList'
 import PointDisplay from './PointDisplay'
 import Shop from '../Shop/Shop'
 import PokemonStats from './PokemonStats'
 import Battle from './Battle'
 import PokeCenter from './PokeCenter'
 import StarterSelect from './StarterSelect'
+import Box from './Box'
 import Settings from './Settings'
 import useStore from '../../store/useStore'
 
-const TABS = ['홈', '샵', '스탯', '배틀', '센터', '설정']
+const TABS = ['홈', '샵', '스탯', '보관함', '배틀', '센터', '설정']
 
 export default function Panel() {
   const [tab, setTab] = useState(0)
@@ -55,13 +55,13 @@ export default function Panel() {
             <div style={{ display: tab === 0 ? 'block' : 'none' }}>
               <PointDisplay />
               <PomodoroTimer />
-              <TodoList />
             </div>
             {tab === 1 && <Shop />}
             {tab === 2 && <PokemonStats />}
-            {tab === 3 && <Battle />}
-            <div style={{ display: tab === 4 ? 'block' : 'none' }}><PokeCenter /></div>
-            {tab === 5 && <Settings />}
+            {tab === 3 && <Box />}
+            {tab === 4 && <Battle />}
+            <div style={{ display: tab === 5 ? 'block' : 'none' }}><PokeCenter /></div>
+            {tab === 6 && <Settings />}
           </div>
         </>
       )}
@@ -117,19 +117,22 @@ const styles = {
   tabBar: {
     display: 'flex',
     background: '#1a1a2e',
-    padding: '8px 16px',
-    gap: '8px',
+    padding: '8px 12px',
+    gap: '4px',
     borderBottom: '1px solid #2a2a3e',
     flexShrink: 0,
+    overflowX: 'auto',
   },
   tab: {
     background: 'none',
     border: 'none',
     color: '#888',
-    fontSize: '14px',
+    fontSize: '13px',
     cursor: 'pointer',
-    padding: '4px 12px',
+    padding: '4px 10px',
     borderRadius: '20px',
+    whiteSpace: 'nowrap',
+    flexShrink: 0,
   },
   tabActive: {
     background: '#2a2a3e',

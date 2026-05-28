@@ -26,8 +26,8 @@ export const BASE_BODY = [
 /* row  7 */ [_, 'outline', 'highlight', 'outline', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'outline', 'accent', 'belly', _, 'belly', 'belly', _, _, _],
 /* row  8 */ [_, 'outline', 'detail2', 'bodyD', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'outline', 'accent', 'accent', 'belly', 'accent', 'accent', 'belly', _, _],
 /* row  9 */ [_, 'outline', 'detail2', 'highlight', 'bodyL', 'body', 'body', 'body', 'body', 'body', 'body', 'body', 'highlight', 'body', 'body', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _],
-/* row 10 */ ['belly', 'outline', 'detail2', 'body', 'bodyL', 'body', 'bodyL', 'body', 'body', 'body', 'highlight', 'detail2', 'detail2', 'body', 'body', 'outline', 'accent', 'accent', 'accent', 'belly', _, _, 'belly'],
-/* row 11 */ ['belly', 'outline', 'highlight', 'body', 'highlight', 'body', 'bodyL', 'body', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'bodyL', 'body', 'outline', 'accent', 'accent', 'belly', '_', 'belly', 'belly', _],
+/* row 10 */ ['belly', 'outline', 'detail2', 'outline', 'bodyL', 'body', 'bodyL', 'body', 'body', 'body', 'highlight', 'detail2', 'detail2', 'body', 'body', 'outline', 'accent', 'accent', 'accent', 'belly', _, _, 'belly'],
+/* row 11 */ ['belly', 'outline', 'highlight', 'outline', 'highlight', 'body', 'bodyL', 'body', 'detail2', 'detail2', 'detail2', 'detail2', 'detail2', 'bodyL', 'body', 'outline', 'accent', 'accent', 'belly', '_', 'belly', 'belly', _],
 /* row 12 */ ['belly', 'accent', 'outline', 'detail2', 'body', 'body', 'body', 'detail2', 'outline', 'detail2', 'detail2', 'detail2', 'highlight', 'bodyL', 'body', 'outline', 'accent', 'accent', 'belly', '_', 'belly', 'belly', _],
 /* row 13 */ [_, 'belly', 'belly', 'outline', 'body', 'body', 'bodyL', 'detail2', 'outline', 'detail2', 'detail2', 'detail2', 'bodyL', 'body', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _, _],
 /* row 14 */ [_, 'belly', 'belly', 'outline', 'body', 'body', 'body', 'bodyL', 'detail2', 'detail2', 'detail2', 'body', 'body', 'body', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _, _],
@@ -39,5 +39,40 @@ export const BASE_BODY = [
 /* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, _, 'belly', 'belly', _, _, _, _, _, _, _],
 ]
 
-export const SLEEP_COLORS = COLORS
-export const SLEEP_BODY = BASE_BODY
+export const SLEEP_COLORS = {
+  outline: '#191919',
+  body: '#603637',
+  bodyL: '#873632',
+  bodyD: '#545454',
+  belly: '#7962B2',
+  shadow: '#AD849C',
+  accent: '#9B78D4',
+  highlight: '#BDBDB5',
+  detail1: '#F6A6C3',
+  detail2: '#ACD0E8',
+  detail3: '#FFFFFF',
+}
+
+// grid: 21×20
+export const SLEEP_BODY = [
+/* row  0 */ [_, _, _, _, _, _, _, _, _, _, 'belly', _, 'belly', _, _, _, _, _, _, _, _],
+/* row  1 */ [_, _, _, _, _, _, _, _, _, _, 'belly', _, _, _, _, _, _, _, _, _, _],
+/* row  2 */ [_, _, _, _, _, _, 'belly', 'belly', 'belly', _, _, _, _, 'belly', 'belly', '', '', 'belly', 'belly', _, _],
+/* row  3 */ [_, _, _, _, 'belly', 'belly', 'accent', 'accent', 'accent', 'belly', 'belly', _, 'belly', 'accent', 'accent', 'belly', 'accent', 'belly', 'belly', _, _],
+/* row  4 */ [_, _, _, 'belly', 'accent', 'accent', 'accent', 'outline', 'outline', 'outline', 'accent', 'accent', 'accent', 'accent', 'accent', 'accent', 'accent', _, _, _, _],
+/* row  5 */ [_, _, _, 'belly', 'accent', 'outline', 'outline', 'bodyD', 'bodyD', 'bodyD', 'outline', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _, _, _],
+/* row  6 */ [_, _, 'belly', 'accent', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'belly', _, _, _, _, _],
+/* row  7 */ [_, 'belly', 'accent', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'belly', _, 'belly', 'belly', _, _],
+/* row  8 */ [_, 'belly', 'accent', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'belly', 'accent', 'accent', 'belly', _],
+/* row  9 */ [_, 'accent', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'accent', 'accent', '', _],
+/* row 10 */ ['belly', 'accent', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'belly', '', 'belly', 'belly'],
+/* row 11 */ ['belly', 'accent', 'outline', 'bodyD', 'bodyL', 'bodyD', 'bodyL', 'bodyD', 'bodyD', 'bodyD', 'outline', 'body', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'belly', '', 'belly', 'belly'],
+/* row 12 */ [_, 'belly', 'belly', 'outline', 'outline', 'bodyD', 'bodyD', 'outline', 'outline', 'outline', 'bodyL', 'body', 'bodyD', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _],
+/* row 13 */ [_, _,'belly', 'outline', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _],
+/* row 14 */ [_, _, 'belly', 'accent', 'outline', 'shadow', 'shadow', 'shadow', 'bodyD', 'bodyD', 'bodyD', 'bodyD', 'outline', 'accent', 'accent', 'accent', 'accent', 'belly', _, _, _],
+/* row 15 */ [_, _, 'belly', 'accent', 'accent', 'outline', 'outline', 'detail1', 'detail1', 'shadow', 'detail3', 'outline', 'accent', 'belly', 'accent', 'accent', 'belly', _, _, _, _],
+/* row 16 */ [_, _, _, 'belly', 'accent', 'accent', 'accent', 'outline', 'outline', 'outline', 'highlight', 'outline', 'belly', _, 'belly', 'belly', _, _, _, _, _],
+/* row 17 */ [_, _, _, _, 'belly', 'accent', 'accent', 'belly', 'belly', 'accent', 'outline', 'belly', '', _, _, _, _, _, _, _, _],
+/* row 18 */ [_, _, _, _, _, 'belly', 'belly', _, _, 'belly', _, _, _, 'belly', 'belly', '', _, _, _, _, _],
+/* row 19 */ [_, _, _, _, _, _, _, _, _, _, _, _, _, 'belly', 'belly', _, _, _, _, _, _],
+]
