@@ -73,7 +73,9 @@ jobs:
           security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
           rm -f "$RUNNER_TEMP/cert.p12"
           # 공증에는 hardened runtime 이 필요하다. forceCodeSigning: 서명이 안 되면 임시 서명으로 넘어가지 않고 실패
-          npx electron-builder --mac dmg zip --universal --publish never \
+          # zip 은 만들지 않는다: 한글 헬퍼 앱 이름(포켓몬키우기 Helper.app)의 유니코드 정규화가
+          # 압축·해제 중에 바뀌어 서명이 깨진다 (dmg 는 그대로 유지된다)
+          npx electron-builder --mac dmg --universal --publish never \
             -c.mac.hardenedRuntime=true \
             -c.mac.entitlements=entitlements.plist \
             -c.mac.entitlementsInherit=entitlements.plist \
@@ -93,7 +95,6 @@ jobs:
           if-no-files-found: error
           path: |
             release/*.dmg
-            release/*.zip
             release/*.exe
 
   publish:
