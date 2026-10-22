@@ -11,6 +11,22 @@
 
 ---
 
+## 📥 설치 — 다운로드해서 바로 실행
+
+[Releases](https://github.com/ESeungJun/poketmon_idle/releases/latest)에서 운영체제에 맞는 파일 하나를 받는다.
+
+| OS | 파일 | 사용법 |
+|----|------|--------|
+| macOS (Apple 칩 · Intel 공용) | `poketmon-idle-x.y.z-mac-universal.dmg` | 열어서 앱을 응용 프로그램 폴더로 옮긴 뒤 실행 |
+| Windows 10/11 | `poketmon-idle-x.y.z-win-setup.exe` | 인스톨러 실행 |
+
+- macOS 앱은 Apple 서명·공증을 받아 보안 경고나 터미널 명령 없이 바로 열린다.
+- Windows는 서명하지 않은 빌드라 SmartScreen이 막으면 **추가 정보 → 실행**을 누른다.
+
+소스를 받아 직접 빌드하려면 아래 빠른 시작을 따른다.
+
+---
+
 ## ⚡ 빠른 시작 — 한 줄 복붙으로 프로덕션 앱 실행
 
 Node.js 18+ / npm / Git 만 설치되어 있으면, 아래 명령어 한 줄을 터미널에 복붙하면 **클론 → 의존성 설치 → 프로덕션 빌드 → 앱 실행**까지 자동으로 진행된다.
@@ -102,7 +118,7 @@ npm run build
 > ```
 > 또는 `시스템 설정 → 개인정보 보호 및 보안`에서 "확인 없이 열기" 클릭.
 >
-> 빌드한 Mac이 아닌 **다른 Mac으로 옮겨서 실행하는 것은 권장하지 않는다** — ad-hoc 서명이라 다른 환경에서 Gatekeeper가 거부할 수 있다. 다른 Mac에서 쓰려면 그 Mac에서 직접 위 빠른 시작 명령으로 빌드.
+> 빌드한 Mac이 아닌 **다른 Mac으로 옮겨서 실행하는 것은 권장하지 않는다** — ad-hoc 서명이라 다른 환경에서 Gatekeeper가 거부할 수 있다. 다른 Mac에서는 [Releases](https://github.com/ESeungJun/poketmon_idle/releases/latest)의 서명된 dmg를 받아 쓴다.
 
 ### 4. 처음 실행 시
 
