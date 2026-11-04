@@ -114,14 +114,19 @@ struct Pet {
 struct Wander {
     vx: f64,
     last_dir: i32,
-    /// 소수점 이동을 쌓아 두는 x (물리 px). 드래그·크기 변경 뒤에는 창 위치에서 다시 읽는다
+    /// 소수점 이동을 쌓아 두는 x (물리 px). None 이면 다음 틱에 창 위치와 모니터를 다시 읽는다
+    /// (드래그·크기 변경·배회 재시작 뒤). 매 틱 창 위치·모니터 목록을 묻지 않으려고 둔다
     x: Option<f64>,
+    /// 지금 모니터의 작업 영역(물리 px)과 배율: (x, y, w, h, scale)
+    area: (f64, f64, f64, f64, f64),
+    /// 마지막으로 옮긴 창 위치. 반올림한 위치가 같으면 다시 옮기지 않는다
+    last_pos: (i32, i32),
 }
 
 impl Default for Wander {
     fn default() -> Self {
         let vx = if rand_unit() > 0.5 { 1.0 } else { -1.0 };
-        Wander { vx, last_dir: if vx > 0.0 { 1 } else { -1 }, x: None }
+        Wander { vx, last_dir: if vx > 0.0 { 1 } else { -1 }, x: None, area: (0.0, 0.0, 0.0, 0.0, 1.0), last_pos: (i32::MIN, i32::MIN) }
     }
 }
 
@@ -225,11 +230,11 @@ fn resume_wandering_after(app: &AppHandle, delay: Duration) {
 /// 드래그(60fps)와 배회(30fps)를 맡는 반복 작업 하나
 fn spawn_motion_loop(app: AppHandle) {
     thread::spawn(move || {
-        let mut tick: u64 = 0;
         loop {
-            thread::sleep(Duration::from_millis(16));
-            tick += 1;
             let pet = app.state::<Pet>();
+            // 드래그 중에는 60fps, 아니면 30fps 로 돈다
+            let dragging = pet.dragging.load(Ordering::SeqCst);
+            thread::sleep(Duration::from_millis(if dragging { 16 } else { 33 }));
             let Some(w) = pet_window(&app) else { continue };
 
             if pet.dragging.load(Ordering::SeqCst) {
@@ -244,7 +249,7 @@ fn spawn_motion_loop(app: AppHandle) {
                 continue;
             }
 
-            if tick % 2 != 0 || !pet.wandering.load(Ordering::SeqCst) {
+            if !pet.wandering.load(Ordering::SeqCst) {
                 continue;
             }
             wander_step(&app, &pet, &w);
@@ -254,13 +259,18 @@ fn spawn_motion_loop(app: AppHandle) {
 
 /// 화면 오른쪽 1/3 구간의 바닥을 좌우로 돌아다닌다
 fn wander_step(app: &AppHandle, pet: &Pet, w: &WebviewWindow) {
-    let Ok(pos) = w.outer_position() else { return };
-    let Some(m) = monitor_at(app, pos.x as f64, pos.y as f64) else { return };
-    let scale = m.scale_factor();
-    let (dx, dy, width, height) = work_area(&m);
+    let mut wd = pet.wander.lock().unwrap();
+    if wd.x.is_none() {
+        let Ok(pos) = w.outer_position() else { return };
+        let Some(m) = monitor_at(app, pos.x as f64, pos.y as f64) else { return };
+        let (ax, ay, aw, ah) = work_area(&m);
+        wd.area = (ax, ay, aw, ah, m.scale_factor());
+        wd.x = Some(pos.x as f64);
+        wd.last_pos = (i32::MIN, i32::MIN);
+    }
+    let (dx, dy, width, height, scale) = wd.area;
     let size = pet.win_size.load(Ordering::SeqCst) as f64 * scale;
 
-    let mut wd = pet.wander.lock().unwrap();
     // 바닥에서 작업 영역 높이의 2% 위에 고정
     let fixed_y = dy + height - size - (height * 0.02).round();
 
@@ -273,7 +283,7 @@ fn wander_step(app: &AppHandle, pet: &Pet, w: &WebviewWindow) {
         wd.vx = if wd.vx < 0.0 { -0.3 } else { 0.3 };
     }
 
-    let x = wd.x.unwrap_or(pos.x as f64);
+    let x = wd.x.unwrap_or(dx);
     let mut nx = x + wd.vx * scale;
     let min_x = dx + (width * 2.0 / 3.0).round();
     let max_x = dx + width - size;
@@ -285,7 +295,11 @@ fn wander_step(app: &AppHandle, pet: &Pet, w: &WebviewWindow) {
         nx = max_x;
     }
     wd.x = Some(nx);
-    let _ = w.set_position(PhysicalPosition::new(nx.round() as i32, fixed_y.round() as i32));
+    let next = (nx.round() as i32, fixed_y.round() as i32);
+    if next != wd.last_pos {
+        wd.last_pos = next;
+        let _ = w.set_position(PhysicalPosition::new(next.0, next.1));
+    }
 
     // 방향이 바뀔 때만 화면에 알려 펫 그림을 좌우로 뒤집는다
     let dir = if wd.vx > 0.0 { 1 } else { -1 };
@@ -381,6 +395,7 @@ fn get_all_store(store: State<'_, Store>) -> Map<String, Value> {
 fn clear_store(app: AppHandle, store: State<'_, Store>, pet: State<'_, Pet>) {
     store.data.lock().unwrap().clear();
     store.save();
+    pet.resume_gen.fetch_add(1, Ordering::SeqCst); // 걸려 있던 배회 재시작 예약도 취소
     pet.wandering.store(false, Ordering::SeqCst);
     if let Some(w) = pet_window(&app) {
         let _ = w.hide();
