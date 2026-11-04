@@ -1,6 +1,6 @@
 ---
 name: add-pokemon-sprite
-description: 새 포켓몬 픽셀아트 추가 전체 과정을 안내한다. PNG 변환부터 anims 파일 합치기, PetCanvas/PokemonStats 등록, 진화 단계 설정, 미리보기 확인까지 순서대로 진행한다.
+description: 새 포켓몬 픽셀아트 추가 전체 과정을 안내한다. PNG 변환부터 anims 파일 합치기, pixelArtRegistry 등록, 진화 단계 설정, 미리보기 확인까지 순서대로 진행한다.
 ---
 
 # 새 포켓몬 픽셀아트 추가 스킬
@@ -71,27 +71,16 @@ export const SLEEP_BODY = [ ... ]
 
 ---
 
-## 5단계: PetCanvas.jsx + PokemonStats.jsx 등록
+## 5단계: pixelArtRegistry.js 등록
 
-**두 파일 모두** 업데이트해야 한다. 하나라도 빠지면 스탯창 이미지가 안 나온다.
+`src/components/Pet/pixelArtRegistry.js` 한 곳만 고친다. 펫 창(`PetCanvas.jsx`)과 패널·배틀 이미지(`StaticPokemonSprite.jsx`)가 모두 이 맵을 쓴다.
 
-`src/components/Pet/PetCanvas.jsx`:
 ```js
-import * as pokemon{DexNum}Data from './{dexNum}-anims'
+import * as {speciesId}Data from './{dexNum}-anims'
 
-const PIXEL_ART = {
+export const PIXEL_ART = {
   // 기존 항목들...
-  {speciesId}: pokemon{DexNum}Data,
-}
-```
-
-`src/components/Panel/PokemonStats.jsx`:
-```js
-import * as pokemon{DexNum}Data from '../Pet/{dexNum}-anims'
-
-const PIXEL_ART = {
-  // 기존 항목들...
-  {speciesId}: pokemon{DexNum}Data,
+  {speciesId}: {speciesId}Data,
 }
 ```
 
@@ -99,18 +88,18 @@ const PIXEL_ART = {
 
 ## 6단계: 진화 단계 등록 (stage2/3만)
 
-stage1이면 이 단계 건너뜀.
+stage1이면 이 단계 건너뜀. 두 파일을 **같이** 고친다.
 
-**`src/components/Pet/PetCanvas.jsx`:**
+**`src/components/Pet/PetCanvas.jsx`** (화면 쪽 크기):
 ```js
 const STAGE2 = new Set([..., '{speciesId}'])  // stage2면
 const STAGE3 = new Set([..., '{speciesId}'])  // stage3면
 ```
 
-**`electron/main.js`:**
-```js
-const STAGE2_SPECIES = new Set([..., '{speciesId}'])
-const STAGE3_SPECIES = new Set([..., '{speciesId}'])
+**`src-tauri/src/lib.rs`** (창 크기 검사, 배열 길이 숫자도 함께 올린다):
+```rust
+const STAGE2: [&str; N] = [..., "{speciesId}"];
+const STAGE3: [&str; N] = [..., "{speciesId}"];
 ```
 
 ---

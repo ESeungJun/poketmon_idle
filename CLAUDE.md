@@ -23,7 +23,7 @@
 Tauri 2 (Rust, 시스템 웹뷰: 맥 WebKit · 윈도우 WebView2) · React 18 + Vite 5 · Zustand 4 · `config.json`(Rust에서 직접 저장) · HTML Canvas (`imageRendering: pixelated`)
 
 ## 창 구성
-- Pet 창: `100×100px`, 투명·장식 없음·그림자 없음·항상 위 (맥은 `macOSPrivateApi` 필요)
+- Pet 창: 진화 단계별 `100×100` / `120×120` / `160×160px`, 투명·장식 없음·그림자 없음·항상 위 (맥은 `macOSPrivateApi` 필요)
 - Panel 창: `380×580px`
 - 두 창은 `emitTo(다른 창, 'state-sync')` 이벤트로 상태 동기화
 - 스타터 미선택 시 Pet 창 숨김 (`petSpeciesId` 없으면 `null` 반환)
@@ -77,11 +77,11 @@ npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 각 포켓몬 `*-anims.js`에서 export: `COLORS`, `SLEEP_COLORS`, `BASE_BODY`, `SLEEP_BODY`
 
 PetCanvas 렌더링 분기:
-1. `PIXEL_ART` 맵에 `speciesId` 있으면 → `PixelArtCanvas` (커스텀 도트)
+1. `PIXEL_ART` 맵(`pixelArtRegistry.js`)에 `speciesId` 있으면 → `PixelArtCanvas` (커스텀 도트)
 2. `dexNum` 있으면 → PokeAPI CDN 스프라이트 img 태그
 3. 둘 다 없으면 → `null`
 
-> `animations.js` (레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 추가 후 `PIXEL_ART` 맵에 등록.
+> `animations.js` (레거시)는 삭제됨. 신규 포켓몬은 `*-anims.js` 추가 후 `pixelArtRegistry.js`의 `PIXEL_ART` 맵에 등록.
 
 ### 작성 규칙
 - outline 색상: `'#191919'` 고정 (모든 anims 파일 통일)
@@ -117,6 +117,16 @@ anims 파일 수정 후 F5 새로고침으로 즉시 반영. 픽셀 hover 시 �
 | venusaur | 3-anims.js | stage3 |
 | charizard | 6-anims.js | stage3 |
 | blastoise | 9-anims.js | stage3 |
+| pidgey | 16-anims.js | stage1 |
+| pidgeotto | 17-anims.js | stage2 |
+| pidgeot | 18-anims.js | stage3 |
+| pikachu | 25-anims.js | stage1 |
+| raichu | 26-anims.js | stage2 |
+| gastly | 92-anims.js | stage1 |
+| haunter | 93-anims.js | stage2 |
+| gengar | 94-anims.js | stage3 |
+| eevee | 133-anims.js | stage1 |
+| snorlax | 143-anims.js | stage3 |
 
 ## 브랜치 전략
 - `master` — 프로덕션 (직접 push 불가)
