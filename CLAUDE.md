@@ -48,6 +48,8 @@ npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 앱 실행 전 기존 프로세스 먼저 종료:
 - **macOS**: `pkill -f "MacOS/poketmon-idle"; sleep 1; open "src-tauri/target/release/bundle/macos/포켓몬키우기.app"`
 - **Windows**: `powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "src-tauri/target/release/poketmon-idle.exe"`
+- 릴리스: `package.json`·`src-tauri/Cargo.toml` 버전을 올리고 `v<버전>` 태그 push → `release.yml`이 초안 릴리스(설치 파일 + 자동 업데이트용 `latest.json`)를 만든다. 공개(Publish)해야 앱의 자동 업데이트가 받는다.
+- 자동 업데이트 서명 키: 비밀 키는 `~/.tauri/poketmon-idle.key`(+ `.password`)와 GitHub Secrets `TAURI_SIGNING_PRIVATE_KEY`·`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. 잃어버리면 기존 설치본에 업데이트를 보낼 수 없다.
 - Rust가 없는 Mac에서는 브랜치를 push 하면 Actions `Build`가 서명 없는 dmg·exe를 결과물로 남긴다(`gh run download`).
 
 코드 수정 후 PR 전 절차: **빌드 → 실행 확인 → 사용자 확인 → PR 생성**

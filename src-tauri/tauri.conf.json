@@ -19,7 +19,10 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["dmg", "nsis"],
+    "targets": [
+      "dmg",
+      "nsis"
+    ],
     "category": "Productivity",
     "icon": [
       "icons/32x32.png",
@@ -31,6 +34,17 @@
     "macOS": {
       "signingIdentity": "-",
       "minimumSystemVersion": "11.0"
+    }
+  },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEE2ODE3MDIzRjNBNDkwOUEKUldTYWtLVHpJM0NCcHZMbGx4SzNzS0I0NlUzOXE0NFBhUUJUSHJ1NVI2TVhiejczNXBud3d4c1oK",
+      "endpoints": [
+        "https://github.com/ESeungJun/poketmon_idle/releases/latest/download/latest.json"
+      ],
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

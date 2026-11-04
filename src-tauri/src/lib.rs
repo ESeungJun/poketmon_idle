@@ -12,6 +12,7 @@ use serde_json::{Map, Value};
 use tauri::menu::{MenuBuilder, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::webview::PageLoadEvent;
+use tauri_plugin_updater::{Update, UpdaterExt};
 use tauri::{
     AppHandle, Emitter, LogicalSize, Manager, Monitor, PhysicalPosition, RunEvent, State,
     WebviewUrl, WebviewWindow, WebviewWindowBuilder,
@@ -557,10 +558,21 @@ fn show_panel_first(app: &AppHandle) {
     }
 }
 
-fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+/// 트레이 메뉴. 받아 둔 업데이트가 있으면 맨 위에 설치 항목을 둔다
+fn tray_menu(app: &AppHandle, update_version: Option<&str>) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     let toggle = MenuItem::with_id(app, "toggle", "패널 열기/닫기", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
-    let menu = MenuBuilder::new(app).item(&toggle).separator().item(&quit).build()?;
+    let mut builder = MenuBuilder::new(app);
+    if let Some(v) = update_version {
+        let label = format!("새 버전 v{v} 설치하고 다시 시작");
+        let update = MenuItem::with_id(app, "update", label, true, None::<&str>)?;
+        builder = builder.item(&update).separator();
+    }
+    builder.item(&toggle).separator().item(&quit).build()
+}
+
+fn build_tray(app: &AppHandle) -> tauri::Result<()> {
+    let menu = tray_menu(app, None)?;
     let icon = tauri::image::Image::from_bytes(include_bytes!("../icons/tray.png"))?;
 
     TrayIconBuilder::with_id("main")
@@ -571,6 +583,7 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(cfg!(target_os = "macos"))
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => toggle_panel_window(app, false),
+            "update" => install_update(app),
             "quit" => app.exit(0),
             _ => {}
         })
@@ -586,6 +599,63 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
     Ok(())
 }
 
+// ── 자동 업데이트 ────────────────────────────────────────────────
+// GitHub 릴리스의 latest.json 을 보고 새 버전이 있으면 미리 받아 둔다.
+// 설치는 사용자가 트레이 메뉴에서 고를 때만 한다 (집중 타이머 도중에 앱이 꺼지지 않게).
+
+/// 받아 두고 아직 설치하지 않은 업데이트
+#[derive(Default)]
+struct PendingUpdate(Mutex<Option<(Update, Vec<u8>)>>);
+
+const UPDATE_FIRST_CHECK: Duration = Duration::from_secs(15);
+const UPDATE_INTERVAL: Duration = Duration::from_secs(6 * 60 * 60);
+
+fn spawn_update_checker(app: AppHandle) {
+    thread::spawn(move || {
+        thread::sleep(UPDATE_FIRST_CHECK);
+        loop {
+            if let Err(e) = tauri::async_runtime::block_on(check_update(&app)) {
+                eprintln!("업데이트 확인 실패: {e}");
+            }
+            thread::sleep(UPDATE_INTERVAL);
+        }
+    });
+}
+
+async fn check_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>> {
+    if app.state::<PendingUpdate>().0.lock().unwrap().is_some() {
+        return Ok(()); // 이미 받아 둔 것이 있으면 설치를 기다린다
+    }
+    let Some(update) = app.updater()?.check().await? else { return Ok(()) };
+    let bytes = update.download(|_, _| {}, || {}).await?;
+    let version = update.version.clone();
+    *app.state::<PendingUpdate>().0.lock().unwrap() = Some((update, bytes));
+
+    // 메뉴는 메인 스레드에서 바꾼다
+    let handle = app.clone();
+    app.run_on_main_thread(move || {
+        match tray_menu(&handle, Some(&version)) {
+            Ok(menu) => {
+                if let Some(tray) = handle.tray_by_id("main") {
+                    let _ = tray.set_menu(Some(menu));
+                    let _ = tray.set_tooltip(Some(format!("포켓몬 키우기 · 새 버전 v{version}")));
+                }
+            }
+            Err(e) => eprintln!("트레이 메뉴를 바꾸지 못했습니다: {e}"),
+        }
+    })?;
+    Ok(())
+}
+
+fn install_update(app: &AppHandle) {
+    let Some((update, bytes)) = app.state::<PendingUpdate>().0.lock().unwrap().take() else { return };
+    match update.install(bytes) {
+        // Windows 는 설치 프로그램이 앱을 닫고 새 버전을 띄운다. macOS 는 앱 묶음을 바꾼 뒤 다시 시작한다
+        Ok(()) => app.restart(),
+        Err(e) => eprintln!("업데이트 설치 실패: {e}"),
+    }
+}
+
 /// Electron 버전이 저장하던 config.json 후보 (userData 폴더 이름이 package.json 이름 또는 제품 이름)
 fn legacy_store_paths(app: &AppHandle) -> Vec<PathBuf> {
     let Ok(base) = app.path().data_dir() else { return vec![] };
@@ -597,13 +667,16 @@ fn legacy_store_paths(app: &AppHandle) -> Vec<PathBuf> {
 
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let handle = app.handle().clone();
             let path = handle.path().app_data_dir()?.join("config.json");
             app.manage(Store::load(path, &legacy_store_paths(&handle)));
             app.manage(Pet::default());
+            app.manage(PendingUpdate::default());
             build_tray(&handle)?;
             build_windows(&handle)?;
+            spawn_update_checker(handle.clone());
             spawn_motion_loop(handle);
             Ok(())
         })
