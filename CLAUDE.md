@@ -3,9 +3,10 @@
 ## 핵심 파일
 | 파일 | 역할 |
 |------|------|
-| `electron/main.js` | 메인 프로세스: BrowserWindow 2개, IPC, wander/drag 로직 |
-| `electron/preload.js` | contextBridge → `window.electronAPI` |
-| `src/App.jsx` | 라우팅: `?view=pet` / `?view=panel` |
+| `src-tauri/src/lib.rs` | Rust: 창 2개(pet·panel), 트레이, 저장소, 명령, wander/drag 로직 |
+| `src-tauri/tauri.conf.json` | 앱 이름·식별자·아이콘·번들·CSP |
+| `src/platform/tauri.js` | Tauri 명령·이벤트 → `window.electronAPI` (예전 preload와 같은 모양) |
+| `src/App.jsx` | 라우팅: `window.__POKE_VIEW__` (`pet` / `panel`, Rust가 창마다 주입) |
 | `src/store/useStore.js` | Zustand: points, items, petState |
 | `src/data/pokemon.js` | 포켓몬 종 데이터 (스탯, 기술, 진화 정보) |
 | `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 (PixelArtCanvas / sprite img 분기) |
@@ -19,20 +20,20 @@
 | `src/data/battleEngine.js` | 배틀 순수 로직: 스탯 계산, 데미지, 상태이상, `processTurn`, 포획 확률 |
 
 ## 기술 스택
-Electron 28 · React 18 + Vite 5 · Zustand 4 · electron-store 8 · HTML Canvas (`imageRendering: pixelated`)
+Tauri 2 (Rust, 시스템 웹뷰: 맥 WebKit · 윈도우 WebView2) · React 18 + Vite 5 · Zustand 4 · `config.json`(Rust에서 직접 저장) · HTML Canvas (`imageRendering: pixelated`)
 
 ## 창 구성
-- Pet 창: `100×100px`, `transparent: true`, `backgroundColor: '#00000000'`, `roundedCorners: false`
+- Pet 창: `100×100px`, 투명·장식 없음·그림자 없음·항상 위 (맥은 `macOSPrivateApi` 필요)
 - Panel 창: `380×580px`
-- 두 창은 IPC `state-update` / `state-sync`로 상태 동기화
+- 두 창은 `emitTo(다른 창, 'state-sync')` 이벤트로 상태 동기화
 - 스타터 미선택 시 Pet 창 숨김 (`petSpeciesId` 없으면 `null` 반환)
 
 ## 크로스플랫폼 원칙
 macOS + Windows 동시 지원. 코드 작성 시 항상 양쪽을 고려한다.
 
-- macOS 전용 API(`setVisibleOnAllWorkspaces`, `roundedCorners` 등)는 `process.platform !== 'win32'` 가드 필수
-- macOS 전용 shell 명령어는 `process.platform !== 'darwin'` 가드 또는 분기 처리
-- 경로 구분자: `path.join()`/`path.sep` (하드코딩 금지)
+- macOS 전용 처리(모든 데스크톱·전체화면 위 표시 등)는 Rust에서 `#[cfg(target_os = "macos")]` 가드 필수
+- 경로는 `PathBuf::join` / Tauri `app.path()` 사용 (하드코딩 금지)
+- 웹뷰가 OS마다 다르다(맥 WebKit, 윈도우 크로미움). CSS·캔버스 변경은 양쪽에서 확인
 - hooks·스크립트 node 경로: `PATH="$PATH:/c/Program Files/nodejs:/usr/local/bin:/opt/homebrew/bin" node`
 
 ## 빌드 & 실행
@@ -40,21 +41,24 @@ macOS + Windows 동시 지원. 코드 작성 시 항상 양쪽을 고려한다.
 `빌드해줘` 기본값은 `npm run dev`. `npm run build`(릴리즈)는 명시 요청 시에만.
 
 ```bash
-npm run dev      # 로컬 (Vite HMR + Electron)
+npm run dev      # 로컬 (Vite HMR + Tauri 창). Rust 필요
 npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 ```
 
 앱 실행 전 기존 프로세스 먼저 종료:
-- **macOS**: `pkill -f "poketmon-idle"; sleep 1; open "release/mac-universal/poketmon-idle.app"`
-- **Windows**: `powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "release/win-unpacked/poketmon-idle.exe"`
+- **macOS**: `pkill -f "MacOS/poketmon-idle"; sleep 1; open "src-tauri/target/release/bundle/macos/포켓몬키우기.app"`
+- **Windows**: `powershell -Command "Stop-Process -Name 'poketmon-idle' -Force -ErrorAction SilentlyContinue"; sleep 2 && start "" "src-tauri/target/release/poketmon-idle.exe"`
+- 릴리스: `package.json`·`src-tauri/Cargo.toml` 버전을 올리고 `v<버전>` 태그 push → `release.yml`이 초안 릴리스(설치 파일 + 자동 업데이트용 `latest.json`)를 만든다. 공개(Publish)해야 앱의 자동 업데이트가 받는다.
+- 자동 업데이트 서명 키: 비밀 키는 `~/.tauri/poketmon-idle.key`(+ `.password`)와 GitHub Secrets `TAURI_SIGNING_PRIVATE_KEY`·`TAURI_SIGNING_PRIVATE_KEY_PASSWORD`. 잃어버리면 기존 설치본에 업데이트를 보낼 수 없다.
+- Rust가 없는 Mac에서는 브랜치를 push 하면 Actions `Build`가 서명 없는 dmg·exe를 결과물로 남긴다(`gh run download`).
 
 코드 수정 후 PR 전 절차: **빌드 → 실행 확인 → 사용자 확인 → PR 생성**
 > dev 직접 push도 사용자 확인 후 진행.
 
 ## IPC 규칙
-- `ipcRenderer.sendSync` 금지 → `ipcRenderer.invoke` (async) 사용
-- `ipcRenderer.on` 등록 시 반드시 cleanup 함수 반환 (메모리 누수 방지)
-- store 키 allowlist: `ALLOWED_STORE_KEYS` (main.js) — 미허가 키 차단
+- 화면은 `window.electronAPI`만 부른다. 새 기능은 `src-tauri/src/lib.rs`에 `#[tauri::command]`를 만들고 `generate_handler!`와 `src/platform/tauri.js`에 같이 추가
+- 이벤트 리스너는 반드시 해제 함수 반환 (메모리 누수 방지)
+- store 키 allowlist: `ALLOWED_STORE_KEYS` (lib.rs) — 미허가 키 차단
 - 상태 변경 시 `sendStateUpdate` 호출로 다른 창에 동기화
 
 ## petState
@@ -64,8 +68,8 @@ npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 - `evolving` — 진화 연출 3초간
 
 ## 기타 아키텍처 규칙
-- **타이머**: `setInterval` 틱 카운팅 금지 → `Date.now()` wall-clock 기반 (Chromium 스로틀링 우회)
-- **멀티모니터 드래그**: drag 시작 시 `setVisibleOnAllWorkspaces(false)`, 종료 시 `true` + `setBackgroundColor('#00000000')` + `force-remount` IPC. `cachedDisplay`로 경계 ±20px에서만 재계산.
+- **타이머**: `setInterval` 틱 카운팅 금지 → `Date.now()` wall-clock 기반 (웹뷰 스로틀링 우회)
+- **멀티모니터 드래그**: drag 시작 시 모든 데스크톱 표시를 끄고(맥), 종료 시 다시 켠다. 좌표는 모두 물리 px로 계산하고 모니터 배율(scale_factor)로 논리 px와 바꾼다.
 
 ## 픽셀아트 시스템
 
