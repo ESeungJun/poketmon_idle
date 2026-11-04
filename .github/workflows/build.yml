@@ -4,7 +4,7 @@ name: Build
 # 공개 릴리스는 release.yml(태그 push)이 만든다.
 on:
   push:
-    branches: ['feature/tauri-*']
+    branches: ['feature/**']
   workflow_dispatch:
 
 permissions:
@@ -17,7 +17,7 @@ jobs:
       matrix:
         include:
           - os: macos-latest
-            args: --target universal-apple-darwin --bundles dmg
+            args: --target universal-apple-darwin --bundles app,dmg
             rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
           - os: windows-latest
             args: --bundles nsis
