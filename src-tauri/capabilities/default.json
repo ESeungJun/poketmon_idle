@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "펫 창과 패널 창: 창끼리 이벤트 주고받기",
+  "windows": ["pet", "panel"],
+  "permissions": ["core:default"]
+}

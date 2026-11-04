@@ -130,7 +130,7 @@ function PanelView() {
 }
 
 export default function App() {
-  const [view] = useState(() => new URLSearchParams(window.location.search).get('view') || 'pet')
+  const [view] = useState(() => new URLSearchParams(window.location.search).get('view') || window.__POKE_VIEW__ || 'pet')
 
   if (view === 'panel') return <PanelView />
   return <PetView />
