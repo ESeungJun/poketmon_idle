@@ -25,7 +25,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, windows-latest]
+        os: [macos-15-intel, windows-latest]  # Apple 칩 러너가 자주 밀려서 Intel 러너로 유니버설 빌드
     runs-on: ${{ matrix.os }}
     env:
       # 자동 업데이트 파일(.sig) 서명 키. 공개 키는 tauri.conf.json 의 plugins.updater.pubkey
