@@ -2,12 +2,11 @@ name: Release
 
 # 릴리스 흐름
 #   package.json 의 version 을 올리고 v<version> 태그를 push 하면 실행된다.
-#   macOS(서명 + Apple 공증) · Windows(서명 없음) 설치 파일을 만들어
+#   macOS(서명 + Apple 공증, 유니버설) · Windows(서명 없음) 설치 파일을 Tauri 로 만들어
 #   초안(draft) 릴리스 v<version> 에 올린다. GitHub 에서 "Publish release" 를 눌러야 공개된다.
 #
-# 빌드 작업은 의존성 설치 스크립트 없이 설치하고(--ignore-scripts, Electron 은
-# electron-builder 가 직접 받는다), 서명 인증서·공증 키는 macOS 패키징 단계에만 넘긴다.
-# 로컬 `npm run build` 는 그대로 임시 서명 + scripts/fix-app-bundle.js 를 쓴다.
+# 서명 인증서·공증 키는 macOS 빌드 단계에만 넘긴다.
+# 로컬 `npm run build` 는 임시(ad-hoc) 서명으로 만든다 (tauri.conf.json 의 signingIdentity "-").
 on:
   push:
     tags: ['v*']
@@ -36,35 +35,39 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ runner.os == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - id: v
         shell: bash
         run: echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
-      - run: npm ci --ignore-scripts
-      - run: npx vite build
+      - run: npm ci
       - name: 설치 파일 (Windows)
         if: runner.os == 'Windows'
         shell: bash
-        run: npx electron-builder --win nsis --x64 --publish never -c.artifactName='poketmon-idle-${version}-win-setup.${ext}'
+        run: |
+          npx tauri build --bundles nsis
+          mkdir -p out
+          cp src-tauri/target/release/bundle/nsis/*.exe "out/poketmon-idle-${{ steps.v.outputs.version }}-win-setup.exe"
       - name: 설치 파일 (macOS, 서명 + 공증)
         if: runner.os == 'macOS'
         env:
           MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
           MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
           APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_KEY: ${{ secrets.APPLE_API_KEY_ID }}
           APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
         run: |
           if [ -z "$MAC_CERT_P12" ] || [ -z "$APPLE_API_KEY_P8" ]; then
             echo "::error::macOS 서명용 Secrets 가 없습니다"; exit 1
           fi
-          # 인증서는 직접 만든 임시 키체인에 넣는다 (electron-builder 가 CSC_LINK 로 만드는
-          # 키체인은 macOS 26 러너에서 잠금 해제가 안 된다)
+          # 인증서는 직접 만든 임시 키체인에 넣는다
           keychain="$RUNNER_TEMP/signing.keychain-db"
           kc_pass=$(openssl rand -hex 24)
-          export APPLE_API_KEY="$RUNNER_TEMP/AuthKey.p8" # electron-builder 는 공증 키를 파일 경로로 받는다
-          trap 'security delete-keychain "$keychain" 2>/dev/null; rm -f "$RUNNER_TEMP/cert.p12" "$APPLE_API_KEY"' EXIT
+          export APPLE_API_KEY_PATH="$RUNNER_TEMP/AuthKey.p8" # Tauri 는 공증 키를 파일 경로로 받는다
+          trap 'security delete-keychain "$keychain" 2>/dev/null; rm -f "$RUNNER_TEMP/cert.p12" "$APPLE_API_KEY_PATH"' EXIT
           printf '%s' "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
-          printf '%s\n' "$APPLE_API_KEY_P8" > "$APPLE_API_KEY"
+          printf '%s\n' "$APPLE_API_KEY_P8" > "$APPLE_API_KEY_PATH"
           security create-keychain -p "$kc_pass" "$keychain"
           security set-keychain-settings -lut 3600 "$keychain"
           security unlock-keychain -p "$kc_pass" "$keychain"
@@ -72,19 +75,16 @@ jobs:
           security set-key-partition-list -S apple-tool:,apple: -s -k "$kc_pass" "$keychain" >/dev/null
           security list-keychains -d user -s "$keychain" $(security list-keychains -d user | tr -d '"')
           rm -f "$RUNNER_TEMP/cert.p12"
-          # 공증에는 hardened runtime 이 필요하다. forceCodeSigning: 서명이 안 되면 임시 서명으로 넘어가지 않고 실패
-          # zip 은 만들지 않는다: 한글 헬퍼 앱 이름(포켓몬키우기 Helper.app)의 유니코드 정규화가
-          # 압축·해제 중에 바뀌어 서명이 깨진다 (dmg 는 그대로 유지된다)
-          npx electron-builder --mac dmg --universal --publish never \
-            -c.mac.hardenedRuntime=true \
-            -c.mac.entitlements=entitlements.plist \
-            -c.mac.entitlementsInherit=entitlements.plist \
-            -c.mac.forceCodeSigning=true \
-            -c.artifactName='poketmon-idle-${version}-mac-${arch}.${ext}'
+          # 설정 파일의 임시 서명("-") 대신 가져온 Developer ID 로 서명하고, 위 API 키로 공증한다
+          export APPLE_SIGNING_IDENTITY=$(security find-identity -v -p codesigning "$keychain" | grep -o '"Developer ID Application[^"]*"' | head -1 | tr -d '"')
+          if [ -z "$APPLE_SIGNING_IDENTITY" ]; then echo "::error::Developer ID 인증서를 찾지 못했습니다"; exit 1; fi
+          npx tauri build --target universal-apple-darwin --bundles app,dmg
+          mkdir -p out
+          cp src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg "out/poketmon-idle-${{ steps.v.outputs.version }}-mac-universal.dmg"
       - name: 서명·공증 확인 (macOS)
         if: runner.os == 'macOS'
         run: |
-          for app in release/mac*/*.app; do
+          for app in src-tauri/target/universal-apple-darwin/release/bundle/macos/*.app; do
             codesign --verify --deep --strict "$app"
             xcrun stapler validate "$app"
             spctl --assess --type execute -vv "$app"
@@ -93,9 +93,7 @@ jobs:
         with:
           name: installers-${{ runner.os }}
           if-no-files-found: error
-          path: |
-            release/*.dmg
-            release/*.exe
+          path: out/*
 
   publish:
     needs: build
