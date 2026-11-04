@@ -652,7 +652,14 @@ fn install_update(app: &AppHandle) {
     match update.install(bytes) {
         // Windows 는 설치 프로그램이 앱을 닫고 새 버전을 띄운다. macOS 는 앱 묶음을 바꾼 뒤 다시 시작한다
         Ok(()) => app.restart(),
-        Err(e) => eprintln!("업데이트 설치 실패: {e}"),
+        Err(e) => {
+            eprintln!("업데이트 설치 실패: {e}");
+            // 받아 둔 것을 버렸으니 메뉴를 되돌리고, 다음 확인 때 다시 받는다
+            if let (Some(tray), Ok(menu)) = (app.tray_by_id("main"), tray_menu(app, None)) {
+                let _ = tray.set_menu(Some(menu));
+                let _ = tray.set_tooltip(Some("포켓몬 키우기"));
+            }
+        }
     }
 }
 
