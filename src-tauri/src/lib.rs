@@ -107,6 +107,8 @@ struct Pet {
     /// 늦게 배회를 켜는 예약을 뒤에 온 호출이 무효로 만들기 위한 번호
     resume_gen: AtomicU64,
     wander: Mutex<Wander>,
+    /// 패널을 처음 한 번 보여 줬는가 (페이지 로드 알림이 늦거나 빠질 때를 위한 대비)
+    panel_shown: AtomicBool,
 }
 
 struct Wander {
@@ -516,12 +518,28 @@ fn build_windows(app: &AppHandle) -> tauri::Result<()> {
         .on_page_load(|w, payload| {
             // 다 그려진 뒤에 보여 줘서 흰 화면이 번쩍이지 않게 한다
             if payload.event() == PageLoadEvent::Finished {
-                let _ = w.show();
-                let _ = w.set_focus();
+                show_panel_first(w.app_handle());
             }
         })
         .build()?;
+
+    // 처음 실행할 때 페이지 로드 알림을 못 받아 패널이 안 뜬 적이 있어서, 3초 뒤에도 안 떴으면 띄운다
+    let app2 = app.clone();
+    thread::spawn(move || {
+        thread::sleep(Duration::from_secs(3));
+        show_panel_first(&app2);
+    });
     Ok(())
+}
+
+fn show_panel_first(app: &AppHandle) {
+    if app.state::<Pet>().panel_shown.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    if let Some(w) = panel_window(app) {
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
