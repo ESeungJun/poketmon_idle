@@ -3,7 +3,7 @@
 데스크탑 위에 항상 떠 있는 픽셀아트 포켓몬을 키우는 생산성 앱.
 집중모드와 배틀로 포인트를 모아 파트너 포켓몬을 성장시킨다.
 
-> macOS · Windows 동시 지원 · Electron 기반
+> macOS · Windows 동시 지원 · Tauri 기반 (설치 파일 맥 4MB · 윈도우 1.4MB)
 
 <p align="center">
   <img src="docs/screenshots/starters.png" alt="스타터 3종 — 이상해씨 / 파이리 / 꼬부기" width="500" />
@@ -29,25 +29,23 @@
 
 ## ⚡ 빠른 시작 — 한 줄 복붙으로 프로덕션 앱 실행
 
-Node.js 18+ / npm / Git 만 설치되어 있으면, 아래 명령어 한 줄을 터미널에 복붙하면 **클론 → 의존성 설치 → 프로덕션 빌드 → 앱 실행**까지 자동으로 진행된다.
+Node.js 18+ / npm / Git / Rust 가 설치되어 있으면, 아래 명령어 한 줄을 터미널에 복붙하면 **클론 → 의존성 설치 → 프로덕션 빌드 → 앱 실행**까지 자동으로 진행된다.
 
 ### 🪟 Windows (cmd / PowerShell)
 
 ```cmd
-git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && start "" "release\win-unpacked\poketmon-idle.exe"
+git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && start "" "src-tauri\target\release\poketmon-idle.exe"
 ```
 
 ### 🍎 macOS (Terminal / zsh)
 
 ```bash
-git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && xattr -cr release/mac-universal/poketmon-idle.app && open release/mac-universal/poketmon-idle.app
+git clone https://github.com/ESeungJun/poketmon_idle.git && cd poketmon_idle && npm install && npm run build && open "src-tauri/target/release/bundle/macos/포켓몬키우기.app"
 ```
 
-빌드 완료 후 격리속성(quarantine) 제거 + 앱 바로 실행까지 한 번에 처리. `release/mac-universal/poketmon-idle.app` 파일을 그대로 사용한다.
-
-> 첫 실행 시 의존성 설치 + 빌드(universal x64+arm64 + ad-hoc 사이닝)까지 **3~7분 정도** 걸린다.
+> 첫 빌드는 Rust 의존성을 컴파일하느라 **5~10분 정도** 걸린다. 다음부터는 1분 안팎.
 >
-> 다음부터는 `release/mac-universal/poketmon-idle.app`을 Finder에서 직접 더블클릭하거나, 원하면 `/Applications`로 끌어다 놓고 사용하면 된다.
+> 다음부터는 `src-tauri/target/release/bundle/macos/포켓몬키우기.app`을 Finder에서 직접 더블클릭하거나, 원하면 `/Applications`로 끌어다 놓고 사용하면 된다.
 
 단계별 설명·옵션·문제 해결이 필요하면 아래 [상세 가이드](#-설치-및-실행-사용자-가이드)를 참고.
 
@@ -64,8 +62,10 @@ git에서 소스를 받아 직접 빌드하여 실행할 수 있다.
 | Node.js | 18 이상 (LTS 권장) | `node -v` |
 | npm | 9 이상 | `npm -v` |
 | Git | 최신 | `git --version` |
+| Rust | stable | `rustc --version` |
 
 > Node.js가 없다면 [nodejs.org](https://nodejs.org)에서 LTS 버전 설치.
+> Rust가 없다면 [rustup.rs](https://rustup.rs)로 설치. Windows는 [Tauri 사전 준비](https://v2.tauri.app/start/prerequisites/)의 Visual Studio C++ 빌드 도구도 필요하다.
 
 ### 1. 저장소 클론
 
@@ -83,7 +83,6 @@ cd poketmon_idle
 npm install
 ```
 
-> Electron 다운로드가 포함되어 있어 첫 설치는 수 분 걸릴 수 있다.
 
 ### 3. 실행 방법 — 두 가지 중 택1
 
@@ -93,7 +92,7 @@ npm install
 npm run dev
 ```
 
-- Vite 개발 서버(`localhost:5173`) + Electron 창이 함께 켜진다.
+- Vite 개발 서버(`localhost:5173`) + 앱 창이 함께 켜진다. 첫 실행은 Rust 컴파일로 몇 분 걸린다.
 - 코드 수정 시 HMR(Hot Reload)로 즉시 반영.
 - 종료: 터미널에서 `Ctrl+C`.
 
@@ -107,18 +106,12 @@ npm run build
 
 | OS | 산출물 경로 | 사용법 |
 |----|-------------|--------|
-| macOS | `release/mac-universal/poketmon-idle.app` | Finder에서 더블클릭 또는 `open` 명령으로 실행 |
-| Windows (압축X) | `release\win-unpacked\poketmon-idle.exe` | `.exe` 더블클릭 |
-| Windows (인스톨러) | `release\포켓몬키우기 Setup 1.0.0.exe` | 인스톨러 실행 |
+| macOS | `src-tauri/target/release/bundle/macos/포켓몬키우기.app` | Finder에서 더블클릭 또는 `open` 명령으로 실행 |
+| macOS (dmg) | `src-tauri/target/release/bundle/dmg/포켓몬키우기_x.y.z_*.dmg` | 열어서 응용 프로그램 폴더로 옮기기 |
+| Windows (압축X) | `src-tauri\target\release\poketmon-idle.exe` | `.exe` 더블클릭 |
+| Windows (인스톨러) | `src-tauri\target\release\bundle\nsis\포켓몬키우기_x.y.z_x64-setup.exe` | 인스톨러 실행 |
 
-> **macOS 보안 경고**: 서명되지 않은 빌드라 처음 실행 시 "확인되지 않은 개발자" 또는 "손상되었습니다" 경고가 뜰 수 있다.
-> 격리속성을 제거하고 열기:
-> ```bash
-> xattr -cr release/mac-universal/poketmon-idle.app && open release/mac-universal/poketmon-idle.app
-> ```
-> 또는 `시스템 설정 → 개인정보 보호 및 보안`에서 "확인 없이 열기" 클릭.
->
-> 빌드한 Mac이 아닌 **다른 Mac으로 옮겨서 실행하는 것은 권장하지 않는다** — ad-hoc 서명이라 다른 환경에서 Gatekeeper가 거부할 수 있다. 다른 Mac에서는 [Releases](https://github.com/ESeungJun/poketmon_idle/releases/latest)의 서명된 dmg를 받아 쓴다.
+> 로컬 빌드는 임시(ad-hoc) 서명이라 빌드한 Mac에서만 쓰는 걸 권장한다. 다른 Mac에서는 [Releases](https://github.com/ESeungJun/poketmon_idle/releases/latest)의 서명된 dmg를 받아 쓴다.
 
 ### 4. 처음 실행 시
 
@@ -128,12 +121,12 @@ npm run build
 
 ### 5. 데이터 저장 위치
 
-진행상황은 자동 저장된다 (`electron-store` 사용).
+진행상황은 자동 저장된다. Electron 버전(1.0.0)에서 쓰던 저장 파일이 있으면 처음 실행할 때 그대로 가져온다.
 
 | OS | 경로 |
 |----|------|
-| macOS | `~/Library/Application Support/poketmon-idle/config.json` |
-| Windows | `%APPDATA%\poketmon-idle\config.json` |
+| macOS | `~/Library/Application Support/com.poketmonidle.app/config.json` |
+| Windows | `%APPDATA%\com.poketmonidle.app\config.json` |
 
 데이터 초기화는 앱 내 **설정 탭 → 데이터 초기화** 또는 위 파일 직접 삭제.
 
@@ -287,12 +280,12 @@ node generate-preview.js   # http://localhost:3131
 
 | 항목 | 내용 |
 |------|------|
-| 런타임 | Electron 40 |
+| 런타임 | Tauri 2 (Rust + 시스템 웹뷰) |
 | UI | React 18 + Vite 5 |
 | 상태관리 | Zustand 4 |
-| 영구저장 | electron-store 8 |
+| 영구저장 | `config.json` (Rust에서 직접 읽고 씀) |
 | 렌더링 | HTML Canvas (`imageRendering: pixelated`) |
-| 패키징 | electron-builder 26 |
+| 패키징 | Tauri CLI (dmg · nsis) |
 
 ---
 
@@ -300,11 +293,13 @@ node generate-preview.js   # http://localhost:3131
 
 ```
 poketmon_idle/
-├── electron/
-│   ├── main.js          # 메인 프로세스: 창 생성, IPC, 배회/드래그 로직
-│   └── preload.js       # contextBridge → window.electronAPI
+├── src-tauri/
+│   ├── src/lib.rs       # 창 생성, 트레이, 저장소, 배회/드래그 로직
+│   └── tauri.conf.json  # 앱 이름·아이콘·번들 설정
 ├── src/
-│   ├── App.jsx          # 라우팅: ?view=pet / ?view=panel
+│   ├── App.jsx          # 라우팅: pet / panel 창
+│   ├── platform/
+│   │   └── tauri.js     # window.electronAPI 를 Tauri 명령으로 연결
 │   ├── store/
 │   │   └── useStore.js  # Zustand 전역 상태
 │   ├── data/
@@ -355,9 +350,9 @@ bash scripts/new-feature.sh <name> # dev에서 feature 브랜치 생성
 
 | 스크립트 | 설명 |
 |----------|------|
-| `npm run dev` | Vite + Electron 동시 실행 (개발용) |
+| `npm run dev` | Vite + 앱 창 동시 실행 (개발용) |
 | `npm run vite` | Vite 단독 실행 |
-| `npm run build` | 프로덕션 빌드 (`release/` 생성) |
+| `npm run build` | 프로덕션 빌드 (`src-tauri/target/release/bundle/` 생성) |
 | `npm run preview` | 빌드된 결과물 미리보기 |
 
 자세한 내부 규칙은 [`CLAUDE.md`](./CLAUDE.md) 참고.
@@ -380,12 +375,12 @@ bash scripts/new-feature.sh <name> # dev에서 feature 브랜치 생성
 
 ## ❓ 문제 해결 (FAQ)
 
-**Q. `npm install` 도중 Electron 다운로드 실패**
-사내망/프록시 환경이면 `ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/ npm install` 시도.
+**Q. `npm run build` 에서 `cargo` 를 찾을 수 없다고 나옴**
+Rust가 설치되지 않았다. [rustup.rs](https://rustup.rs)로 설치한 뒤 터미널을 새로 연다.
 
 **Q. macOS에서 "손상되어 열 수 없습니다" 경고**
 ```bash
-xattr -cr release/mac-universal/poketmon-idle.app
+xattr -cr "src-tauri/target/release/bundle/macos/포켓몬키우기.app"
 ```
 실행 후 다시 열기.
 
