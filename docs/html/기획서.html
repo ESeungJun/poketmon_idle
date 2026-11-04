@@ -1,0 +1,194 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>포켓몬 키우기 기획서 · poketmon_idle</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable.min.css">
+<style>
+:root{--bg:#fbfaf8;--panel:#fff;--text:#1f2328;--muted:#656d76;--line:#e6e3de;--accent:#3b5bdb;--accent-soft:#edf2ff;--code:#f4f2ee;--th:#f4f2ee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a;--panel:#1c1f23;--text:#e6e6e3;--muted:#9aa1a9;--line:#2e3238;--accent:#91a7ff;--accent-soft:#232a45;--code:#23262b;--th:#23262b}}
+:root[data-theme="dark"]{--bg:#15171a;--panel:#1c1f23;--text:#e6e6e3;--muted:#9aa1a9;--line:#2e3238;--accent:#91a7ff;--accent-soft:#232a45;--code:#23262b;--th:#23262b}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--text);font:16px/1.75 Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo",sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+.layout{display:grid;grid-template-columns:240px minmax(0,1fr) 220px;gap:40px;max-width:1280px;margin:0 auto;padding:32px 24px}
+nav.docs,aside.toc{position:sticky;top:24px;align-self:start;max-height:calc(100vh - 48px);overflow:auto;font-size:14px}
+nav.docs .project{font-weight:700;font-size:15px;margin-bottom:12px}
+nav.docs a,aside.toc a{display:block;color:var(--muted);text-decoration:none;padding:5px 10px;border-radius:8px}
+nav.docs a:hover,aside.toc a:hover{color:var(--text);background:var(--accent-soft)}
+nav.docs a.on{color:var(--accent);background:var(--accent-soft);font-weight:600}
+aside.toc .label{color:var(--muted);font-size:12px;font-weight:600;letter-spacing:.04em;margin:0 10px 6px}
+aside.toc a.d3{padding-left:22px;font-size:13px}
+main{min-width:0}
+.meta{display:flex;justify-content:space-between;align-items:center;color:var(--muted);font-size:13px;border-bottom:1px solid var(--line);padding-bottom:12px;margin-bottom:8px}
+.meta button{font:inherit;color:var(--muted);background:none;border:1px solid var(--line);border-radius:999px;padding:3px 12px;cursor:pointer}
+h1{font-size:32px;line-height:1.3;margin:24px 0 16px}
+h2{font-size:23px;margin:48px 0 12px;padding-bottom:6px;border-bottom:1px solid var(--line)}
+h3{font-size:18px;margin:32px 0 8px}
+h1,h2,h3,h4{position:relative;scroll-margin-top:16px}
+.anchor{position:absolute;left:-1em;color:var(--muted);text-decoration:none;opacity:0}
+h1:hover .anchor,h2:hover .anchor,h3:hover .anchor,h4:hover .anchor{opacity:.6}
+a{color:var(--accent)}
+code{font:13.5px/1.6 "JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,monospace;background:var(--code);padding:2px 6px;border-radius:5px}
+pre{background:var(--code);border:1px solid var(--line);border-radius:10px;padding:14px 16px;overflow:auto}
+pre code{background:none;padding:0}
+pre.mermaid{background:var(--panel);text-align:center}
+table{border-collapse:collapse;width:100%;margin:16px 0;font-size:14.5px;display:block;overflow-x:auto}
+th,td{border:1px solid var(--line);padding:8px 12px;text-align:left;vertical-align:top}
+th{background:var(--th);font-weight:600;white-space:nowrap}
+blockquote{margin:16px 0;padding:8px 16px;border-left:3px solid var(--accent);background:var(--accent-soft);border-radius:0 8px 8px 0;color:var(--text)}
+img{max-width:100%;border-radius:8px}
+hr{border:0;border-top:1px solid var(--line);margin:32px 0}
+li{margin:3px 0}
+@media (max-width:1100px){.layout{grid-template-columns:200px minmax(0,1fr)}aside.toc{display:none}}
+@media (max-width:760px){.layout{display:block;padding:16px}nav.docs{position:static;max-height:none;display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}nav.docs .project{width:100%;margin:0}h1{font-size:26px}}
+@media print{nav.docs,aside.toc,.meta button{display:none}.layout{display:block}}
+</style>
+</head>
+<body>
+<div class="layout">
+<nav class="docs"><div class="project">poketmon_idle</div><a href="%EA%B8%B0%ED%9A%8D%EC%84%9C.html" class="on">기획서</a><a href="%EC%84%A4%EA%B3%84%EC%84%9C.html">설계서</a><a href="%EA%B5%AC%ED%98%84%EB%8F%84.html">구현도</a><a href="%EA%B2%B0%EC%A0%95%EA%B8%B0%EB%A1%9D.html">결정기록</a></nav>
+<main>
+<div class="meta"><span>마지막 수정 2026-11-04 · 원본 docs/기획서.md</span><button id="theme" type="button">테마</button></div>
+<h1 id="포켓몬-키우기-기획서"><a class="anchor" href="#포켓몬-키우기-기획서">#</a>포켓몬 키우기 기획서</h1>
+<blockquote>
+<p>이 문서는 2026-11-05에 이미 구현·배포된 코드(<code>dev</code> 브랜치, v1.1.0 내용), README, <a href="../../ROADMAP.md">ROADMAP</a>, <a href="../../DEVLOG.md">DEVLOG</a>, git 히스토리, 개발 글(<code>dev-post/04-pokemon-idle/post.md</code>)을 보고 거꾸로 정리했다. 구현된 기능을 사용자가 요구한 기능으로 본다.</p>
+</blockquote>
+<p>관련 문서: <a href="설계서.html">설계서</a> · <a href="구현도.html">구현도</a> · <a href="결정기록.html">결정기록</a></p>
+<h2 id="한-줄-소개"><a class="anchor" href="#한-줄-소개">#</a>한 줄 소개</h2>
+<p>바탕화면 위에 항상 떠 있는 도트 포켓몬을 키우는 생산성 앱. 집중 타이머를 켜면 포켓몬이 잠들고, 끝나면 깨어나 포인트를 받아 자란다. 야생 배틀·포획·보관함까지 있다.</p>
+<h2 id="왜-만들었나"><a class="anchor" href="#왜-만들었나">#</a>왜 만들었나</h2>
+<ul>
+<li>데스크톱 한쪽 구석에 포켓몬이 살고 있으면 재밌겠다는 생각에서 시작했다(개발 글).</li>
+<li>포켓몬을 키우는 게 목적이 아니라, 집중하는 시간에 같이 자라는 펫을 원했다(개발 글).</li>
+<li>&quot;포켓몬인데 배틀이 없으면 섭하다&quot;는 이유로 배틀·포획·보관함까지 넓혔다(개발 글).</li>
+</ul>
+<h2 id="누가-쓰나"><a class="anchor" href="#누가-쓰나">#</a>누가 쓰나</h2>
+<ul>
+<li>집중 타이머(포모도로)를 쓰며 일하거나 공부하는 사람.</li>
+<li>포켓몬을 해 본 사람. 이름·기술·공식이 본가와 어긋나면 바로 티가 나므로 공식 데이터에 맞춘다.</li>
+<li>macOS·Windows 사용자. 설치 파일 하나로 쓰거나 소스로 직접 빌드한다.</li>
+</ul>
+<h2 id="목표-개발-글의-네-가지-기준"><a class="anchor" href="#목표-개발-글의-네-가지-기준">#</a>목표 (개발 글의 네 가지 기준)</h2>
+<ol>
+<li>집중하는 시간에 같이 자라는 펫일 것</li>
+<li>포켓몬 해 본 사람이 봐도 어색하지 않을 것</li>
+<li>일하는 중에 방해가 되지 않을 것</li>
+<li>혼자서도 계속 굴러갈 것</li>
+</ol>
+<h2 id="핵심-시나리오"><a class="anchor" href="#핵심-시나리오">#</a>핵심 시나리오</h2>
+<ol>
+<li><strong>첫 실행</strong>: 패널 창만 뜬다 → 스타터 3종(이상해씨·파이리·꼬부기) 중 하나를 고른다 → 작은 펫 창이 나타나 화면을 돌아다닌다.</li>
+<li><strong>집중</strong>: 집중 시간(1~120분, 기본 25분)을 정하고 시작 → 펫이 잠든다 → 1분마다 +2pt, 끝나면 +75pt 보너스 → 레벨업, 조건이 되면 3초 진화 연출.</li>
+<li><strong>배틀</strong>: 배틀 탭에서 야생 포켓몬과 조우(-10pt) → 기술을 골라 턴제 배틀 → 이기면 레벨 비례 포인트, HP가 낮아지면 몬스터볼로 포획 → 보관함으로.</li>
+<li><strong>관리</strong>: 상점에서 비타민·TM·볼·진화의 돌·지니기 아이템 구매 → 스탯 탭에서 기술 교체, EV 확인 → 포켓몬센터에서 HP·PP 회복(-20pt) → 보관함에서 파트너 교체.</li>
+<li><strong>업데이트</strong>(1.1.0~): 앱이 새 버전을 미리 받아 두면 트레이 메뉴에 &quot;새 버전 설치하고 다시 시작&quot;이 생긴다. 누를 때만 설치되므로 집중 중에 꺼지지 않는다.</li>
+</ol>
+<h2 id="기능-목록"><a class="anchor" href="#기능-목록">#</a>기능 목록</h2>
+<h3 id="구현됨"><a class="anchor" href="#구현됨">#</a>구현됨</h3>
+<p><strong>펫</strong></p>
+<ul>
+<li>투명·항상 위 펫 창(100~160px, 진화 단계별), 화면 배회, 드래그 이동(멀티 모니터)</li>
+<li>상태: <code>idle</code> · <code>happy</code>(포인트 획득 2초) · <code>sleeping</code>(집중 중) · <code>evolving</code>(진화 3초)</li>
+<li>도트 19종(평소·잠잘 때 두 벌), 도트가 없는 종은 PokeAPI 스프라이트</li>
+</ul>
+<p><strong>집중모드</strong></p>
+<ul>
+<li>1~120분 타이머, 시계 기준(<code>Date.now()</code>) 계산</li>
+<li>분당 +2pt, 완료 +75pt, 중단하면 경과 시간만큼 지급</li>
+</ul>
+<p><strong>성장</strong></p>
+<ul>
+<li>레벨 n 누적 포인트 = n² × 4, 3단 진화(스타터 3라인), 피카츄 → 라이츄(천둥의돌)</li>
+<li>성격·특성·개체값(IV 0~31)·노력치(EV, 비타민 +10, 스탯당 252·합계 510)</li>
+<li>7세대(울트라썬·울트라문) 레벨업 기술, 슬롯 4개, TM 학습</li>
+<li>진화해도 닉네임·성격·특성·IV·기술·EV 유지</li>
+</ul>
+<p><strong>배틀</strong></p>
+<ul>
+<li>야생 조우(레벨 기반 풀), 스피드 선공, 턴을 0.5초 장면으로 나눠 표시</li>
+<li>18타입 상성, 물리·특수·변화, 명중률, 상태이상 5종, 능력치 단계 ±6, 날씨(쾌청·비 5턴), 고정 데미지(용의분노·나이트헤드)</li>
+<li>포켓몬센터 회복</li>
+</ul>
+<p><strong>포획·보관함</strong></p>
+<ul>
+<li>몬스터볼(30pt ×1.0)·슈퍼볼(80pt ×1.5)·하이퍼볼(150pt ×2.0), HP·상태이상·종별 포획률 반영, 볼 흔들림 연출</li>
+<li>보관함: 목록, 파트너 교체, 닉네임 변경, 놓아주기</li>
+</ul>
+<p><strong>상점</strong></p>
+<ul>
+<li>진화의 돌, 지니기 아이템 10종(장착·표시만), 비타민 6종, TM 30종 이상</li>
+</ul>
+<p><strong>앱</strong></p>
+<ul>
+<li>패널 탭: 홈 · 샵 · 스탯 · 보관함 · 배틀 · 센터 · 설정</li>
+<li>설정: 데이터 초기화</li>
+<li>트레이 아이콘·메뉴</li>
+<li>1.0.0(Electron) 저장 데이터를 첫 실행 때 자동으로 가져오기</li>
+<li>자동 업데이트(1.1.0~)</li>
+</ul>
+<h3 id="나중-근거가-있는-것만"><a class="anchor" href="#나중-근거가-있는-것만">#</a>나중 (근거가 있는 것만)</h3>
+<ul>
+<li>지니기 아이템의 배틀 효과: README에 &quot;배틀 중 효과는 아직 구현 전&quot;이라고 적혀 있다.</li>
+<li>성격 데이터 공식 검증: 개발 글에 &quot;검증 대상이 기술이랑 도구 이름뿐이라 성격 데이터는 아직 확인을 못 했다&quot;고 적혀 있다.</li>
+<li>정답 이름 목록(<code>.claude/approved-pokemon-names.json</code>) 재점검: 개발 글에 마지막 정정이 반영 안 돼 틀린 이름이 정답으로 들어간 적이 있다고 적혀 있다.</li>
+</ul>
+<h3 id="범위-밖"><a class="anchor" href="#범위-밖">#</a>범위 밖</h3>
+<table>
+<thead>
+<tr>
+<th>항목</th>
+<th>이유</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>화면 위에 따로 뜨는 배틀 창(풀숲 오버레이)</td>
+<td>일하는 중에 창이 불쑥 뜨면 방해된다. 배틀은 패널 탭으로만(ROADMAP Phase 3, 개발 글)</td>
+</tr>
+<tr>
+<td>집중 아닌 때의 자동 수면(30분 무입력)</td>
+<td>잠든 모습이 &quot;지금 집중 중&quot;이라는 신호가 되게 하려고 뺐다(개발 글)</td>
+</tr>
+<tr>
+<td>휴식(break) 타이머</td>
+<td>집중 타이머만 남겼다(<code>9119059</code>)</td>
+</tr>
+<tr>
+<td>9세대 기술 목록</td>
+<td>레벨 15 이후 배울 기술이 거의 없어 키우는 재미가 없다(개발 글)</td>
+</tr>
+<tr>
+<td>상업적 이용</td>
+<td>비상업 팬 프로젝트. 포켓몬 명칭·도트·기술명의 권리는 Nintendo / Game Freak / The Pokémon Company에 있다(개발 글 공지)</td>
+</tr>
+<tr>
+<td>Linux</td>
+<td>빌드 대상이 macOS·Windows뿐이다</td>
+</tr>
+</tbody></table>
+<h2 id="지원-플랫폼과-배포-채널"><a class="anchor" href="#지원-플랫폼과-배포-채널">#</a>지원 플랫폼과 배포 채널</h2>
+<ul>
+<li>macOS 11 이상(universal dmg), Windows 10/11(NSIS 설치 파일)</li>
+<li>GitHub Releases(공개 저장소 <code>ESeungJun/poketmon_idle</code>). 2026-11-05 기준 공개된 릴리스는 v1.0.0이고, v1.1.0은 태그와 릴리스 워크플로가 대기 중이다(<code>gh run list</code>).</li>
+<li>소스 빌드: <code>npm install &amp;&amp; npm run build</code>(Node 18+, Rust)</li>
+</ul>
+<h2 id="완료성공-기준"><a class="anchor" href="#완료성공-기준">#</a>완료·성공 기준</h2>
+<ul>
+<li>하루 50분 집중 기준 1차 진화(Lv.16)까지 약 4일, 2차 진화(Lv.32)까지 약 16일(<code>7f8f9e3</code> 커밋 계산).</li>
+<li>포켓몬 이름·기술·도구 이름이 PokeAPI 공식 한국어 이름과 같다(<code>pokemon-expert</code> 에이전트, <code>/verify-pokemon-ko</code> 스킬로 검증).</li>
+<li>펫 창은 집중을 방해하지 않는다: 배틀 창이 따로 뜨지 않고, 업데이트는 사용자가 누를 때만 설치된다.</li>
+<li>진화·종 교체 뒤에도 스탯·기술이 유지된다.</li>
+</ul>
+<p>참고 수치(개발 글, Phase 5 완료 시점): 2026-03-05 첫 커밋 → 03-23 Phase 5 완료, PR 44개, 도트 19종, 배틀 엔진 792줄, 상태 관리 721줄. Tauri 전환 후 설치 파일 크기 macOS 198MB → 4MB, Windows 92MB → 1.4MB(ROADMAP).</p>
+
+</main>
+<aside class="toc"><div class="label">이 문서</div><a class="d2" href="#한-줄-소개">한 줄 소개</a><a class="d2" href="#왜-만들었나">왜 만들었나</a><a class="d2" href="#누가-쓰나">누가 쓰나</a><a class="d2" href="#목표-개발-글의-네-가지-기준">목표 (개발 글의 네 가지 기준)</a><a class="d2" href="#핵심-시나리오">핵심 시나리오</a><a class="d2" href="#기능-목록">기능 목록</a><a class="d3" href="#구현됨">구현됨</a><a class="d3" href="#나중-근거가-있는-것만">나중 (근거가 있는 것만)</a><a class="d3" href="#범위-밖">범위 밖</a><a class="d2" href="#지원-플랫폼과-배포-채널">지원 플랫폼과 배포 채널</a><a class="d2" href="#완료성공-기준">완료·성공 기준</a></aside>
+</div>
+<script>
+(function(){var r=document.documentElement,k='docs-theme';try{var s=localStorage.getItem(k);if(s)r.dataset.theme=s}catch(e){}
+document.getElementById('theme').onclick=function(){var d=r.dataset.theme||(matchMedia('(prefers-color-scheme: dark)').matches?'dark':'light');r.dataset.theme=d==='dark'?'light':'dark';try{localStorage.setItem(k,r.dataset.theme)}catch(e){}location.reload()};})();
+</script>
+
+</body>
+</html>
