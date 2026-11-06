@@ -4,6 +4,8 @@
 집중모드와 배틀로 포인트를 모아 파트너 포켓몬을 성장시킨다.
 
 > macOS · Windows 동시 지원 · Tauri 기반 (설치 파일 맥 4MB · 윈도우 1.4MB)
+>
+> 📝 만든 이야기: [velog](https://velog.io/@haul/pokemon-desktop-pet-with-focus-timer) · [Tauri 전환기](https://velog.io/@haul/electron-to-tauri-198mb-to-5mb)
 
 <p align="center">
   <img src="docs/screenshots/starters.png" alt="스타터 3종 — 이상해씨 / 파이리 / 꼬부기" width="500" />
