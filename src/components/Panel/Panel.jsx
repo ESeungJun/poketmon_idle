@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import PomodoroTimer from './PomodoroTimer'
 import PointDisplay from './PointDisplay'
 import Shop from '../Shop/Shop'
@@ -16,6 +16,17 @@ export default function Panel() {
   const [tab, setTab] = useState(0)
   const petSpeciesId = useStore(s => s.petSpeciesId)
   const initialized = useStore(s => s.initialized)
+  const [storeNotice, setStoreNotice] = useState(null)
+
+  // 저장 파일을 읽지 못해 복구했거나 저장이 안 되는 상태면 알린다
+  useEffect(() => {
+    window.electronAPI?.storeStatus().then(status => {
+      if (status?.notice === 'recovered') setStoreNotice(`저장 파일을 읽지 못해 이전 사본으로 되살렸습니다.${status.file ? ` 원본은 ${status.file} 로 남겨 두었습니다.` : ''}`)
+      else if (status?.notice === 'reset') setStoreNotice(`저장 파일을 읽지 못해 새로 시작했습니다. 원본은 데이터 폴더에 ${status.file} 로 남겨 두었습니다.`)
+      else if (status?.notice === 'readonly') setStoreNotice('저장 파일을 읽지 못했고 옮기지도 못했습니다. 이번 실행의 진행 상황은 저장되지 않습니다.')
+      else if (status?.saveFailed) setStoreNotice('저장에 실패한 적이 있습니다. 디스크 공간을 확인해 주세요.')
+    }).catch(() => {})
+  }, [])
 
   const handleClose = () => {
     if (window.electronAPI) {
@@ -32,6 +43,10 @@ export default function Panel() {
         </div>
         <button onClick={handleClose} style={styles.closeBtn}>×</button>
       </div>
+
+      {storeNotice && (
+        <div style={styles.notice} onClick={() => setStoreNotice(null)} role="status">{storeNotice}</div>
+      )}
 
       {initialized && !petSpeciesId ? (
         <div style={styles.content}>
@@ -70,6 +85,15 @@ export default function Panel() {
 }
 
 const styles = {
+  notice: {
+    background: '#3a2a12',
+    color: '#FFD98A',
+    fontSize: '11px',
+    lineHeight: 1.5,
+    padding: '8px 12px',
+    cursor: 'pointer',
+    wordBreak: 'break-all',
+  },
   wrapper: {
     width: '100%',
     height: '100vh',

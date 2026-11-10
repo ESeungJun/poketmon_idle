@@ -2,6 +2,8 @@ import { create } from 'zustand'
 import { calcLevel, getPokemon, pickWildEncounter, getMovesUpToLevel } from '../data/pokemon'
 import { buildWildBattler, buildPlayerBattler, processTurn, processWildOnlyTurn, calcCatchRate, generatePetStats } from '../data/battleEngine'
 import { SHOP_ITEMS } from '../components/Shop/items'
+import { BOX_LIMIT } from '../data/balance'
+import { DEFAULT_STATE, validateStore } from './schema'
 
 // 레벨업 시 새로 배울 수 있는 기술을 learnedPool과 moves에 반영
 // prevLevel → newLevel 사이에 learnAt이 걸쳐 있는 기술을 순서대로 추가
@@ -24,64 +26,28 @@ function applyLevelUpMoves(petStats, pokemon, prevLevel, newLevel) {
   return { ...petStats, learnedPool: pool, moves }
 }
 
-const DEFAULT_STATE = {
-  points: 0,
-  totalPointsEarned: 0,
-  purchasedItems: [],
-  pomodoroHistory: [],
-  petState: 'idle', // idle | happy | sleeping | evolving
-  lastActiveTime: Date.now(),
-  totalWorkMinutes: 0,
-  petSpeciesId: null,
-  petStats: null, // { speciesId, ivs, natureName, moves, learnedPool, abilityName }
-  petName: null,
-  petEVs: { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 },
-  ownedTMs: [],
-  equippedTool: null,
-  ballInventory: { ball_pokeball: 0, ball_superball: 0, ball_hyperball: 0 },
-  caughtPokemon: [],  // { speciesId, dexNum, level, natureName, abilityName, ivs, moves, learnedPool, evs, currentHP, movePP, caughtAt }
-  wildBattle: null, // in-memory only, not persisted
-}
-
-// 저장된 데이터의 타입을 검증해 DEFAULT_STATE 기준으로 안전한 값만 반환
-// config.json 직접 편집 등으로 잘못된 타입이 유입되는 것을 방어
-function validateStore(saved) {
-  const d = DEFAULT_STATE
-  const v = { ...d }
-  if (typeof saved.points === 'number' && isFinite(saved.points))           v.points = Math.max(0, saved.points)
-  if (typeof saved.totalPointsEarned === 'number' && isFinite(saved.totalPointsEarned)) v.totalPointsEarned = Math.max(0, saved.totalPointsEarned)
-  if (typeof saved.totalWorkMinutes === 'number' && isFinite(saved.totalWorkMinutes))   v.totalWorkMinutes  = Math.max(0, saved.totalWorkMinutes)
-  if (Array.isArray(saved.purchasedItems))  v.purchasedItems  = saved.purchasedItems.filter(x => typeof x === 'string')
-  if (Array.isArray(saved.pomodoroHistory)) v.pomodoroHistory = saved.pomodoroHistory
-  if (Array.isArray(saved.ownedTMs))        v.ownedTMs        = saved.ownedTMs.filter(x => typeof x === 'string')
-  if (Array.isArray(saved.caughtPokemon))   v.caughtPokemon   = saved.caughtPokemon
-  if (typeof saved.petSpeciesId === 'string' || saved.petSpeciesId === null) v.petSpeciesId = saved.petSpeciesId
-  if (typeof saved.petName === 'string' || saved.petName === null)           v.petName      = saved.petName
-  if (typeof saved.equippedTool === 'string' || saved.equippedTool === null) v.equippedTool = saved.equippedTool
-  if (saved.petStats && typeof saved.petStats === 'object') {
-    const ps = saved.petStats
-    // petStats 핵심 필드 검증 — 손상된 데이터 방어
-    if (typeof ps.speciesId === 'string' && Array.isArray(ps.moves)) {
-      v.petStats = {
-        ...ps,
-        moves: ps.moves.filter(m => typeof m === 'string'),
-        learnedPool: Array.isArray(ps.learnedPool) ? ps.learnedPool.filter(m => typeof m === 'string') : ps.moves.filter(m => typeof m === 'string'),
-        ivs: (ps.ivs && typeof ps.ivs === 'object') ? ps.ivs : {},
-        currentHP: typeof ps.currentHP === 'number' ? Math.max(0, ps.currentHP) : null,
-        movePP: (ps.movePP && typeof ps.movePP === 'object') ? ps.movePP : null,
-      }
-    }
-    // speciesId나 moves가 손상됐으면 petStats = null → 자동 재생성됨
+// 레벨이 올랐을 때 따라오는 변화(진화 시작, 새 기술)를 계산한다
+// running: 집중 중이면 진화가 끝난 뒤 다시 잠든다
+function levelUpEffects(state, prevXp, newXp, running) {
+  const prevLevel = calcLevel(prevXp || 0)
+  const newLevel = calcLevel(newXp || 0)
+  if (newLevel <= prevLevel || !state.petSpeciesId) return null
+  const pokemon = getPokemon(state.petSpeciesId)
+  if (!pokemon) return null
+  const effects = {}
+  // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
+  // 이미 진화 레벨을 넘겼어도 레벨업 시 진화 (한 단계씩)
+  if (pokemon.evolveAt && newLevel >= pokemon.evolveAt && state.petState !== 'evolving') {
+    effects.petState = 'evolving'
+    effects.preEvolvingState = running ? 'sleeping' : 'idle'
   }
-  if (saved.petEVs   && typeof saved.petEVs   === 'object')                  v.petEVs       = { ...d.petEVs, ...saved.petEVs }
-  if (saved.ballInventory && typeof saved.ballInventory === 'object')        v.ballInventory = { ...d.ballInventory, ...saved.ballInventory }
-  const VALID_STATES = new Set(['idle', 'happy', 'sleeping', 'evolving'])
-  if (typeof saved.petState === 'string' && VALID_STATES.has(saved.petState)) v.petState = saved.petState
-  return v
+  const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
+  if (updatedStats) effects.petStats = updatedStats
+  return Object.keys(effects).length ? effects : null
 }
 
-// 앱 시작 시 electron-store에서 저장된 데이터를 로드
-// electron 환경이 아니면(브라우저 개발 등) 기본값 반환
+// 앱 시작 시 config.json 에 저장된 데이터를 로드 (Rust 가 읽어 준다)
+// Tauri 환경이 아니면(브라우저 개발 등) 기본값 반환
 async function loadFromStore() {
   if (!window.electronAPI) return DEFAULT_STATE
   try {
@@ -92,12 +58,19 @@ async function loadFromStore() {
   }
 }
 
-// 비동기로 electron-store에 단일 키 저장
-// ipcRenderer.invoke('set-store')는 Promise를 반환하지만
-// store 업데이트를 블로킹할 필요가 없으므로 에러만 로깅하고 무시
+// 비동기로 단일 키 저장
+// Promise 를 반환하지만 store 업데이트를 블로킹할 필요가 없으므로 에러만 로깅하고 무시
 function saveToStore(key, value) {
   if (!window.electronAPI) return
   window.electronAPI.setStoreAsync(key, value).catch(e => {
+    console.error('Failed to save to store:', e)
+  })
+}
+
+// 함께 바뀌어야 하는 여러 키를 한 번에 저장 (디스크 쓰기 한 번)
+function saveMany(values) {
+  if (!window.electronAPI) return
+  window.electronAPI.setStoreMany(values).catch(e => {
     console.error('Failed to save to store:', e)
   })
 }
@@ -109,65 +82,47 @@ const useStore = create((set, get) => ({
   initialize: async () => {
     const saved = await loadFromStore()
     set({ ...saved, initialized: true })
+    // 진행 중인 집중 세션과 방금 끝난 결과는 Rust 가 갖고 있다
+    if (window.electronAPI) {
+      try {
+        get().applyFocusUpdate(await window.electronAPI.getFocus(), false)
+      } catch (e) {
+        console.error('Failed to load focus state:', e)
+      }
+    }
   },
 
-  // 포인트 추가 + 레벨업/진화 체크
-  // showHappy: false이면 happy 애니메이션 없이 조용히 추가 (집중 중 1분마다 +1pt)
+  // 쓸 수 있는 포인트 추가 (배틀 보상 등). 레벨 경험치는 주지 않는다
+  // showHappy: false이면 happy 애니메이션 없이 조용히 추가
   addPoints: (amount, showHappy = true) => {
     const state = get()
     const prevState = state.petState
     const newPoints = state.points + amount
     const newTotalEarned = (state.totalPointsEarned || 0) + amount
+    const happy = showHappy && prevState !== 'evolving'
 
-    // 레벨 계산은 totalPointsEarned 기준 (points를 소비해도 레벨은 유지됨)
-    const prevLevel = calcLevel(state.totalPointsEarned || 0)
-    const newLevel = calcLevel(newTotalEarned)
-
-    saveToStore('points', newPoints)
-    saveToStore('totalPointsEarned', newTotalEarned)
-
-    const update = {
+    saveMany({ points: newPoints, totalPointsEarned: newTotalEarned })
+    set({
       points: newPoints,
       totalPointsEarned: newTotalEarned,
       lastActiveTime: Date.now(),
-      ...(showHappy ? { petState: 'happy' } : {}),
-    }
-
-    // 레벨업 발생 시 진화 체크 및 신규 기술 습득 처리
-    if (newLevel > prevLevel && state.petSpeciesId) {
-      const pokemon = getPokemon(state.petSpeciesId)
-      if (pokemon) {
-        // 진화 조건 충족 시 evolving 상태 전환 (App.jsx에서 3초 후 confirmEvolution 호출)
-        // 이미 진화 레벨을 넘겼어도 레벨업 시 진화 (한 단계씩)
-        if (pokemon.evolveAt && newLevel >= pokemon.evolveAt) {
-          update.petState = 'evolving'
-          update.preEvolvingState = prevState === 'happy' ? 'idle' : prevState
-        }
-        const updatedStats = applyLevelUpMoves(state.petStats, pokemon, prevLevel, newLevel)
-        if (updatedStats) {
-          update.petStats = updatedStats
-          saveToStore('petStats', updatedStats)
-        }
-      }
-    }
-
-    set(update)
+      ...(happy ? { petState: 'happy' } : {}),
+    })
 
     // 변경된 필드만 골라 다른 창에 동기화
     if (window.electronAPI) {
       const syncData = { points: newPoints, totalPointsEarned: newTotalEarned }
-      if (update.petState) syncData.petState = update.petState
-      if (update.petStats) syncData.petStats = update.petStats
-      if (update.preEvolvingState !== undefined) syncData.preEvolvingState = update.preEvolvingState
+      if (happy) syncData.petState = 'happy'
       window.electronAPI.sendStateUpdate(syncData)
     }
 
-    // happy 상태 2초 후 이전 상태로 복귀 (진화 중이면 스킵)
-    if (showHappy && update.petState !== 'evolving') {
+    // happy 상태 2초 후 이전 상태로 복귀
+    if (happy) {
       setTimeout(() => {
         set(s => {
           if (s.petState === 'happy') {
-            const nextState = prevState === 'happy' ? 'idle' : prevState
+            // 그사이 집중이 끝났거나 시작됐을 수 있으니 지금 세션으로 정한다
+            const nextState = s.focusSession?.endsAt != null ? 'sleeping' : 'idle'
             if (window.electronAPI) {
               window.electronAPI.sendStateUpdate({ petState: nextState })
             }
@@ -177,6 +132,61 @@ const useStore = create((set, get) => ({
         })
       }, 2000)
     }
+  },
+
+  // 레벨 경험치 추가 + 레벨업/진화 체크. 개발자 모드 전용 (평소에는 집중 타이머만 경험치를 준다)
+  gainFocusXp: (amount) => {
+    const state = get()
+    const newXp = (state.focusXp || 0) + amount
+    const effects = levelUpEffects(state, state.focusXp, newXp, state.petState === 'sleeping') || {}
+    const update = { focusXp: newXp, ...effects }
+    saveMany({ focusXp: newXp, ...(effects.petStats ? { petStats: effects.petStats } : {}) })
+    set(update)
+    if (window.electronAPI) window.electronAPI.sendStateUpdate(update)
+  },
+
+  // Rust 집중 타이머가 보낸 상태를 반영한다 (시작·1분 지급·멈춤·완료)
+  // leader: 레벨업에 따른 진화·기술 습득을 처리하는 창 (펫 창 하나만). 두 창이 같은 일을 두 번 하지 않게 한다
+  applyFocusUpdate: (payload, leader) => {
+    if (!payload) return
+    const state = get()
+    const session = payload.session ?? null
+    const running = session?.endsAt != null
+    const update = { focusSession: session, focusResult: payload.result ?? null }
+
+    for (const [key, value] of Object.entries(payload.values || {})) {
+      if (typeof value === 'number' && isFinite(value)) update[key] = value
+    }
+    if (Array.isArray(payload.history)) update.pomodoroHistory = payload.history
+
+    // 잠든 모습 = 집중 중
+    if (running) {
+      if (state.petState === 'evolving') update.preEvolvingState = 'sleeping'
+      else update.petState = 'sleeping'
+    } else if (state.petState === 'sleeping') {
+      update.petState = 'idle'
+    } else if (state.petState === 'evolving' && state.preEvolvingState === 'sleeping') {
+      update.preEvolvingState = 'idle'
+    }
+
+    if (leader && typeof payload.prevXp === 'number' && typeof update.focusXp === 'number') {
+      const effects = levelUpEffects(state, payload.prevXp, update.focusXp, running)
+      if (effects) {
+        Object.assign(update, effects)
+        if (effects.petStats) saveToStore('petStats', effects.petStats)
+        if (window.electronAPI) window.electronAPI.sendStateUpdate(effects)
+      }
+    }
+
+    // 완료: 깨어나서 2초간 기뻐한다 (진화 중이면 생략)
+    const evolving = (update.petState ?? state.petState) === 'evolving'
+    if (payload.done && !evolving) {
+      update.petState = 'happy'
+      setTimeout(() => {
+        set(s => (s.petState === 'happy' ? { petState: s.focusSession?.endsAt != null ? 'sleeping' : 'idle' } : {}))
+      }, 2000)
+    }
+    set(update)
   },
 
   spendPoints: (amount) => {
@@ -193,11 +203,11 @@ const useStore = create((set, get) => ({
 
   // 스타터 선택 완료: petStats를 null로 초기화해 PokemonStats에서 새로 생성하게 함
   selectStarter: (speciesId) => {
-    set({ petSpeciesId: speciesId, petStats: null })
-    saveToStore('petSpeciesId', speciesId)
-    saveToStore('petStats', null)
+    const seenSpecies = [...new Set([...get().seenSpecies, speciesId])]
+    set({ petSpeciesId: speciesId, petStats: null, seenSpecies })
+    saveMany({ petSpeciesId: speciesId, petStats: null, seenSpecies })
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petSpeciesId: speciesId })
+      window.electronAPI.sendStateUpdate({ petSpeciesId: speciesId, seenSpecies })
       window.electronAPI.notifyStarterSelected()  // main에 알려 펫 창 표시
     }
   },
@@ -205,8 +215,7 @@ const useStore = create((set, get) => ({
   // 진화 확정: App.jsx에서 evolving 상태 3초 후 호출
   // 새 종 ID로 교체하고 petStats의 speciesId만 갱신 (성격·특성·개체값은 유지)
   confirmEvolution: () => {
-    const { petSpeciesId, petStats, preEvolvingState, totalPointsEarned } = get()
-    const prevState = preEvolvingState || 'idle'
+    const { petSpeciesId, petStats, focusXp } = get()
     const pokemon = getPokemon(petSpeciesId)
     if (!pokemon || !pokemon.evolveTo) return
     const newSpeciesId = pokemon.evolveTo
@@ -216,7 +225,7 @@ const useStore = create((set, get) => ({
       : null
     // 진화형의 현재 레벨 이하 기술을 learnedPool에 추가
     if (newPetStats && newPokemon) {
-      const currentLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+      const currentLevel = Math.max(1, calcLevel(focusXp || 0))
       const evoMoves = getMovesUpToLevel(newPokemon, currentLevel).map(m => m.name)
       const pool = newPetStats.learnedPool || newPetStats.moves || []
       const newPool = [...pool]
@@ -231,17 +240,19 @@ const useStore = create((set, get) => ({
       }
       newPetStats = { ...newPetStats, learnedPool: newPool, moves }
     }
-    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy', preEvolvingState: null })
-    saveToStore('petSpeciesId', newSpeciesId)
-    saveToStore('petStats', newPetStats)
+    const seenSpecies = [...new Set([...get().seenSpecies, newSpeciesId])]
+    set({ petSpeciesId: newSpeciesId, petStats: newPetStats, petState: 'happy', preEvolvingState: null, seenSpecies })
+    saveMany({ petSpeciesId: newSpeciesId, petStats: newPetStats, seenSpecies })
     if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy', petStats: newPetStats })
+      window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy', petStats: newPetStats, seenSpecies })
     }
     setTimeout(() => {
       set(s => {
         if (s.petState === 'happy') {
-          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: prevState })
-          return { petState: prevState }
+          // 진화하는 사이 집중이 끝났을 수 있으니 지금 세션으로 정한다
+          const nextState = s.focusSession?.endsAt != null ? 'sleeping' : 'idle'
+          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: nextState })
+          return { petState: nextState }
         }
         return {}
       })
@@ -275,27 +286,15 @@ const useStore = create((set, get) => ({
     return true
   },
 
-  addPomodoroSession: () => {
-    const { pomodoroHistory, addPoints } = get()
-    const session = {
-      id: Date.now(),
-      completedAt: Date.now(),
-      durationMinutes: 25,
-    }
-    // 최근 100개만 유지해 store 비대화 방지
-    const newHistory = [...pomodoroHistory, session].slice(-100)
-    set({ pomodoroHistory: newHistory, lastActiveTime: Date.now() })
-    saveToStore('pomodoroHistory', newHistory)
-    addPoints(75)
-  },
-
-  // 집중 타이머 실행 중 1분마다 호출 (happy 애니메이션 없이 조용히 +2pt)
-  addWorkMinute: () => {
-    const { totalWorkMinutes, addPoints } = get()
-    const newTotal = totalWorkMinutes + 1
-    set({ totalWorkMinutes: newTotal, lastActiveTime: Date.now() })
-    saveToStore('totalWorkMinutes', newTotal)
-    addPoints(2, false)
+  // ── 집중 타이머 ──────────────────────────────────────────────────
+  // 시간과 보상은 Rust 가 맡는다. 여기서는 요청만 보내고, 결과는 focus-update 이벤트로 돌아온다
+  startFocus: (minutes) => window.electronAPI?.startFocus(minutes),
+  pauseFocus: () => window.electronAPI?.pauseFocus(),
+  resumeFocus: () => window.electronAPI?.resumeFocus(),
+  cancelFocus: () => window.electronAPI?.cancelFocus(),
+  dismissFocusResult: () => {
+    set({ focusResult: null })
+    window.electronAPI?.dismissFocusResult()
   },
 
   // petState 변경 + 다른 창에 동기화
@@ -312,8 +311,7 @@ const useStore = create((set, get) => ({
 
   setPetSpecies: (speciesId) => {
     set({ petSpeciesId: speciesId, petStats: null })
-    saveToStore('petSpeciesId', speciesId)
-    saveToStore('petStats', null)
+    saveMany({ petSpeciesId: speciesId, petStats: null })
   },
 
   // petStats 형식: { speciesId, ivs, natureName, moves, learnedPool, abilityName }
@@ -329,8 +327,7 @@ const useStore = create((set, get) => ({
     if (!petStats) return
     const newStats = { ...petStats, nickname: name || null }
     set({ petStats: newStats, petName: name })
-    saveToStore('petStats', newStats)
-    saveToStore('petName', name)
+    saveMany({ petStats: newStats, petName: name })
     if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats, petName: name })
   },
 
@@ -379,9 +376,10 @@ const useStore = create((set, get) => ({
   },
 
   throwBall: (ballId, ballModifier) => {
-    const { wildBattle, ballInventory } = get()
+    const { wildBattle, ballInventory, caughtPokemon } = get()
     if (!wildBattle || wildBattle.phase !== 'selecting') return
     if ((ballInventory[ballId] || 0) <= 0) return
+    if (caughtPokemon.length >= BOX_LIMIT) return  // 보관함이 가득 차면 볼을 쓰지 않는다
 
     const { wild, player } = wildBattle
     const wildPokemon = getPokemon(wild.speciesId)
@@ -439,13 +437,13 @@ const useStore = create((set, get) => ({
   // ── 보관함 파트너 교체 ────────────────────────────────────────────
 
   swapPartner: (boxIndex) => {
-    const { caughtPokemon, petSpeciesId, petStats, petName, petEVs, totalPointsEarned, wildBattle } = get()
+    const { caughtPokemon, petSpeciesId, petStats, petName, petEVs, focusXp, wildBattle } = get()
     if (wildBattle) return  // 배틀 중 교체 금지
     if (boxIndex < 0 || boxIndex >= caughtPokemon.length) return
     if (!petSpeciesId) return
 
     const boxPoke = caughtPokemon[boxIndex]
-    const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+    const playerLevel = Math.max(1, calcLevel(focusXp || 0))
 
     // 현재 파트너 → 보관함에 저장 (원래 포획 시점 보존)
     const currentToBox = {
@@ -477,6 +475,7 @@ const useStore = create((set, get) => ({
       learnedPool: boxPoke.learnedPool ?? [],
       currentHP: boxPoke.currentHP ?? null,
       movePP: boxPoke.movePP ?? null,
+      caughtAt: boxPoke.caughtAt ?? null,  // 다시 보관함에 넣어도 포획 시각이 바뀌지 않게
     }
     const newEVs = boxPoke.evs ?? { HP: 0, 공격: 0, 방어: 0, 특수공격: 0, 특수방어: 0, 스피드: 0 }
 
@@ -491,11 +490,8 @@ const useStore = create((set, get) => ({
       petEVs: newEVs,
       caughtPokemon: newCaught,
     })
-    saveToStore('petSpeciesId', newSpeciesId)
-    saveToStore('petStats', newPetStats)
-    saveToStore('petName', newNickname)
-    saveToStore('petEVs', newEVs)
-    saveToStore('caughtPokemon', newCaught)
+    // 종·스탯·보관함이 어긋난 채로 남지 않게 한 번에 쓴다
+    saveMany({ petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs, caughtPokemon: newCaught })
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs })
     }
@@ -536,15 +532,16 @@ const useStore = create((set, get) => ({
   // ── Wild Battle ─────────────────────────────────────────────────
 
   startWildBattle: () => {
-    const { petSpeciesId, petEVs, totalPointsEarned, spendPoints, petState } = get()
+    const { petSpeciesId, petEVs, focusXp, petState, encounterTickets, equippedTool, seenSpecies } = get()
     let { petStats } = get()
     if (!petSpeciesId) return
     // 진화 중 배틀 시작 금지
     if (petState === 'evolving') return
     // HP 0이면 배틀 불가 (petStats 존재 시)
     if (petStats?.currentHP === 0) return
-    if (!spendPoints(10)) return
-    const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+    // 조우는 집중으로 얻은 조우권으로만 한다
+    if (!(encounterTickets >= 1)) return
+    const playerLevel = Math.max(1, calcLevel(focusXp || 0))
     // petStats가 null이면 자동 생성 (스탯 탭 미방문 시 대비)
     if (!petStats) {
       const pokemon = getPokemon(petSpeciesId)
@@ -560,10 +557,17 @@ const useStore = create((set, get) => ({
       return
     }
     const wild   = buildWildBattler(encounter.speciesId, encounter.level)
-    const player = buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEarned, SHOP_ITEMS)
+    const player = buildPlayerBattler(petSpeciesId, petStats, petEVs, focusXp, SHOP_ITEMS, equippedTool)
     if (!wild || !player) return
     const wildName = getPokemon(wild.speciesId)?.speciesName ?? wild.speciesId
+    // 배틀이 실제로 열릴 때 조우권을 쓰고, 만난 종을 도감에 적는다
+    const tickets = encounterTickets - 1
+    const seen = seenSpecies.includes(wild.speciesId) ? seenSpecies : [...seenSpecies, wild.speciesId]
+    saveMany({ encounterTickets: tickets, seenSpecies: seen })
+    if (window.electronAPI) window.electronAPI.sendStateUpdate({ encounterTickets: tickets, seenSpecies: seen })
     set({
+      encounterTickets: tickets,
+      seenSpecies: seen,
       wildBattle: {
         wild,
         player,
@@ -619,6 +623,8 @@ const useStore = create((set, get) => ({
       pendingFrames: isLast ? null : pendingFrames,
       // Increment turn counter when a selecting frame is the last one
       turn: (isLast && frame.phase === 'selecting') ? wildBattle.turn + 1 : wildBattle.turn,
+      // 승리 문구에 실제로 받은 포인트를 보여 주려고 남긴다
+      pointsGained: isLast && pendingPointsGained > 0 ? pendingPointsGained : (wildBattle.pointsGained ?? 0),
     }
     set({ wildBattle: newBattle })
 
@@ -704,6 +710,12 @@ const useStore = create((set, get) => ({
     }
   },
 
+  // 설정의 "백업에서 되돌리기". 성공하면 Rust 가 두 창에 store-reloaded 를 보내 다시 읽게 한다
+  restoreBackup: async () => {
+    if (!window.electronAPI) return false
+    return window.electronAPI.restoreBackup()
+  },
+
   // 다른 창에서 state-sync IPC로 받은 데이터를 store에 병합
   // allowed 키 목록으로 필터링해 알 수 없는 키가 store를 오염시키지 않도록 방어
   syncFromOtherWindow: (data) => {
@@ -712,6 +724,7 @@ const useStore = create((set, get) => ({
       'pomodoroHistory', 'petState', 'preEvolvingState', 'lastActiveTime', 'totalWorkMinutes',
       'petSpeciesId', 'petStats', 'petName', 'petEVs', 'ownedTMs', 'equippedTool',
       'ballInventory', 'caughtPokemon',
+      'focusXp', 'encounterTickets', 'ticketMinutes', 'seenSpecies', 'focusSession', 'focusResult',
     ]
     const safe = Object.fromEntries(Object.entries(data).filter(([k]) => allowed.includes(k)))
     if (Object.keys(safe).length > 0) set(safe)

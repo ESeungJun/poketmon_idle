@@ -20,8 +20,13 @@ if (window.__TAURI_INTERNALS__ && !window.electronAPI) {
 
     getStore: (key) => invoke('get_store', { key }),
     setStoreAsync: (key, value) => invoke('set_store', { key, value }),
+    setStoreMany: (values) => invoke('set_store_many', { values }),
     getAllStore: () => invoke('get_all_store'),
     clearStore: () => invoke('clear_store'),
+    backupInfo: () => invoke('backup_info'),
+    storeStatus: () => invoke('store_status'),
+    restoreBackup: () => invoke('restore_backup'),
+    onStoreReloaded: (callback) => on('store-reloaded', callback),
     notifyStarterSelected: () => invoke('starter_selected'),
     quitApp: () => invoke('quit_app'),
 
@@ -30,12 +35,18 @@ if (window.__TAURI_INTERNALS__ && !window.electronAPI) {
     sendStateUpdate: (data) => { emitTo(other, 'state-sync', data) },
 
     onWanderDirection: (callback) => on('wander-direction', callback),
-    // Electron 의 보조 모니터 GPU 레이어 버그용 이벤트. Tauri 에서는 보내지 않는다
-    onForceRemount: () => () => {},
+
+    // 집중 타이머: 시간과 보상은 Rust 가 맡고, 바뀔 때마다 두 창에 focus-update 를 보낸다
+    getFocus: () => invoke('get_focus'),
+    focusReady: () => invoke('focus_ready'),
+    startFocus: (minutes) => invoke('start_focus', { minutes }),
+    pauseFocus: () => invoke('pause_focus'),
+    resumeFocus: () => invoke('resume_focus'),
+    cancelFocus: () => invoke('cancel_focus'),
+    dismissFocusResult: () => invoke('dismiss_focus_result'),
+    onFocusUpdate: (callback) => on('focus-update', callback),
 
     resizePetWindow: (size) => invoke('resize_pet_window', { size }),
-    startWandering: () => invoke('start_wandering'),
-    stopWandering: () => invoke('stop_wandering'),
     startDrag: ({ offsetX, offsetY }) => invoke('start_drag', { offsetX, offsetY }),
     stopDrag: () => invoke('stop_drag'),
   }

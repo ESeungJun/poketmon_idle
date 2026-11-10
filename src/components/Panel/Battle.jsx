@@ -6,6 +6,7 @@ import { STATUS_KO, WEATHER_KO } from '../../data/battleEngine'
 import { drawPokemon, DEFAULT_ANIMATIONS } from '../Pet/pokemonDraw'
 import { getWinSize } from '../Pet/PetCanvas'
 import BallCanvas from '../Shop/BallCanvas'
+import { MAX_TICKETS, TICKET_EVERY_MINUTES, BOX_LIMIT } from '../../data/balance'
 
 // 볼 흔들림 keyframes 주입 (한 번만)
 if (typeof document !== 'undefined' && !document.getElementById('ball-shake-style')) {
@@ -161,7 +162,9 @@ export default function Battle() {
   const petSpeciesId        = useStore(s => s.petSpeciesId)
   const petStats            = useStore(s => s.petStats)
   const petState            = useStore(s => s.petState)
-  const points              = useStore(s => s.points)
+  const encounterTickets    = useStore(s => s.encounterTickets)
+  const ticketMinutes       = useStore(s => s.ticketMinutes)
+  const boxFull             = useStore(s => s.caughtPokemon.length >= BOX_LIMIT)
   const [thrownBallId, setThrownBallId] = useState(null)
 
   // Play pending frames one by one with 0.5s delay
@@ -178,20 +181,25 @@ export default function Battle() {
   // No battle active — show encounter option
   if (!wildBattle) {
     const fainted = petStats?.currentHP === 0
-    const noPoints = points < 10
+    const noTickets = !(encounterTickets >= 1)
     const isEvolving = petState === 'evolving'
-    const cannotStart = fainted || noPoints || isEvolving
+    const cannotStart = fainted || noTickets || isEvolving
+    const minutesToNext = Math.max(1, TICKET_EVERY_MINUTES - (ticketMinutes || 0))
     return (
       <div style={s.center}>
         <div style={s.emptyIcon}>⚔️</div>
         <div style={s.emptyText}>
           {fainted ? '포켓몬이 쓰러졌다! 센터에서 회복하자.' : '야생 포켓몬을 찾으러 가자!'}
         </div>
-        {noPoints && !fainted && (
-          <div style={s.costWarning}>포인트가 부족합니다 (필요: 10pt)</div>
+        <div style={s.ticketInfo}>
+          조우권 {encounterTickets}/{MAX_TICKETS}
+          {encounterTickets < MAX_TICKETS && ` · 다음 조우권까지 집중 ${minutesToNext}분`}
+        </div>
+        {noTickets && !fainted && (
+          <div style={s.costWarning}>조우권이 없습니다. 집중 {TICKET_EVERY_MINUTES}분마다 한 장 생깁니다.</div>
         )}
         <button style={{ ...s.encounterBtn, opacity: cannotStart ? 0.4 : 1 }} disabled={cannotStart} onClick={startWildBattle}>
-          조우하기 · 10pt
+          조우하기 · 조우권 1장
         </button>
       </div>
     )
@@ -257,6 +265,7 @@ export default function Battle() {
             const balls = SHOP_ITEMS.filter(i => i.category === 'ball')
             const hasBalls = balls.some(b => (ballInventory?.[b.id] || 0) > 0)
             if (!hasBalls) return null
+            if (boxFull) return <div style={s.ticketInfo}>보관함이 가득 차서 볼을 쓸 수 없습니다 ({BOX_LIMIT}마리)</div>
             return (
               <div style={s.ballRow}>
                 {balls.map(ball => {
@@ -282,15 +291,15 @@ export default function Battle() {
       ) : (
         <div style={s.resultWrap}>
           <div style={{ ...s.resultText, color: result === 'win' ? '#4CAF50' : result === 'caught' ? '#667eea' : result === 'lose' ? '#F44336' : result === 'flee_roar' ? '#9E9E9E' : '#FFC107' }}>
-            {result === 'win'    && '승리! +30 포인트'}
+            {result === 'win'    && `승리! +${wildBattle.pointsGained ?? 0} 포인트`}
             {result === 'caught' && '포획 성공!'}
             {result === 'lose'   && '패배...'}
             {result === 'flee'   && '도망쳤다!'}
             {result === 'flee_roar' && '야생 포켓몬이 도망쳤다!'}
           </div>
           <div style={s.resultButtons}>
-            {result !== 'lose' && (
-              <button style={s.encounterBtn} onClick={startWildBattle}>다시 조우</button>
+            {result !== 'lose' && encounterTickets >= 1 && (
+              <button style={s.encounterBtn} onClick={startWildBattle}>다시 조우 · 조우권 {encounterTickets}장</button>
             )}
             <button style={s.dismissBtn} onClick={dismissBattle}>닫기</button>
           </div>
@@ -309,6 +318,7 @@ const s = {
   emptyIcon: { fontSize: '48px' },
   emptyText: { color: '#aaa', fontSize: '14px' },
   costWarning: { color: '#F44336', fontSize: '12px' },
+  ticketInfo: { color: '#aaa', fontSize: '12px', textAlign: 'center' },
   encounterBtn: {
     background: '#4CAF50', color: '#fff', border: 'none', borderRadius: '8px',
     padding: '10px 28px', fontSize: '14px', fontWeight: 'bold', cursor: 'pointer',

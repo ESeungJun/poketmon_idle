@@ -1,5 +1,6 @@
 import { getPokemon, MOVE_META, getMovesUpToLevel, calcLevel, getMaxPP, resolveMove } from './pokemon'
 import { getTypeEffectiveness } from './typeChart'
+import { battleReward } from './balance'
 
 // Auto-generate petStats when null (same logic as PokemonStats.jsx generate())
 export function generatePetStats(pokemon, playerLevel) {
@@ -134,6 +135,23 @@ function applyStatChanges(battler, changes, name) {
   return { battler: b, logs }
 }
 
+// 지닌 도구의 기술 위력 보정 (7세대 기준). 고정 대미지 기술에는 적용하지 않는다
+export function heldItemPowerMod(itemId, move) {
+  if (!itemId || !move) return 1
+  if (itemId === 'tool_lifejewel') return 1.3
+  if (itemId === 'tool_wiseglasses' && move.category === '특수') return 1.1
+  if (itemId === 'tool_spelltag' && move.type === '고스트') return 1.2
+  if (itemId === 'tool_poisonbarb' && move.type === '독') return 1.2
+  return 1
+}
+
+// 먹다남은음식: 턴이 끝날 때 최대 HP의 1/16 회복. 회복할 것이 없으면 null
+function leftoversHeal(battler) {
+  if (battler.heldItem !== 'tool_leftovers' || battler.hp <= 0 || battler.hp >= battler.maxHP) return null
+  const heal = Math.max(1, Math.floor(battler.maxHP / 16))
+  return { ...battler, hp: Math.min(battler.maxHP, battler.hp + heal) }
+}
+
 const INITIAL_STAGES = { '공격': 0, '방어': 0, '특수공격': 0, '특수방어': 0, '스피드': 0, '명중률': 0, '회피율': 0 }
 
 // Damage = ((2×level/5+2) × power × atk/def / 50 + 2) × typeEffect
@@ -209,10 +227,11 @@ export function buildWildBattler(speciesId, level) {
 }
 
 // Build player battler object (resolves moves to full data)
-export function buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEarned, shopItems) {
+// focusXp: 레벨 경험치 / heldItem: 지닌 도구 id (없으면 null)
+export function buildPlayerBattler(petSpeciesId, petStats, petEVs, focusXp, shopItems, heldItem = null) {
   const pokemon = getPokemon(petSpeciesId)
   if (!pokemon || !petStats) return null
-  const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+  const playerLevel = Math.max(1, calcLevel(focusXp || 0))
   const bs = pokemon.baseStats
   const ivs = petStats.ivs || {}
   const evs = petEVs || {}
@@ -250,6 +269,7 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, totalPointsEa
     resolvedMoves,
     movePP,
     abilityName: petStats.abilityName ?? null,
+    heldItem,
     stages: { ...INITIAL_STAGES },
     status: null,
     statusTurns: 0,
@@ -342,11 +362,25 @@ export function processTurn(battle, playerMoveName) {
         const abilityMod = (curPlayer.abilityName === '태양의힘' && curWeather === 'sunny_day' && moveData.category === '특수') ? 1.5 : 1
         const levelFactor = Math.floor(2 * curPlayer.level / 5) + 2
         const baseDmg = Math.floor((levelFactor * moveData.power * atkStat / defStat / 50 + 2) * typeEff)
-        const dmg = Math.max(1, Math.floor(baseDmg * weatherMod * abilityMod))
+        const itemMod = heldItemPowerMod(curPlayer.heldItem, moveData)
+        const dmg = Math.max(1, Math.floor(baseDmg * weatherMod * abilityMod * itemMod))
         if (typeEff > 1)      snap('효과는 굉장했다!')
         else if (typeEff < 1) snap('효과가 별로인 것 같다...')
+        const dealt = Math.min(curWild.hp, dmg)
         curWild = { ...curWild, hp: Math.max(0, curWild.hp - dmg) }
         snap(null)
+        // 조개껍질방울: 준 대미지의 1/8 회복
+        if (curPlayer.heldItem === 'tool_shellbell' && dealt > 0 && curPlayer.hp < curPlayer.maxHP) {
+          const heal = Math.max(1, Math.floor(dealt / 8))
+          curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
+          snap(`${myPokemon.speciesName}은(는) 조개껍질방울로 HP를 조금 회복했다!`)
+        }
+        // 생명의구슬: 공격할 때마다 최대 HP의 1/10 감소
+        if (curPlayer.heldItem === 'tool_lifejewel') {
+          const recoil = Math.max(1, Math.floor(curPlayer.maxHP / 10))
+          curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - recoil) }
+          snap(`${myPokemon.speciesName}은(는) 생명의구슬에 생명력을 조금 빼앗겼다!`)
+        }
         const eff = getMoveStatusEffect(playerMoveName)
         if (eff && !curWild.status && Math.random() < eff.chance) {
           curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
@@ -391,7 +425,7 @@ export function processTurn(battle, playerMoveName) {
         snap('서로의 HP를 나누었다!')
         if (curWild.hp <= 0) {
           snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-          pointsGained = Math.max(10, Math.floor(10 + curWild.level * 1.5))
+          pointsGained = battleReward(curWild.level)
           return true
         }
         if (curPlayer.hp <= 0) {
@@ -424,7 +458,12 @@ export function processTurn(battle, playerMoveName) {
 
     if (curWild.hp <= 0) {
       snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-      pointsGained = Math.max(10, Math.floor(10 + curWild.level * 1.5))
+      pointsGained = battleReward(curWild.level)
+      return true
+    }
+    // 생명의구슬 반동으로 쓰러진 경우
+    if (curPlayer.hp <= 0) {
+      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
       return true
     }
     return false
@@ -527,7 +566,7 @@ export function processTurn(battle, playerMoveName) {
         }
         if (curWild.hp <= 0) {
           snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-          pointsGained = Math.max(10, Math.floor(10 + curWild.level * 1.5))
+          pointsGained = battleReward(curWild.level)
           return true
         }
       // 3) statEffect 기술
@@ -582,7 +621,7 @@ export function processTurn(battle, playerMoveName) {
     snap(null)
     if (curWild.hp <= 0) {
       snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-      pointsGained = Math.max(10, Math.floor(10 + curWild.level * 1.5))
+      pointsGained = battleReward(curWild.level)
       return { frames, pointsGained }
     }
   }
@@ -596,6 +635,13 @@ export function processTurn(battle, playerMoveName) {
       snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
       return { frames, pointsGained }
     }
+  }
+
+  // ── End-of-turn held item ──────────────────────────────────────
+  const fed = leftoversHeal(curPlayer)
+  if (fed) {
+    curPlayer = fed
+    snap(`${myPokemon.speciesName}은(는) 먹다남은음식으로 HP를 조금 회복했다!`)
   }
 
   // ── End-of-turn ability effects ────────────────────────────────
@@ -752,6 +798,13 @@ export function processWildOnlyTurn(battle) {
       snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
       return { frames, pointsGained: 0 }
     }
+  }
+
+  // 먹다남은음식 HP 회복
+  const fed = leftoversHeal(curPlayer)
+  if (fed) {
+    curPlayer = fed
+    snap(`${myPokemon.speciesName}은(는) 먹다남은음식으로 HP를 조금 회복했다!`)
   }
 
   // 빗속준비 HP 회복

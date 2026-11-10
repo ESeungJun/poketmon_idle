@@ -11,11 +11,12 @@ function PetView() {
   const initialized = useStore(s => s.initialized)
   const petSpeciesId = useStore(s => s.petSpeciesId)
   const confirmEvolution = useStore(s => s.confirmEvolution)
+  const applyFocusUpdate = useStore(s => s.applyFocusUpdate)
+  const focusResult = useStore(s => s.focusResult)
 
   const dragging = useRef(false)
   const dragMoved = useRef(false)
   const [flipX, setFlipX] = useState(false)
-  const [canvasKey, setCanvasKey] = useState(0)
   const [heartKey, setHeartKey] = useState(0)  // 매번 새 key로 애니메이션 재트리거
 
   // happy 상태가 될 때마다 key를 올려 하트 애니메이션을 새로 시작
@@ -24,14 +25,16 @@ function PetView() {
   }, [petState])
 
   useEffect(() => {
-    initialize()
-
     const cleanups = []
     if (window.electronAPI) {
       cleanups.push(window.electronAPI.onStateSync(data => syncFromOtherWindow(data)))
       cleanups.push(window.electronAPI.onWanderDirection(dir => setFlipX(dir > 0)))
-      cleanups.push(window.electronAPI.onForceRemount(() => setCanvasKey(k => k + 1)))
+      // 레벨업에 따른 진화·기술 습득은 이 창(펫)이 맡는다
+      cleanups.push(window.electronAPI.onFocusUpdate(payload => applyFocusUpdate(payload, true)))
+      cleanups.push(window.electronAPI.onStoreReloaded(() => initialize()))
     }
+    // 다 읽고 나서 타이머에 준비됐다고 알린다. 그 뒤부터 보상 이벤트가 온다
+    initialize().then(() => window.electronAPI?.focusReady())
 
     const handleMouseUp = () => {
       if (!dragging.current) return
@@ -39,7 +42,10 @@ function PetView() {
       if (window.electronAPI) window.electronAPI.stopDrag()
 
       if (!dragMoved.current) {
-        window.electronAPI?.togglePanel()
+        // 집중 결과 말풍선이 떠 있으면 누를 때 닫는다. 없으면 패널을 연다
+        const { focusResult, dismissFocusResult } = useStore.getState()
+        if (focusResult) dismissFocusResult()
+        else window.electronAPI?.togglePanel()
       }
       dragMoved.current = false
     }
@@ -58,7 +64,7 @@ function PetView() {
     return () => clearTimeout(timer)
   }, [petState])
 
-  // 진화 단계에 따라 Electron 창 크기 조정
+  // 진화 단계에 따라 펫 창 크기 조정
   useEffect(() => {
     if (!petSpeciesId || !window.electronAPI) return
     window.electronAPI.resizePetWindow(getWinSize(petSpeciesId))
@@ -92,7 +98,6 @@ function PetView() {
       onMouseMove={handleMouseMove}
     >
       <PetCanvas
-        key={canvasKey}
         state={petState}
         flipX={flipX}
         dexNum={dexNum}
@@ -110,6 +115,12 @@ function PetView() {
           }}
         >❤</div>
       ))}
+      {focusResult && (
+        <div style={styles.resultBubble}>
+          <div>{focusResult.minutes}분 끝!</div>
+          <div style={styles.resultPoints}>+{focusResult.gained}pt</div>
+        </div>
+      )}
     </div>
   )
 }
@@ -117,12 +128,17 @@ function PetView() {
 function PanelView() {
   const initialize = useStore(s => s.initialize)
   const syncFromOtherWindow = useStore(s => s.syncFromOtherWindow)
+  const applyFocusUpdate = useStore(s => s.applyFocusUpdate)
 
   useEffect(() => {
     initialize()
     if (window.electronAPI) {
-      const cleanup = window.electronAPI.onStateSync(data => syncFromOtherWindow(data))
-      return () => cleanup?.()
+      const cleanups = [
+        window.electronAPI.onStateSync(data => syncFromOtherWindow(data)),
+        window.electronAPI.onFocusUpdate(payload => applyFocusUpdate(payload, false)),
+        window.electronAPI.onStoreReloaded(() => initialize()),
+      ]
+      return () => cleanups.forEach(fn => fn?.())
     }
   }, [])
 
@@ -161,6 +177,27 @@ const styles = {
     color: '#FF4D6D',
     pointerEvents: 'none',
     animation: 'heartFloat 1.8s ease-out forwards',
+  },
+  // 집중 결과 말풍선: 누를 때까지 남는다. 클릭은 아래 컨테이너가 받는다
+  resultBubble: {
+    position: 'absolute',
+    top: 2,
+    left: '50%',
+    transform: 'translateX(-50%)',
+    background: '#FFFFFF',
+    border: '2px solid #191919',
+    borderRadius: '6px',
+    padding: '2px 6px',
+    fontSize: '10px',
+    lineHeight: 1.3,
+    fontWeight: 'bold',
+    color: '#191919',
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+    pointerEvents: 'none',
+  },
+  resultPoints: {
+    color: '#C0392B',
   },
 }
 
