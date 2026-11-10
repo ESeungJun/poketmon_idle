@@ -8,13 +8,14 @@ export const SHOP_ITEMS = [
   { id: 'evostone_thunder', name: '천둥의돌', category: 'evostone', emoji: '⚡', cost: 500, description: '전기 타입 포켓몬을 진화시키는 돌 · 피카츄 → 라이츄' },
 
   // ── 도구 (지니기 아이템) ────────────────────────────────────────────
-  { id: 'tool_lifejewel',   name: '생명의구슬',    category: 'tool', emoji: '🔮', cost: 500, effect: '기술 위력 ×1.3', description: '매 턴 최대HP 1/10 감소' },
-  { id: 'tool_specs',       name: '구애안경',      category: 'tool', emoji: '👓', cost: 400, effect: '특수공격 ×1.5', description: '처음 선택한 기술만 사용 가능' },
-  { id: 'tool_scarf',       name: '구애스카프',    category: 'tool', emoji: '🧣', cost: 400, effect: '스피드 ×1.5',   description: '처음 선택한 기술만 사용 가능' },
+  // 효과는 src/data/battleEngine.js 가 배틀에 반영한다. pending: true 는 아직 효과가 없어 팔지 않는다
+  { id: 'tool_lifejewel',   name: '생명의구슬',    category: 'tool', emoji: '🔮', cost: 500, effect: '기술 위력 ×1.3', description: '공격할 때마다 최대HP 1/10 감소' },
+  { id: 'tool_specs',       name: '구애안경',      category: 'tool', emoji: '👓', cost: 400, effect: '특수공격 ×1.5', description: '처음 선택한 기술만 사용 가능', pending: true },
+  { id: 'tool_scarf',       name: '구애스카프',    category: 'tool', emoji: '🧣', cost: 400, effect: '스피드 ×1.5',   description: '처음 선택한 기술만 사용 가능', pending: true },
   { id: 'tool_leftovers',   name: '먹다남은음식',  category: 'tool', emoji: '🍖', cost: 300, effect: 'HP 1/16 회복',  description: '매 턴 조금씩 HP 회복' },
   { id: 'tool_shellbell',   name: '조개껍질방울',  category: 'tool', emoji: '🔔', cost: 250, effect: '대미지 1/8 흡수', description: '준 대미지의 1/8 HP 회복' },
-  { id: 'tool_sash',        name: '기합의띠',      category: 'tool', emoji: '🩹', cost: 250, effect: 'HP1 생존',      description: 'HP 최대시 기절타를 HP1로 버팀' },
-  { id: 'tool_sludge',      name: '검은진흙',      category: 'tool', emoji: '🖤', cost: 200, effect: 'HP 1/8 회복',   description: '독 타입 전용 · 독 아니면 역효과' },
+  { id: 'tool_sash',        name: '기합의띠',      category: 'tool', emoji: '🩹', cost: 250, effect: 'HP1 생존',      description: 'HP 최대시 기절타를 HP1로 버팀', pending: true },
+  { id: 'tool_sludge',      name: '검은진흙',      category: 'tool', emoji: '🖤', cost: 200, effect: 'HP 1/8 회복',   description: '독 타입 전용 · 독 아니면 역효과', pending: true },
   { id: 'tool_wiseglasses', name: '박식안경',      category: 'tool', emoji: '🤓', cost: 200, effect: '특수기술 ×1.1', description: '특수 계열 기술 위력 강화' },
   { id: 'tool_spelltag',    name: '저주의부적',    category: 'tool', emoji: '👻', cost: 150, effect: '고스트 기술 ×1.2', description: '고스트 타입 기술 위력 강화' },
   { id: 'tool_poisonbarb',  name: '독바늘',        category: 'tool', emoji: '💜', cost: 150, effect: '독 기술 ×1.2',  description: '독 타입 기술 위력 강화' },
