@@ -3,15 +3,19 @@
 ## 핵심 파일
 | 파일 | 역할 |
 |------|------|
-| `src-tauri/src/lib.rs` | Rust: 창 2개(pet·panel), 트레이, 저장소, 명령, wander/drag 로직 |
+| `src-tauri/src/lib.rs` | Rust: 창 2개(pet·panel), 트레이, 명령, 집중 타이머 스레드, wander/drag 로직 |
+| `src-tauri/src/store.rs` | 저장소: `config.json` 읽기·원자적 쓰기, 깨진 파일 보존, 구조 버전 마이그레이션 |
+| `src-tauri/src/focus.rs` | 집중 타이머와 보상 규칙 (순수 함수, `cargo test`) |
 | `src-tauri/tauri.conf.json` | 앱 이름·식별자·아이콘·번들·CSP |
 | `src/platform/tauri.js` | Tauri 명령·이벤트 → `window.electronAPI` (예전 preload와 같은 모양) |
 | `src/App.jsx` | 라우팅: `window.__POKE_VIEW__` (`pet` / `panel`, Rust가 창마다 주입) |
 | `src/store/useStore.js` | Zustand: points, items, petState |
+| `src/store/schema.js` | 기본 상태와 저장 데이터 검증(`validateStore`) |
+| `src/data/balance.js` | 밸런스 수식: 완료 보너스, 배틀 보상, 조우권, 주간 기록 (Rust `focus.rs` 와 값이 같아야 한다) |
 | `src/data/pokemon.js` | 포켓몬 종 데이터 (스탯, 기술, 진화 정보) |
 | `src/components/Pet/PetCanvas.jsx` | Canvas 애니메이션 루프 (PixelArtCanvas / sprite img 분기) |
 | `src/components/Pet/pokemonDraw.js` | `drawPokemon`, `DEFAULT_ANIMATIONS` |
-| `src/components/Panel/PomodoroTimer.jsx` | 집중모드 타이머 (wall-clock 기반) |
+| `src/components/Panel/PomodoroTimer.jsx` | 집중모드 화면 (시간은 Rust 가 재고 여기서는 표시만) |
 | `src/components/Panel/PokemonStats.jsx` | 포켓몬 스탯·기술 관리 |
 | `src/components/Panel/StarterSelect.jsx` | 스타터 포켓몬 선택 UI |
 | `src/components/Panel/Box.jsx` | 보관함 UI (잡은 포켓몬 목록, 파트너 교체, 놓아주기) |
@@ -43,7 +47,11 @@ macOS + Windows 동시 지원. 코드 작성 시 항상 양쪽을 고려한다.
 ```bash
 npm run dev      # 로컬 (Vite HMR + Tauri 창). Rust 필요
 npm run build    # 릴리즈 빌드 — 명시 요청 시에만
+npm test         # 화면 쪽 순수 로직 테스트 (vitest)
+cargo test --manifest-path src-tauri/Cargo.toml   # 저장소·타이머 규칙 테스트
 ```
+
+개발 빌드는 `POKETMON_IDLE_DATA_DIR=<폴더>` 로 저장 폴더를 바꿀 수 있다(실제 데이터를 건드리지 않고 시험할 때). 이때는 Electron 시절 파일을 가져오지 않고 업데이트도 확인하지 않는다.
 
 앱 실행 전 기존 프로세스 먼저 종료:
 - **macOS**: `pkill -f "MacOS/poketmon-idle"; sleep 1; open "src-tauri/target/release/bundle/macos/포켓몬키우기.app"`
@@ -58,7 +66,9 @@ npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 ## IPC 규칙
 - 화면은 `window.electronAPI`만 부른다. 새 기능은 `src-tauri/src/lib.rs`에 `#[tauri::command]`를 만들고 `generate_handler!`와 `src/platform/tauri.js`에 같이 추가
 - 이벤트 리스너는 반드시 해제 함수 반환 (메모리 누수 방지)
-- store 키 allowlist: `ALLOWED_STORE_KEYS` (lib.rs) — 미허가 키 차단
+- store 키 allowlist: `ALLOWED_STORE_KEYS` (lib.rs) — 미허가 키 차단. 타이머가 쓰는 키(`focusSession`·`focusResult`·`ticketMinutes`)는 화면에서 쓸 수 없다
+- 함께 바뀌어야 하는 키는 `saveMany`(`set_store_many`)로 한 번에 쓴다
+- 저장 구조를 바꾸면 `store.rs` 의 `SCHEMA_VERSION` 을 올리고 `migrate` 와 `schema.js` 의 `validateStore` 에 단계를 더한다. 기존 사용자의 레벨·보유물을 깎지 않는다
 - 상태 변경 시 `sendStateUpdate` 호출로 다른 창에 동기화
 
 ## petState
@@ -68,7 +78,8 @@ npm run build    # 릴리즈 빌드 — 명시 요청 시에만
 - `evolving` — 진화 연출 3초간
 
 ## 기타 아키텍처 규칙
-- **타이머**: `setInterval` 틱 카운팅 금지 → `Date.now()` wall-clock 기반 (웹뷰 스로틀링 우회)
+- **타이머**: Rust(`focus.rs`)가 종료 시각으로 잰다. 포인트·조우권 지급도 Rust 가 하고 `focus-update` 이벤트로 두 창에 알린다. 레벨업에 따른 진화·기술 습득은 펫 창(`applyFocusUpdate(payload, true)`)만 처리한다
+- **레벨**: `calcLevel(focusXp)`. `focusXp` 는 집중으로만 오른다. `totalPointsEarned` 는 통계용
 - **멀티모니터 드래그**: drag 시작 시 모든 데스크톱 표시를 끄고(맥), 종료 시 다시 켠다. 좌표는 모두 물리 px로 계산하고 모니터 배율(scale_factor)로 논리 px와 바꾼다.
 
 ## 픽셀아트 시스템
