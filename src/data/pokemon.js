@@ -9,9 +9,9 @@ export function expForLevel(n) {
   return n * n * 4
 }
 
-// Current level from total points earned (min 1)
-export function calcLevel(totalPointsEarned) {
-  return Math.max(1, Math.floor(Math.sqrt((totalPointsEarned || 0) / 4)))
+// 레벨 경험치(focusXp: 집중으로 얻은 포인트)에서 현재 레벨을 구한다 (최소 1)
+export function calcLevel(xp) {
+  return Math.max(1, Math.floor(Math.sqrt((xp || 0) / 4)))
 }
 
 // Selectable base Pokémon (no pre-evolution)

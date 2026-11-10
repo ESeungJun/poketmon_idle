@@ -3,10 +3,50 @@ import useStore from '../../store/useStore'
 import { getPokemon, calcLevel } from '../../data/pokemon'
 import { TYPE_COLOR } from '../../constants/typeColors'
 import StaticPokemonSprite from '../Pet/StaticPokemonSprite'
+import { PIXEL_ART } from '../Pet/pixelArtRegistry'
+import { BOX_LIMIT } from '../../data/balance'
 
 const MiniSprite = ({ speciesId, dexNum, size = 40 }) => (
   <StaticPokemonSprite speciesId={speciesId} dexNum={dexNum} size={size} />
 )
+
+// 도감: 도트가 있는 종 전부를 도감 번호 순으로. 가진 종은 색으로, 만나기만 한 종은 밝은 실루엣, 못 만난 종은 어두운 실루엣
+const DEX_SPECIES = Object.keys(PIXEL_ART)
+  .map(id => getPokemon(id))
+  .filter(Boolean)
+  .sort((a, b) => a.dexNum - b.dexNum)
+
+function Dex() {
+  const petSpeciesId  = useStore(s => s.petSpeciesId)
+  const caughtPokemon = useStore(s => s.caughtPokemon)
+  const seenSpecies   = useStore(s => s.seenSpecies)
+  const owned = new Set([petSpeciesId, ...caughtPokemon.map(p => p.speciesId)])
+  const seen  = new Set(seenSpecies)
+  const ownedCount = DEX_SPECIES.filter(p => owned.has(p.id)).length
+  return (
+    <div style={st.dex}>
+      <div style={st.header}>
+        <span style={st.title}>도감</span>
+        <span style={st.count}>{ownedCount}/{DEX_SPECIES.length}</span>
+      </div>
+      <div style={st.dexGrid}>
+        {DEX_SPECIES.map(p => {
+          const has = owned.has(p.id)
+          const met = has || seen.has(p.id)
+          return (
+            <div
+              key={p.id}
+              title={met ? p.speciesName : '???'}
+              style={{ ...st.dexCell, ...(has ? {} : { filter: 'brightness(0)', opacity: met ? 0.55 : 0.25 }) }}
+            >
+              <MiniSprite speciesId={p.id} dexNum={p.dexNum} size={28} />
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
 
 export default function Box() {
   const caughtPokemon   = useStore(s => s.caughtPokemon)
@@ -14,18 +54,21 @@ export default function Box() {
   const releaseFromBox  = useStore(s => s.releaseFromBox)
   const wildBattle      = useStore(s => s.wildBattle)
   const petSpeciesId    = useStore(s => s.petSpeciesId)
-  const totalPointsEarned = useStore(s => s.totalPointsEarned)
+  const focusXp         = useStore(s => s.focusXp)
   const [selected, setSelected] = useState(null)
   const [confirmRelease, setConfirmRelease] = useState(null)
 
-  const playerLevel = Math.max(1, calcLevel(totalPointsEarned || 0))
+  const playerLevel = Math.max(1, calcLevel(focusXp || 0))
 
   if (!caughtPokemon || caughtPokemon.length === 0) {
     return (
-      <div style={st.empty}>
-        <div style={st.emptyIcon}>📦</div>
-        <div style={st.emptyText}>보관함이 비어있습니다</div>
-        <div style={st.emptyHint}>야생 포켓몬을 잡아서 보관함에 넣어보세요!</div>
+      <div style={st.wrap}>
+        <Dex />
+        <div style={st.empty}>
+          <div style={st.emptyIcon}>📦</div>
+          <div style={st.emptyText}>보관함이 비어있습니다</div>
+          <div style={st.emptyHint}>야생 포켓몬을 잡아서 보관함에 넣어보세요!</div>
+        </div>
       </div>
     )
   }
@@ -37,9 +80,10 @@ export default function Box() {
 
   return (
     <div style={st.wrap}>
+      <Dex />
       <div style={st.header}>
         <span style={st.title}>📦 보관함</span>
-        <span style={st.count}>{caughtPokemon.length}마리</span>
+        <span style={st.count}>{caughtPokemon.length}/{BOX_LIMIT}마리</span>
       </div>
 
       {/* Grid */}
@@ -129,13 +173,16 @@ export default function Box() {
 
 const st = {
   wrap: { display: 'flex', flexDirection: 'column', gap: '12px' },
-  empty: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingTop: '40px' },
+  empty: { display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '10px', paddingTop: '24px' },
   emptyIcon: { fontSize: '48px' },
   emptyText: { color: '#aaa', fontSize: '14px' },
   emptyHint: { color: '#555', fontSize: '12px' },
   header: { display: 'flex', justifyContent: 'space-between', alignItems: 'center' },
   title: { fontSize: '16px', fontWeight: 'bold', color: '#fff' },
   count: { fontSize: '12px', color: '#888' },
+  dex: { background: '#1a1a2e', borderRadius: '8px', padding: '10px' },
+  dexGrid: { display: 'flex', flexWrap: 'wrap', gap: '4px', marginTop: '8px' },
+  dexCell: { width: '30px', height: '30px', display: 'flex', alignItems: 'center', justifyContent: 'center' },
   grid: {
     display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px',
   },

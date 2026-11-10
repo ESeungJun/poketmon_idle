@@ -1,14 +1,20 @@
 #!/bin/sh
-BRANCH=$(git symbolic-ref HEAD 2>/dev/null | sed 's|refs/heads/||')
-
-if [ "$BRANCH" = "master" ] || [ "$BRANCH" = "dev" ]; then
-  echo ""
-  echo "  [pre-push] '$BRANCH' 브랜치에 직접 push할 수 없습니다."
-  echo "  feature/ 브랜치를 만들고 PR을 통해 merge 하세요."
-  echo ""
-  echo "    git checkout dev"
-  echo "    git checkout -b feature/기능명"
-  echo ""
-  exit 1
-fi
+# master·dev 로 직접 push 하는 것을 막는다.
+# 지금 서 있는 브랜치가 아니라 실제로 밀어 넣는 대상(표준 입력의 원격 ref)을 본다.
+# 설치: sh scripts/setup-hooks.sh (git config core.hooksPath hooks)
+# 로컬 훅은 건너뛸 수 있으므로 실제 강제는 GitHub 브랜치 보호로 한다.
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$remote_ref" in
+    refs/heads/master|refs/heads/dev)
+      echo ""
+      echo "  [pre-push] '${remote_ref#refs/heads/}' 브랜치에 직접 push할 수 없습니다."
+      echo "  feature/ 브랜치를 만들고 PR을 통해 merge 하세요."
+      echo ""
+      echo "    git checkout dev"
+      echo "    git checkout -b feature/기능명"
+      echo ""
+      exit 1
+      ;;
+  esac
+done
 exit 0
