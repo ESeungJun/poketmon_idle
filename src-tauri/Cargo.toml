@@ -1,6 +1,6 @@
 [package]
 name = "poketmon-idle"
-version = "1.1.0"
+version = "1.2.0"
 description = "포켓몬 키우기 데스크톱 펫"
 authors = ["Haul"]
 edition = "2021"

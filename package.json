@@ -1,6 +1,6 @@
 {
   "name": "poketmon-idle",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "A cute desktop pixel art pet with pomodoro timer and todo list",
   "scripts": {
     "dev": "tauri dev",
