@@ -1,14 +1,18 @@
-//! 포켓몬 키우기: 펫 창과 패널 창, 트레이, 저장소, 배회·드래그.
-//! Electron 시절 electron/main.js 의 동작을 그대로 옮겼다. 화면(React)은 src/platform/tauri.js 가
-//! 예전 window.electronAPI 와 같은 모양으로 이 명령들을 부른다.
+//! 포켓몬 키우기: 펫 창과 패널 창, 트레이, 저장소, 집중 타이머, 배회·드래그.
+//! 화면(React)은 src/platform/tauri.js 가 window.electronAPI 모양으로 이 명령들을 부른다.
+
+mod focus;
+mod store;
 
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::sync::Mutex;
 use std::thread;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
-use serde_json::{Map, Value};
+use serde_json::{json, Map, Value};
+use store::Store;
+use tauri_plugin_notification::NotificationExt;
 use tauri::menu::{MenuBuilder, MenuItem};
 use tauri::tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent};
 use tauri::webview::PageLoadEvent;
@@ -19,6 +23,7 @@ use tauri::{
 };
 
 /// 진화 단계별 펫 창 크기(논리 px). stage1 = 100, stage2 = 120, stage3 = 160
+/// 종 목록은 src/components/Pet/PetCanvas.jsx 의 STAGE2·STAGE3 와 같게 둔다
 const STAGE2: [&str; 6] = ["ivysaur", "charmeleon", "wartortle", "pidgeotto", "raichu", "haunter"];
 const STAGE3: [&str; 6] = ["venusaur", "charizard", "blastoise", "pidgeot", "gengar", "snorlax"];
 const VALID_WIN_SIZES: [u32; 3] = [100, 120, 160];
@@ -27,69 +32,28 @@ const PANEL_H: f64 = 580.0;
 const WANDER_SPEED: f64 = 1.0;
 
 /// 화면이 읽고 쓸 수 있는 저장 키 (그 밖의 키는 막는다)
-const ALLOWED_STORE_KEYS: [&str; 15] = [
+const ALLOWED_STORE_KEYS: [&str; 16] = [
     "points", "totalPointsEarned", "purchasedItems",
-    "pomodoroHistory", "petState", "lastActiveTime", "totalWorkMinutes",
+    "petState", "lastActiveTime",
     "petSpeciesId", "petStats", "petName", "petEVs", "ownedTMs", "equippedTool",
     "ballInventory", "caughtPokemon",
+    "focusXp", "encounterTickets", "seenSpecies",
 ];
+/// 화면이 읽기만 하는 키. 집중 타이머(focus.rs)만 쓴다
+const READ_ONLY_STORE_KEYS: [&str; 3] = ["ticketMinutes", "pomodoroHistory", "totalWorkMinutes"];
+
+fn now_ms() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_millis() as i64)
+        .unwrap_or(0)
+}
 
 fn win_size_for(species: Option<&str>) -> u32 {
     match species {
         Some(s) if STAGE3.contains(&s) => 160,
         Some(s) if STAGE2.contains(&s) => 120,
         _ => 100,
-    }
-}
-
-// ---------- 저장소 (electron-store 와 같은 config.json 한 파일) ----------
-
-struct Store {
-    path: PathBuf,
-    data: Mutex<Map<String, Value>>,
-}
-
-impl Store {
-    fn load(path: PathBuf, legacy: &[PathBuf]) -> Self {
-        let read = |p: &PathBuf| -> Option<Map<String, Value>> {
-            let text = std::fs::read_to_string(p).ok()?;
-            match serde_json::from_str::<Value>(&text).ok()? {
-                Value::Object(m) => Some(m),
-                _ => None,
-            }
-        };
-        let data = match read(&path) {
-            Some(m) => m,
-            None => {
-                // 처음 실행: Electron 버전이 쓰던 저장 파일이 있으면 가져온다 (가장 최근에 바뀐 것)
-                let newest = legacy
-                    .iter()
-                    .filter_map(|p| Some((std::fs::metadata(p).ok()?.modified().ok()?, p)))
-                    .max_by_key(|(t, _)| *t)
-                    .and_then(|(_, p)| read(p));
-                newest.unwrap_or_default()
-            }
-        };
-        let store = Store { path, data: Mutex::new(data) };
-        store.save();
-        store
-    }
-
-    fn save(&self) {
-        let data = self.data.lock().unwrap();
-        let Ok(text) = serde_json::to_string_pretty(&*data) else { return };
-        if let Some(dir) = self.path.parent() {
-            let _ = std::fs::create_dir_all(dir);
-        }
-        // 쓰는 도중 꺼져도 파일이 깨지지 않게 임시 파일에 쓰고 바꿔치기한다
-        let tmp = self.path.with_extension("json.tmp");
-        if std::fs::write(&tmp, text).is_ok() {
-            let _ = std::fs::rename(&tmp, &self.path);
-        }
-    }
-
-    fn get(&self, key: &str) -> Option<Value> {
-        self.data.lock().unwrap().get(key).cloned()
     }
 }
 
@@ -110,6 +74,16 @@ struct Pet {
     wander: Mutex<Wander>,
     /// 패널을 처음 한 번 보여 줬는가 (페이지 로드 알림이 늦거나 빠질 때를 위한 대비)
     panel_shown: AtomicBool,
+    /// 움직임 반복 작업의 스레드. 할 일이 없으면 자고 있으므로 일이 생기면 깨운다
+    motion_thread: Mutex<Option<thread::Thread>>,
+}
+
+impl Pet {
+    fn wake(&self) {
+        if let Some(t) = self.motion_thread.lock().unwrap().as_ref() {
+            t.unpark();
+        }
+    }
 }
 
 struct Wander {
@@ -122,12 +96,31 @@ struct Wander {
     area: (f64, f64, f64, f64, f64),
     /// 마지막으로 옮긴 창 위치. 반올림한 위치가 같으면 다시 옮기지 않는다
     last_pos: (i32, i32),
+    /// 걷는 중인가. 아니면 제자리에 서 있다
+    walking: bool,
+    /// 지금 구간(걷기·서 있기)이 끝나는 때
+    phase_until: Instant,
+}
+
+/// 걷기 5~15초, 서 있기 20~60초. r 은 0~1
+fn phase_duration(walking: bool, r: f64) -> Duration {
+    let r = r.clamp(0.0, 1.0);
+    let secs = if walking { 5.0 + 10.0 * r } else { 20.0 + 40.0 * r };
+    Duration::from_secs_f64(secs)
 }
 
 impl Default for Wander {
     fn default() -> Self {
         let vx = if rand_unit() > 0.5 { 1.0 } else { -1.0 };
-        Wander { vx, last_dir: if vx > 0.0 { 1 } else { -1 }, x: None, area: (0.0, 0.0, 0.0, 0.0, 1.0), last_pos: (i32::MIN, i32::MIN) }
+        Wander {
+            vx,
+            last_dir: if vx > 0.0 { 1 } else { -1 },
+            x: None,
+            area: (0.0, 0.0, 0.0, 0.0, 1.0),
+            last_pos: (i32::MIN, i32::MIN),
+            walking: true,
+            phase_until: Instant::now() + phase_duration(true, rand_unit()),
+        }
     }
 }
 
@@ -222,23 +215,45 @@ fn resume_wandering_after(app: &AppHandle, delay: Duration) {
             return; // 그사이 다른 예약이 들어왔다
         }
         if !pet.wander_locked.load(Ordering::SeqCst) {
-            pet.wander.lock().unwrap().x = None;
+            restart_walk(&pet);
             pet.wandering.store(true, Ordering::SeqCst);
+            pet.wake();
         }
     });
 }
 
-/// 드래그(60fps)와 배회(30fps)를 맡는 반복 작업 하나
+/// 배회를 다시 켤 때는 걷기 구간부터 시작한다 (깨어나자마자 한참 서 있지 않게)
+fn restart_walk(pet: &Pet) {
+    let mut wd = pet.wander.lock().unwrap();
+    wd.x = None;
+    wd.walking = true;
+    wd.phase_until = Instant::now() + phase_duration(true, rand_unit());
+}
+
+/// 집중이 끝났거나 멈췄다: 다시 돌아다닌다
+fn unlock_wandering(pet: &Pet) {
+    pet.wander_locked.store(false, Ordering::SeqCst);
+    restart_walk(pet);
+    pet.wandering.store(true, Ordering::SeqCst);
+    pet.wake();
+}
+
+/// 집중 중: 잠든 펫은 돌아다니지 않는다
+fn lock_wandering(pet: &Pet) {
+    pet.wander_locked.store(true, Ordering::SeqCst);
+    pet.wandering.store(false, Ordering::SeqCst);
+}
+
+/// 드래그(60fps)와 배회(30fps)를 맡는 반복 작업 하나.
+/// 배회가 꺼져 있거나 펫이 서 있는 동안에는 깨울 때까지 잔다
 fn spawn_motion_loop(app: AppHandle) {
-    thread::spawn(move || {
+    let app2 = app.clone();
+    let handle = thread::spawn(move || {
         loop {
             let pet = app.state::<Pet>();
-            // 드래그 중에는 60fps, 아니면 30fps 로 돈다
-            let dragging = pet.dragging.load(Ordering::SeqCst);
-            thread::sleep(Duration::from_millis(if dragging { 16 } else { 33 }));
-            let Some(w) = pet_window(&app) else { continue };
-
             if pet.dragging.load(Ordering::SeqCst) {
+                thread::sleep(Duration::from_millis(16));
+                let Some(w) = pet_window(&app) else { continue };
                 // 커서가 창 밖으로 나가도 따라가도록 커서 위치를 직접 읽는다
                 let Ok(c) = app.cursor_position() else { continue };
                 let scale = w.scale_factor().unwrap_or(1.0);
@@ -251,16 +266,45 @@ fn spawn_motion_loop(app: AppHandle) {
             }
 
             if !pet.wandering.load(Ordering::SeqCst) {
+                thread::park(); // 드래그 시작·배회 재개가 깨운다
+                continue;
+            }
+
+            // 서 있는 구간이면 그 구간이 끝날 때까지 잔다
+            let rest = {
+                let mut wd = pet.wander.lock().unwrap();
+                let now = Instant::now();
+                if !wd.walking && now >= wd.phase_until {
+                    wd.walking = true;
+                    wd.phase_until = now + phase_duration(true, rand_unit());
+                }
+                (!wd.walking).then(|| wd.phase_until - now)
+            };
+            if let Some(rest) = rest {
+                thread::park_timeout(rest);
+                continue;
+            }
+
+            thread::sleep(Duration::from_millis(33));
+            let Some(w) = pet_window(&app) else { continue };
+            if pet.dragging.load(Ordering::SeqCst) || !pet.wandering.load(Ordering::SeqCst) {
                 continue;
             }
             wander_step(&app, &pet, &w);
         }
     });
+    *app2.state::<Pet>().motion_thread.lock().unwrap() = Some(handle.thread().clone());
 }
 
 /// 화면 오른쪽 1/3 구간의 바닥을 좌우로 돌아다닌다
 fn wander_step(app: &AppHandle, pet: &Pet, w: &WebviewWindow) {
     let mut wd = pet.wander.lock().unwrap();
+    if Instant::now() >= wd.phase_until {
+        // 걷기 구간이 끝났다: 한동안 서 있는다
+        wd.walking = false;
+        wd.phase_until = Instant::now() + phase_duration(false, rand_unit());
+        return;
+    }
     if wd.x.is_none() {
         let Ok(pos) = w.outer_position() else { return };
         let Some(m) = monitor_at(app, pos.x as f64, pos.y as f64) else { return };
@@ -365,7 +409,7 @@ fn close_panel(app: AppHandle) {
 
 #[tauri::command]
 fn get_store(store: State<'_, Store>, key: String) -> Option<Value> {
-    if !ALLOWED_STORE_KEYS.contains(&key.as_str()) {
+    if !ALLOWED_STORE_KEYS.contains(&key.as_str()) && !READ_ONLY_STORE_KEYS.contains(&key.as_str()) {
         return None;
     }
     store.get(&key)
@@ -376,8 +420,25 @@ fn set_store(store: State<'_, Store>, key: String, value: Value) {
     if !ALLOWED_STORE_KEYS.contains(&key.as_str()) {
         return;
     }
-    store.data.lock().unwrap().insert(key, value);
-    store.save();
+    store.update(|data| {
+        data.insert(key, value);
+        (true, ())
+    });
+}
+
+/// 여러 키를 한 번에 쓴다. 파트너 교체처럼 함께 바뀌어야 하는 값이 중간 상태로 남지 않는다
+#[tauri::command]
+fn set_store_many(store: State<'_, Store>, values: Map<String, Value>) {
+    store.update(|data| {
+        let mut changed = false;
+        for (key, value) in values {
+            if ALLOWED_STORE_KEYS.contains(&key.as_str()) {
+                data.insert(key, value);
+                changed = true;
+            }
+        }
+        (changed, ())
+    });
 }
 
 #[tauri::command]
@@ -387,20 +448,228 @@ fn get_all_store(store: State<'_, Store>) -> Map<String, Value> {
         .lock()
         .unwrap()
         .iter()
-        .filter(|(k, _)| ALLOWED_STORE_KEYS.contains(&k.as_str()))
+        .filter(|(k, _)| ALLOWED_STORE_KEYS.contains(&k.as_str()) || READ_ONLY_STORE_KEYS.contains(&k.as_str()))
         .map(|(k, v)| (k.clone(), v.clone()))
         .collect()
 }
 
 #[tauri::command]
 fn clear_store(app: AppHandle, store: State<'_, Store>, pet: State<'_, Pet>) {
-    store.data.lock().unwrap().clear();
-    store.save();
+    store.clear();
     pet.resume_gen.fetch_add(1, Ordering::SeqCst); // 걸려 있던 배회 재시작 예약도 취소
     pet.wandering.store(false, Ordering::SeqCst);
+    pet.wander_locked.store(false, Ordering::SeqCst); // 집중 세션도 함께 지워졌다
     if let Some(w) = pet_window(&app) {
         let _ = w.hide();
     }
+    refresh_tray_tooltip(&app);
+}
+
+/// 이번 실행을 시작할 때 남긴 사본이 있으면 그 시각(ms)
+#[tauri::command]
+fn backup_info(store: State<'_, Store>) -> Option<i64> {
+    store.backup_time()
+}
+
+/// 저장 파일을 읽지 못해 복구했거나 저장이 안 되는 상태인지 (패널이 알림 줄로 보여 준다)
+#[tauri::command]
+fn store_status(store: State<'_, Store>) -> Value {
+    store.status()
+}
+
+/// 이번 실행을 시작할 때의 사본으로 되돌린다. 화면은 store-reloaded 를 받고 다시 읽는다
+#[tauri::command]
+fn restore_backup(app: AppHandle, store: State<'_, Store>) -> bool {
+    if !store.restore_backup(now_ms()) {
+        return false;
+    }
+    sync_wander_lock(&app);
+    if store.get("petSpeciesId").is_some_and(|v| v.is_string()) {
+        show_pet(&app);
+    } else if let Some(w) = pet_window(&app) {
+        let _ = w.hide();
+    }
+    for label in ["pet", "panel"] {
+        let _ = app.emit_to(label, "store-reloaded", ());
+    }
+    refresh_tray_tooltip(&app);
+    true
+}
+
+// ---------- 집중 타이머 ----------
+// 시간은 여기서 잰다. 세션은 종료 시각으로 config.json 에 있어서 앱을 껐다 켜도 이어지고,
+// 패널이 닫혀 있어도 제때 끝난다. 규칙은 focus.rs.
+
+#[derive(Default)]
+struct FocusRuntime {
+    thread: Mutex<Option<thread::Thread>>,
+    /// 펫 화면이 이벤트를 받을 준비가 됐다. 그 전에 보상을 주면 화면이 레벨업을 놓친다
+    ready: AtomicBool,
+}
+
+impl FocusRuntime {
+    fn wake(&self) {
+        if let Some(t) = self.thread.lock().unwrap().as_ref() {
+            t.unpark();
+        }
+    }
+}
+
+/// 화면에 보내는 집중 상태. values 는 타이머가 바꾸는 숫자들이다
+fn focus_payload(data: &Map<String, Value>, done: bool, prev_xp: Option<f64>) -> Value {
+    let pick = |key: &str| data.get(key).cloned().unwrap_or(Value::Null);
+    json!({
+        "session": pick("focusSession"),
+        "result": focus::result(data),
+        "values": {
+            "points": pick("points"),
+            "focusXp": pick("focusXp"),
+            "totalPointsEarned": pick("totalPointsEarned"),
+            "totalWorkMinutes": pick("totalWorkMinutes"),
+            "encounterTickets": pick("encounterTickets"),
+            "ticketMinutes": pick("ticketMinutes"),
+        },
+        "history": if done { pick("pomodoroHistory") } else { Value::Null },
+        "done": done,
+        "prevXp": prev_xp,
+    })
+}
+
+fn emit_focus(app: &AppHandle, payload: Value) {
+    for label in ["pet", "panel"] {
+        let _ = app.emit_to(label, "focus-update", payload.clone());
+    }
+}
+
+/// 돌아가는 세션이 있으면 펫을 재우고(배회 잠금), 없으면 풀어 준다
+fn sync_wander_lock(app: &AppHandle) {
+    let running = app.state::<Store>().update(|data| (false, focus::session(data).is_some_and(|s| s.running())));
+    let pet = app.state::<Pet>();
+    if running {
+        lock_wandering(&pet);
+    } else if pet.wander_locked.load(Ordering::SeqCst) {
+        unlock_wandering(&pet);
+    }
+}
+
+fn notify_focus_done(app: &AppHandle, result: &Value) {
+    let n = |key: &str| result.get(key).and_then(Value::as_i64).unwrap_or(0);
+    let mut body = format!("{}분 집중 끝! +{}pt", n("minutes"), n("gained"));
+    if n("tickets") > 0 {
+        body.push_str(&format!(" · 조우권 +{}", n("tickets")));
+    }
+    if let Err(e) = app.notification().builder().title("포켓몬 키우기").body(body).show() {
+        eprintln!("알림을 보내지 못했습니다: {e}");
+    }
+}
+
+/// 지금까지 지난 만큼 보상을 주고 끝났으면 알린다. 다음에 깰 때까지의 시간을 돌려준다
+fn focus_tick(app: &AppHandle) -> Option<Duration> {
+    let now = now_ms();
+    let (adv, next) = app.state::<Store>().update(|data| {
+        let adv = focus::advance(data, now);
+        if adv.changed {
+            // 잠금을 잡은 채로 보낸다: 다른 스레드의 이벤트와 순서가 뒤집히지 않는다
+            emit_focus(app, focus_payload(data, adv.done.is_some(), Some(adv.prev_xp)));
+        }
+        let next = focus::next_wake_ms(data, now);
+        (adv.changed, (adv, next))
+    });
+    if adv.changed {
+        refresh_tray_tooltip(app);
+    }
+    if let Some(result) = &adv.done {
+        sync_wander_lock(app);
+        notify_focus_done(app, result);
+    }
+    // 잠자기에서 깨어난 직후에도 늦지 않게 최대 1초마다 본다
+    next.map(|ms| Duration::from_millis((ms.max(0) as u64 + 20).min(1000)))
+}
+
+fn spawn_focus_loop(app: AppHandle) {
+    let app2 = app.clone();
+    let handle = thread::spawn(move || {
+        // 펫 화면이 준비됐다고 알릴 때까지 기다린다. 알림이 안 오면 10초 뒤 그냥 시작한다
+        let started = Instant::now();
+        while !app.state::<FocusRuntime>().ready.load(Ordering::SeqCst) && started.elapsed() < Duration::from_secs(10) {
+            thread::park_timeout(Duration::from_millis(200));
+        }
+        app.state::<FocusRuntime>().ready.store(true, Ordering::SeqCst);
+        loop {
+            match focus_tick(&app) {
+                Some(wait) => thread::park_timeout(wait),
+                None => thread::park(), // 세션이 시작·재개되면 깨운다
+            }
+        }
+    });
+    *app2.state::<FocusRuntime>().thread.lock().unwrap() = Some(handle.thread().clone());
+}
+
+/// 지난 시간을 먼저 정산하고 세션을 바꾼 뒤 화면·펫·트레이에 알린다
+fn focus_action(app: &AppHandle, f: impl FnOnce(&mut Map<String, Value>, i64) -> bool) -> bool {
+    // 펫 화면이 준비되기 전에는 받지 않는다. 먼저 정산하면 그 화면이 레벨업을 놓친다
+    if !app.state::<FocusRuntime>().ready.load(Ordering::SeqCst) {
+        return false;
+    }
+    focus_tick(app);
+    let now = now_ms();
+    let ok = app.state::<Store>().update(|data| {
+        let ok = f(data, now);
+        // 바뀐 것이 없어도 지금 상태를 보낸다 (화면이 어긋나 있었다면 여기서 맞춰진다)
+        emit_focus(app, focus_payload(data, false, None));
+        (ok, ok)
+    });
+    if ok {
+        sync_wander_lock(app);
+        refresh_tray_tooltip(app);
+        app.state::<FocusRuntime>().wake();
+    }
+    ok
+}
+
+fn start_focus_session(app: &AppHandle, minutes: i64) -> bool {
+    // 스타터를 고르기 전에는 재울 펫이 없다
+    if !app.state::<Store>().get("petSpeciesId").is_some_and(|v| v.is_string()) {
+        return false;
+    }
+    focus_action(app, |data, now| focus::start(data, minutes, now))
+}
+
+#[tauri::command]
+fn get_focus(store: State<'_, Store>) -> Value {
+    store.update(|data| (false, focus_payload(data, false, None)))
+}
+
+#[tauri::command]
+fn focus_ready(rt: State<'_, FocusRuntime>) {
+    rt.ready.store(true, Ordering::SeqCst);
+    rt.wake();
+}
+
+#[tauri::command]
+fn start_focus(app: AppHandle, minutes: i64) -> bool {
+    start_focus_session(&app, minutes)
+}
+
+#[tauri::command]
+fn pause_focus(app: AppHandle) -> bool {
+    focus_action(&app, |data, now| focus::pause(data, now))
+}
+
+#[tauri::command]
+fn resume_focus(app: AppHandle) -> bool {
+    focus_action(&app, |data, now| focus::resume(data, now))
+}
+
+#[tauri::command]
+fn cancel_focus(app: AppHandle) -> bool {
+    focus_action(&app, |data, _| focus::cancel(data))
+}
+
+/// 펫 창의 결과 말풍선을 눌러 닫았다
+#[tauri::command]
+fn dismiss_focus_result(app: AppHandle) -> bool {
+    focus_action(&app, |data, _| data.remove("focusResult").is_some())
 }
 
 #[tauri::command]
@@ -427,6 +696,7 @@ fn start_drag(app: AppHandle, pet: State<'_, Pet>, offset_x: f64, offset_y: f64)
     #[cfg(not(target_os = "macos"))]
     let _ = &app;
     pet.dragging.store(true, Ordering::SeqCst);
+    pet.wake();
 }
 
 #[tauri::command]
@@ -437,19 +707,6 @@ fn stop_drag(app: AppHandle, pet: State<'_, Pet>) {
         set_all_workspaces(&w, true);
     }
     resume_wandering_after(&app, Duration::from_secs(2));
-}
-
-#[tauri::command]
-fn start_wandering(pet: State<'_, Pet>) {
-    pet.wander_locked.store(false, Ordering::SeqCst);
-    pet.wander.lock().unwrap().x = None;
-    pet.wandering.store(true, Ordering::SeqCst);
-}
-
-#[tauri::command]
-fn stop_wandering(pet: State<'_, Pet>) {
-    pet.wander_locked.store(true, Ordering::SeqCst);
-    pet.wandering.store(false, Ordering::SeqCst);
 }
 
 #[tauri::command]
@@ -561,6 +818,8 @@ fn show_panel_first(app: &AppHandle) {
 /// 트레이 메뉴. 받아 둔 업데이트가 있으면 맨 위에 설치 항목을 둔다
 fn tray_menu(app: &AppHandle, update_version: Option<&str>) -> tauri::Result<tauri::menu::Menu<tauri::Wry>> {
     let toggle = MenuItem::with_id(app, "toggle", "패널 열기/닫기", true, None::<&str>)?;
+    let focus_start = MenuItem::with_id(app, "focus_start", "25분 집중 시작", true, None::<&str>)?;
+    let focus_stop = MenuItem::with_id(app, "focus_stop", "집중 중단", true, None::<&str>)?;
     let quit = MenuItem::with_id(app, "quit", "종료", true, None::<&str>)?;
     let mut builder = MenuBuilder::new(app);
     if let Some(v) = update_version {
@@ -568,7 +827,27 @@ fn tray_menu(app: &AppHandle, update_version: Option<&str>) -> tauri::Result<tau
         let update = MenuItem::with_id(app, "update", label, true, None::<&str>)?;
         builder = builder.item(&update).separator();
     }
-    builder.item(&toggle).separator().item(&quit).build()
+    builder.item(&toggle).separator().item(&focus_start).item(&focus_stop).separator().item(&quit).build()
+}
+
+/// 트레이 툴팁: 받아 둔 업데이트와 집중 남은 시간을 함께 보여 준다
+fn refresh_tray_tooltip(app: &AppHandle) {
+    let mut text = String::from("포켓몬 키우기");
+    if let Some((update, _)) = app.state::<PendingUpdate>().0.lock().unwrap().as_ref() {
+        text.push_str(&format!(" · 새 버전 v{}", update.version));
+    }
+    let session = app.state::<Store>().update(|data| (false, focus::session(data)));
+    if let Some(s) = session {
+        if s.running() {
+            let minutes = (s.remaining(now_ms()) + 59_999) / 60_000;
+            text.push_str(&format!(" · 집중 {minutes}분 남음"));
+        } else {
+            text.push_str(" · 집중 멈춤");
+        }
+    }
+    if let Some(tray) = app.tray_by_id("main") {
+        let _ = tray.set_tooltip(Some(text));
+    }
 }
 
 fn build_tray(app: &AppHandle) -> tauri::Result<()> {
@@ -583,6 +862,15 @@ fn build_tray(app: &AppHandle) -> tauri::Result<()> {
         .show_menu_on_left_click(cfg!(target_os = "macos"))
         .on_menu_event(|app, event| match event.id().as_ref() {
             "toggle" => toggle_panel_window(app, false),
+            "focus_start" => {
+                // 멈춰 둔 세션이 있으면 그것을 이어서 한다
+                if !focus_action(app, |data, now| focus::resume(data, now)) {
+                    start_focus_session(app, 25);
+                }
+            }
+            "focus_stop" => {
+                focus_action(app, |data, _| focus::cancel(data));
+            }
             "update" => install_update(app),
             "quit" => app.exit(0),
             _ => {}
@@ -638,8 +926,8 @@ async fn check_update(app: &AppHandle) -> Result<(), Box<dyn std::error::Error>>
             Ok(menu) => {
                 if let Some(tray) = handle.tray_by_id("main") {
                     let _ = tray.set_menu(Some(menu));
-                    let _ = tray.set_tooltip(Some(format!("포켓몬 키우기 · 새 버전 v{version}")));
                 }
+                refresh_tray_tooltip(&handle);
             }
             Err(e) => eprintln!("트레이 메뉴를 바꾸지 못했습니다: {e}"),
         }
@@ -657,8 +945,8 @@ fn install_update(app: &AppHandle) {
             // 받아 둔 것을 버렸으니 메뉴를 되돌리고, 다음 확인 때 다시 받는다
             if let (Some(tray), Ok(menu)) = (app.tray_by_id("main"), tray_menu(app, None)) {
                 let _ = tray.set_menu(Some(menu));
-                let _ = tray.set_tooltip(Some("포켓몬 키우기"));
             }
+            refresh_tray_tooltip(app);
         }
     }
 }
@@ -672,18 +960,38 @@ fn legacy_store_paths(app: &AppHandle) -> Vec<PathBuf> {
         .collect()
 }
 
+/// 저장 폴더. 개발 빌드에서는 POKETMON_IDLE_DATA_DIR 로 다른 폴더를 쓸 수 있다
+/// (실제 데이터를 건드리지 않고 시험하려는 용도). 돌려 쓰는 중이면 true
+fn data_dir(app: &AppHandle) -> tauri::Result<(PathBuf, bool)> {
+    #[cfg(debug_assertions)]
+    if let Some(dir) = std::env::var_os("POKETMON_IDLE_DATA_DIR").filter(|d| !d.is_empty()) {
+        return Ok((PathBuf::from(dir), true));
+    }
+    Ok((app.path().app_data_dir()?, false))
+}
+
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_notification::init())
         .setup(|app| {
             let handle = app.handle().clone();
-            let path = handle.path().app_data_dir()?.join("config.json");
-            app.manage(Store::load(path, &legacy_store_paths(&handle)));
+            let (dir, sandbox) = data_dir(&handle)?;
+            // 시험용 폴더를 쓸 때는 Electron 시절 파일을 가져오지 않고 업데이트도 받지 않는다
+            let legacy = if sandbox { vec![] } else { legacy_store_paths(&handle) };
+            app.manage(Store::load(dir.join("config.json"), &legacy, now_ms()));
             app.manage(Pet::default());
             app.manage(PendingUpdate::default());
+            app.manage(FocusRuntime::default());
+            // 집중 중에 꺼졌다 켜졌으면 펫은 계속 잔다
+            sync_wander_lock(&handle);
             build_tray(&handle)?;
             build_windows(&handle)?;
-            spawn_update_checker(handle.clone());
+            refresh_tray_tooltip(&handle);
+            if !sandbox {
+                spawn_update_checker(handle.clone());
+            }
+            spawn_focus_loop(handle.clone());
             spawn_motion_loop(handle);
             Ok(())
         })
@@ -692,13 +1000,22 @@ pub fn run() {
             close_panel,
             get_store,
             set_store,
+            set_store_many,
             get_all_store,
             clear_store,
+            backup_info,
+            store_status,
+            restore_backup,
+            get_focus,
+            focus_ready,
+            start_focus,
+            pause_focus,
+            resume_focus,
+            cancel_focus,
+            dismiss_focus_result,
             starter_selected,
             start_drag,
             stop_drag,
-            start_wandering,
-            stop_wandering,
             resize_pet_window,
             quit_app,
         ])
@@ -711,4 +1028,36 @@ pub fn run() {
             api.prevent_exit();
         }
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn walk_and_stand_durations_stay_in_range() {
+        for i in 0..=10 {
+            let r = i as f64 / 10.0;
+            let walk = phase_duration(true, r).as_secs_f64();
+            let stand = phase_duration(false, r).as_secs_f64();
+            assert!((5.0..=15.0).contains(&walk), "걷기 {walk}");
+            assert!((20.0..=60.0).contains(&stand), "서 있기 {stand}");
+        }
+        assert_eq!(phase_duration(true, 7.0), phase_duration(true, 1.0));
+    }
+
+    #[test]
+    fn window_size_follows_stage() {
+        assert_eq!(win_size_for(Some("pidgey")), 100);
+        assert_eq!(win_size_for(Some("raichu")), 120);
+        assert_eq!(win_size_for(Some("snorlax")), 160);
+        assert_eq!(win_size_for(None), 100);
+    }
+
+    #[test]
+    fn timer_keys_are_not_writable_from_the_screen() {
+        for key in ["focusSession", "focusResult", "ticketMinutes", "schemaVersion"] {
+            assert!(!ALLOWED_STORE_KEYS.contains(&key), "{key}");
+        }
+    }
 }

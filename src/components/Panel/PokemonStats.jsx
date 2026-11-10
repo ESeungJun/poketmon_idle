@@ -72,14 +72,14 @@ export default function PokemonStats() {
   const swapMove          = useStore(s => s.swapMove)
   const useTM             = useStore(s => s.useTM)
   const initialized       = useStore(s => s.initialized)
-  const totalPointsEarned = useStore(s => s.totalPointsEarned || 0)
+  const focusXp           = useStore(s => s.focusXp || 0)
 
   const [editing, setEditing] = useState(false)
   const [nameInput, setNameInput] = useState('')
   const [swapSlot, setSwapSlot] = useState(null)
 
   const pokemon = getPokemon(petSpeciesId)
-  const currentLevel = calcLevel(totalPointsEarned)
+  const currentLevel = calcLevel(focusXp)
 
   useEffect(() => {
     if (!initialized || !pokemon) return
@@ -102,7 +102,7 @@ export default function PokemonStats() {
   if (!petStats) return null
   const currentLevelExp = expForLevel(currentLevel)
   const nextLevelExp = expForLevel(currentLevel + 1)
-  const expProgress = Math.max(0, totalPointsEarned - currentLevelExp)
+  const expProgress = Math.max(0, focusXp - currentLevelExp)
   const expNeeded = nextLevelExp - currentLevelExp
   const expPct = expNeeded > 0 ? Math.min(100, Math.round(expProgress / expNeeded * 100)) : 100
   const canEvolve = pokemon.evolveAt && currentLevel >= pokemon.evolveAt
@@ -194,7 +194,7 @@ export default function PokemonStats() {
       <div style={s.infoRow}>
         <span style={s.label}>지니기</span>
         {toolItem ? (
-          <span style={s.value}>{toolItem.emoji} {toolItem.name}<span style={s.abilityDesc}> — {toolItem.effect}</span></span>
+          <span style={s.value}>{toolItem.emoji} {toolItem.name}<span style={s.abilityDesc}> — {toolItem.pending ? '효과 준비 중' : toolItem.effect}</span></span>
         ) : (
           <span style={{ ...s.value, color: '#888' }}>없음</span>
         )}

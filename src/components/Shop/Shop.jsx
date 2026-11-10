@@ -79,7 +79,7 @@ export default function Shop() {
       {tab === 1 && (
         <div style={st.section}>
           <div style={st.sectionDesc}>
-            한 번에 하나만 지닐 수 있습니다 · 스탯 탭에서 효과 확인
+            한 번에 하나만 지닐 수 있습니다 · 지닌 도구는 배틀에서 효과가 납니다
           </div>
           <div style={st.grid2}>
             {SHOP_ITEMS.filter(i => i.category === 'tool').map(item => {
@@ -95,8 +95,12 @@ export default function Shop() {
                     <span style={st.tmEmoji}>{item.emoji}</span>
                     <span style={st.tmName}>{item.name}</span>
                   </div>
-                  <div style={{ fontSize: '11px', color: '#FFD700', marginBottom: '3px' }}>{item.effect}</div>
-                  <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px' }}>{item.description}</div>
+                  <div style={{ fontSize: '11px', color: item.pending ? '#777' : '#FFD700', marginBottom: '3px' }}>
+                    {item.pending ? `${item.effect} (준비 중)` : item.effect}
+                  </div>
+                  <div style={{ fontSize: '10px', color: '#555', marginBottom: '6px' }}>
+                    {item.pending ? '아직 배틀에 효과가 없습니다' : item.description}
+                  </div>
                   {owned ? (
                     <button onClick={() => equipTool(item.id)} style={{
                       ...st.btn,
@@ -104,6 +108,8 @@ export default function Shop() {
                       color: equipped ? '#FFF' : '#AAA',
                       border: equipped ? 'none' : '1px solid #444',
                     }}>{equipped ? '지니는 중' : '지니기'}</button>
+                  ) : item.pending ? (
+                    <button disabled style={{ ...st.btn, background: '#2a2a3e', color: '#555', cursor: 'not-allowed' }}>준비 중</button>
                   ) : (
                     <button onClick={() => purchaseItem(item.id, item.cost)}
                       disabled={!canAfford}
