@@ -1,128 +1,65 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import useStore from '../../store/useStore'
+import { completionBonus, remainingSeconds, POINTS_PER_MINUTE, BONUS_MIN_MINUTES } from '../../data/balance'
 
 const DEFAULT_MINUTES = 25
 const MIN_MINUTES = 1
 const MAX_MINUTES = 120
 
+// 집중 타이머 화면. 시간은 Rust 가 재고(종료 시각을 저장) 여기서는 남은 시간을 보여 주기만 한다.
+// 그래서 패널을 닫거나 앱을 다시 켜도 세션이 이어진다.
 export default function PomodoroTimer() {
   const [workMinutes, setWorkMinutes] = useState(DEFAULT_MINUTES)
-  const [timeLeft, setTimeLeft] = useState(DEFAULT_MINUTES * 60)
-  const [isRunning, setIsRunning] = useState(false)
+  const [now, setNow] = useState(Date.now())
 
-  const intervalRef      = useRef(null)
-  const endTimeRef       = useRef(null)   // wall-clock 기준 종료 시각
-  const timeLeftRef      = useRef(DEFAULT_MINUTES * 60)
-  const tickStartRef     = useRef(null)   // 현재 실행 시작 시각
-  const totalActiveMsRef = useRef(0)      // 누적 실제 작업 시간(ms)
-  const awardedMinRef    = useRef(0)      // 이미 지급한 분(min)
+  const session     = useStore(s => s.focusSession)
+  const result      = useStore(s => s.focusResult)
+  const startFocus  = useStore(s => s.startFocus)
+  const pauseFocus  = useStore(s => s.pauseFocus)
+  const resumeFocus = useStore(s => s.resumeFocus)
+  const cancelFocus = useStore(s => s.cancelFocus)
 
-  const addPomodoroSession = useStore(s => s.addPomodoroSession)
-  const addWorkMinute      = useStore(s => s.addWorkMinute)
-  const setPetState        = useStore(s => s.setPetState)
+  const isRunning = session?.endsAt != null
+  const isPaused  = session != null && !isRunning
 
+  // 남은 시간 표시만 갱신한다 (벽시계 기준이라 늦게 돌아도 값은 맞다)
   useEffect(() => {
-    if (!isRunning) {
-      clearInterval(intervalRef.current)
-      // 일시정지 시 누적 활성 시간 저장
-      if (tickStartRef.current) {
-        totalActiveMsRef.current += Date.now() - tickStartRef.current
-        tickStartRef.current = null
-      }
-      setPetState('idle')
-      window.electronAPI?.startWandering()
-      return
-    }
-
-    // 시작/재개: 실제 종료 시각을 벽시계 기준으로 설정
-    endTimeRef.current  = Date.now() + timeLeftRef.current * 1000
-    tickStartRef.current = Date.now()
-
-    setPetState('sleeping')
-    window.electronAPI?.stopWandering()
-
-    // 200ms마다 체크 → 스로틀링 되더라도 실제 경과 시간 반영
-    intervalRef.current = setInterval(() => {
-      const now       = Date.now()
-      const remaining = Math.max(0, Math.ceil((endTimeRef.current - now) / 1000))
-      timeLeftRef.current = remaining
-      setTimeLeft(remaining)
-
-      // 실제 활성 시간 기준으로 분당 포인트 지급
-      if (tickStartRef.current) {
-        const activeMs       = totalActiveMsRef.current + (now - tickStartRef.current)
-        const elapsedMinutes = Math.floor(activeMs / 60000)
-        while (awardedMinRef.current < elapsedMinutes) {
-          awardedMinRef.current++
-          addWorkMinute()
-        }
-      }
-
-      if (remaining <= 0) {
-        clearInterval(intervalRef.current)
-        if (tickStartRef.current) {
-          totalActiveMsRef.current += now - tickStartRef.current
-          tickStartRef.current = null
-        }
-        addPomodoroSession()
-        totalActiveMsRef.current = 0
-        awardedMinRef.current    = 0
-        timeLeftRef.current = workMinutes * 60
-        setTimeLeft(workMinutes * 60)
-        setIsRunning(false)
-      }
-    }, 200)
-
-    return () => clearInterval(intervalRef.current)
-  }, [isRunning])
-
-  // 패널이 다시 보일 때 즉시 시간 갱신
-  useEffect(() => {
-    const onVisible = () => {
-      if (isRunning && endTimeRef.current) {
-        const remaining = Math.max(0, Math.ceil((endTimeRef.current - Date.now()) / 1000))
-        timeLeftRef.current = remaining
-        setTimeLeft(remaining)
-      }
-    }
+    if (!isRunning) return
+    setNow(Date.now())
+    const id = setInterval(() => setNow(Date.now()), 500)
+    const onVisible = () => setNow(Date.now())
     document.addEventListener('visibilitychange', onVisible)
-    return () => document.removeEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [isRunning])
 
   const changeMinutes = (delta) => {
-    if (isRunning) return
-    const next = Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, workMinutes + delta))
-    setWorkMinutes(next)
-    timeLeftRef.current = next * 60
-    setTimeLeft(next * 60)
+    if (session) return
+    setWorkMinutes(m => Math.min(MAX_MINUTES, Math.max(MIN_MINUTES, m + delta)))
   }
 
-  const toggle = () => setIsRunning(r => !r)
-
-  const reset = () => {
-    clearInterval(intervalRef.current)
-    setIsRunning(false)
-    timeLeftRef.current      = workMinutes * 60
-    setTimeLeft(workMinutes * 60)
-    endTimeRef.current       = null
-    tickStartRef.current     = null
-    totalActiveMsRef.current = 0
-    awardedMinRef.current    = 0
-    setPetState('idle')
-    window.electronAPI?.startWandering()
+  const toggle = () => {
+    if (isRunning) pauseFocus()
+    else if (isPaused) resumeFocus()
+    else startFocus(workMinutes)
   }
 
+  const minutesShown = session ? session.minutes : workMinutes
+  const timeLeft = session ? remainingSeconds(session, now) : workMinutes * 60
   const minutes = Math.floor(timeLeft / 60)
   const seconds = timeLeft % 60
   const timeStr = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  const progress = 1 - timeLeft / (workMinutes * 60)
+  const progress = 1 - timeLeft / (minutesShown * 60)
   const circumference = 2 * Math.PI * 45
+  const bonus = completionBonus(minutesShown)
 
   return (
     <div style={styles.container}>
       <div style={styles.header}>
         <span style={styles.title}>⏱ 집중모드</span>
-        <span style={styles.mode}>{isRunning ? '집중 중' : '대기 중'}</span>
+        <span style={styles.mode}>{isRunning ? '집중 중' : isPaused ? '멈춤' : '대기 중'}</span>
       </div>
 
       <div style={styles.timerWrapper}>
@@ -145,7 +82,7 @@ export default function PomodoroTimer() {
         </div>
       </div>
 
-      {!isRunning && (
+      {!session && (
         <div style={styles.timeSetRow}>
           <button onClick={() => changeMinutes(-5)} style={styles.stepBtn}>−5</button>
           <button onClick={() => changeMinutes(-1)} style={styles.stepBtn}>−1</button>
@@ -156,15 +93,22 @@ export default function PomodoroTimer() {
       )}
 
       <div style={styles.controls}>
-        <button onClick={reset} style={styles.resetBtn}>↺</button>
-        <button onClick={toggle} style={styles.playBtn}>
+        <button onClick={cancelFocus} style={styles.resetBtn} disabled={!session} aria-label="집중 중단">↺</button>
+        <button onClick={toggle} style={styles.playBtn} aria-label={isRunning ? '멈춤' : '시작'}>
           {isRunning ? '⏸' : '▶'}
         </button>
       </div>
 
       <div style={styles.hint}>
-        완료 시 +75pt · 작업 1분마다 +2pt
+        {bonus > 0
+          ? `완료 시 +${bonus}pt · 1분마다 +${POINTS_PER_MINUTE}pt`
+          : `1분마다 +${POINTS_PER_MINUTE}pt · 완료 보너스는 ${BONUS_MIN_MINUTES}분부터`}
       </div>
+      {!session && result && (
+        <div style={styles.lastResult}>
+          방금 {result.minutes}분 완료 · +{result.gained}pt{result.tickets > 0 ? ` · 조우권 +${result.tickets}` : ''}
+        </div>
+      )}
     </div>
   )
 }
@@ -248,6 +192,12 @@ const styles = {
     textAlign: 'center',
     fontSize: '11px',
     color: '#555',
+  },
+  lastResult: {
+    textAlign: 'center',
+    fontSize: '11px',
+    color: '#FFD700',
+    marginTop: '6px',
   },
   timeSetRow: {
     display: 'flex',

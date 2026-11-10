@@ -1,10 +1,23 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import useStore from '../../store/useStore'
 import { getPokemon } from '../../data/pokemon'
 
 export default function Settings() {
   const resetAllData = useStore(s => s.resetAllData)
   const addPoints = useStore(s => s.addPoints)
+  const gainFocusXp = useStore(s => s.gainFocusXp)
+  const restoreBackup = useStore(s => s.restoreBackup)
+  const [backupAt, setBackupAt] = useState(null)
+  const [restoreStep, setRestoreStep] = useState('idle') // idle | confirm | failed
+
+  useEffect(() => {
+    window.electronAPI?.backupInfo().then(setBackupAt).catch(() => {})
+  }, [])
+
+  const handleRestore = async () => {
+    const ok = await restoreBackup()
+    setRestoreStep(ok ? 'idle' : 'failed')
+  }
   const setPetState = useStore(s => s.setPetState)
   const petSpeciesId = useStore(s => s.petSpeciesId)
   const [confirm, setConfirm] = useState(false)
@@ -40,6 +53,26 @@ export default function Settings() {
             </div>
           </div>
         )}
+        {backupAt && (
+          restoreStep === 'confirm' ? (
+            <div style={{ ...styles.confirmBox, marginTop: '12px' }}>
+              <p style={styles.confirmText}>
+                이번에 앱을 켰을 때의 데이터로 되돌립니다. 지금 데이터는 따로 남겨 둡니다.
+              </p>
+              <div style={styles.confirmBtns}>
+                <button style={styles.cancelBtn} onClick={() => setRestoreStep('idle')}>취소</button>
+                <button style={styles.confirmBtn} onClick={handleRestore}>되돌리기</button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <button style={{ ...styles.quitBtn, marginTop: '12px' }} onClick={() => setRestoreStep('confirm')}>
+                백업에서 되돌리기
+              </button>
+              {restoreStep === 'failed' && <p style={styles.confirmText}>되돌리지 못했습니다.</p>}
+            </>
+          )
+        )}
       </div>
       <div style={styles.section}>
         <div style={styles.sectionTitle}>앱</div>
@@ -54,10 +87,10 @@ export default function Settings() {
           </button>
           {devOpen && (
             <div style={styles.devContent}>
-              <div style={styles.devLabel}>포인트 추가</div>
+              <div style={styles.devLabel}>포인트·경험치 추가</div>
               <div style={styles.devRow}>
                 {[100, 500, 1000, 5000].map(n => (
-                  <button key={n} style={styles.devBtn} onClick={() => addPoints(n, false)}>
+                  <button key={n} style={styles.devBtn} onClick={() => { addPoints(n, false); gainFocusXp(n) }}>
                     +{n.toLocaleString()}
                   </button>
                 ))}

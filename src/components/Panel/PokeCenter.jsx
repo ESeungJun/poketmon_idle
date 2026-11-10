@@ -5,14 +5,14 @@ import { getPokemon, calcLevel } from '../../data/pokemon'
 export default function PokeCenter() {
   const petSpeciesId       = useStore(s => s.petSpeciesId)
   const petStats           = useStore(s => s.petStats)
-  const totalPointsEarned  = useStore(s => s.totalPointsEarned)
+  const focusXp            = useStore(s => s.focusXp)
   const points             = useStore(s => s.points)
   const healAtCenter       = useStore(s => s.healAtCenter)
   const wildBattle         = useStore(s => s.wildBattle)
   const [healed, setHealed] = useState(false)
 
   const pokemon    = getPokemon(petSpeciesId)
-  const level      = Math.max(1, calcLevel(totalPointsEarned || 0))
+  const level      = Math.max(1, calcLevel(focusXp || 0))
   const isFullHP   = petStats?.currentHP == null
   const isFullPP   = petStats?.movePP == null
   const noPoints   = points < 20

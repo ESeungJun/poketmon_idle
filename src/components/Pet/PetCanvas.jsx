@@ -4,7 +4,7 @@ import { PIXEL_ART } from './pixelArtRegistry'
 import { spriteUrl } from '../../data/pokemon'
 
 // 진화 단계별 펫 창 크기 (stage2 = 1.5×, stage3 = 2.25×)
-// ※ 새 포켓몬 추가 시 electron/main.js의 STAGE2_SPECIES/STAGE3_SPECIES도 함께 수정할 것
+// ※ 새 포켓몬 추가 시 src-tauri/src/lib.rs 의 STAGE2/STAGE3 도 함께 수정할 것
 const STAGE2 = new Set(['ivysaur','charmeleon','wartortle','pidgeotto','raichu','haunter'])
 const STAGE3 = new Set(['venusaur','charizard','blastoise','pidgeot','gengar','snorlax'])
 export function getWinSize(speciesId) {
@@ -37,6 +37,13 @@ function injectStyles() {
     @keyframes petSleep {
       0%, 100% { opacity: 0.6; }
       50% { opacity: 0.4; }
+    }
+    /* 번쩍임을 줄여 달라고 설정한 사람에게는 한 번만 서서히 밝아진다 */
+    @media (prefers-reduced-motion: reduce) {
+      @keyframes petEvolve {
+        0%   { filter: brightness(1) saturate(1); }
+        100% { filter: brightness(3) saturate(0); }
+      }
     }
   `
   document.head.appendChild(style)
