@@ -154,13 +154,19 @@ function leftoversHeal(battler) {
 
 const INITIAL_STAGES = { '공격': 0, '방어': 0, '특수공격': 0, '특수방어': 0, '스피드': 0, '명중률': 0, '회피율': 0 }
 
-// Damage = ((2×level/5+2) × power × atk/def / 50 + 2) × typeEffect
-// 본가 포켓몬 데미지 공식 간소화 버전 — 레벨이 높을수록 데미지 증가
+// 대미지 공식의 유일한 정의. 상성·보정을 곱하기 전의 값(내림 전)을 돌려준다
+// (2×level/5+2) × power × atk/def / 50 + 2 — 본가 포켓몬 대미지 공식 간소화 버전, 레벨이 높을수록 세다
+// 내림·최소 1 처리는 부르는 쪽마다 시점이 달라서(아래 calcDamage, 턴 처리의 공격) 여기서 하지 않는다
+function rawDamage(level, power, atkStat, defStat) {
+  const levelFactor = Math.floor(2 * level / 5) + 2
+  return levelFactor * power * atkStat / defStat / 50 + 2
+}
+
+// Damage = floor(rawDamage × typeEffect), 최소 1
 export function calcDamage(movePower, atkStat, defStat, moveType, defenderTypes, level = 1) {
   if (!movePower) return 0
   const typeEff = getTypeEffectiveness(moveType, defenderTypes)
-  const levelFactor = Math.floor(2 * level / 5) + 2
-  return Math.max(1, Math.floor((levelFactor * movePower * atkStat / defStat / 50 + 2) * typeEff))
+  return Math.max(1, Math.floor(rawDamage(level, movePower, atkStat, defStat) * typeEff))
 }
 
 // HP damage from burn/poison at turn start
@@ -170,18 +176,18 @@ function calcStatusDamage(status, maxHP) {
   return 0
 }
 
-// Returns { prevented, newTurns, cleared }
-function checkStatusAction(status, statusTurns) {
+// Returns { prevented, newTurns, cleared }. rng: 0 이상 1 미만 난수 함수
+function checkStatusAction(status, statusTurns, rng) {
   if (!status) return { prevented: false, newTurns: statusTurns, cleared: false }
   if (status === 'paralysis') {
-    return { prevented: Math.random() < 0.25, newTurns: statusTurns, cleared: false }
+    return { prevented: rng() < 0.25, newTurns: statusTurns, cleared: false }
   }
   if (status === 'sleep') {
     if (statusTurns <= 0) return { prevented: false, newTurns: 0, cleared: true }
     return { prevented: true, newTurns: statusTurns - 1, cleared: false }
   }
   if (status === 'freeze') {
-    const thaw = Math.random() < 0.2
+    const thaw = rng() < 0.2
     return { prevented: !thaw, newTurns: 0, cleared: thaw }
   }
   return { prevented: false, newTurns: statusTurns, cleared: false }
@@ -276,410 +282,363 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, focusXp, shop
   }
 }
 
-// Execute one full turn, returning animation frames instead of a single final state.
-// Each frame = { addLog, wild, player, weather, weatherTurns, phase, result }
-//   addLog: string → append to log box; null → silent HP-bar update only
+// ── 한 턴 처리 도구 ──────────────────────────────────────────────
+// processTurn·processWildOnlyTurn 이 같이 쓴다.
+// 턴 상태 t 는 createTurn 이 만들고, 두 포켓몬은 'player'·'wild' 로 가리킨다(t.player, t.wild).
+// 도구는 t 의 battler·날씨를 새 객체로 바꾸고(입력 battle 은 건드리지 않는다) 장면을 t.frames 에 쌓는다.
+// 난수는 모두 t.rng 로 부른다. 부르는 순서와 횟수가 결과를 정하므로 호출 순서를 바꾸지 않는다.
+
+const PREVENTED_MSG = { sleep: '잠들어 있다!', paralysis: '마비로 움직일 수 없다!', freeze: '꽁꽁 얼어 있다!' }
+const WEATHER_ALREADY = { sunny_day: '날씨는 이미 맑다!', rain_dance: '이미 비가 내리고 있다!' }
+const opponent = (side) => (side === 'player' ? 'wild' : 'player')
+
+// 턴 상태 만들기
+// 장면(frame) = { addLog, wild, player, weather, weatherTurns, phase, result }
+//   addLog: 문자열이면 로그 창에 한 줄, null 이면 HP 바만 갱신
 //   phase: 'animating' | 'selecting' | 'ended'
-// Speed determines who attacks first (ties go to player).
-// Returns { frames, pointsGained }
-export function processTurn(battle, playerMoveName) {
+function createTurn(battle, rng) {
+  const t = {
+    rng,
+    player: { ...battle.player },
+    wild: { ...battle.wild },
+    weather: battle.weather ?? null,
+    weatherTurns: battle.weatherTurns ?? 0,
+    frames: [],
+    pointsGained: 0,
+    species: { player: getPokemon(battle.player.speciesId), wild: getPokemon(battle.wild.speciesId) },
+  }
+  t.snap = (addLog, phase = 'animating', result = null) => {
+    t.frames.push({ addLog, wild: { ...t.wild }, player: { ...t.player }, weather: t.weather, weatherTurns: t.weatherTurns, phase, result })
+  }
+  return t
+}
+
+// 문구에 쓰는 이름. 야생 쪽은 앞에 "야생" 을 붙인다
+function nameOf(t, side) {
+  return side === 'player' ? t.species.player.speciesName : `야생 ${t.species.wild.speciesName}`
+}
+
+// 야생이 이번 턴에 쓸 기술 (턴 처음에 한 번 고른다, 난수 1회). 종 데이터에 없는 기술이면 data 가 비어 있다
+function pickWildMove(t) {
+  const moves = t.wild.moves ?? []
+  const name = moves.length > 0 ? moves[Math.floor(t.rng() * moves.length)] : null
+  const data = name ? t.species.wild.baseMoves?.find(m => m.name === name) : null
+  return { name, data }
+}
+
+// 상태이상 확인: 풀렸으면 문구를 남기고, 이번 턴에 못 움직이면 문구를 남기고 false
+// preventedPhase: 못 움직였을 때 장면의 phase (볼 실패 턴은 여기서 바로 고르기로 돌아간다)
+function canAct(t, side, preventedPhase = 'animating') {
+  const check = checkStatusAction(t[side].status, t[side].statusTurns, t.rng)
+  if (check.cleared) {
+    const old = t[side].status
+    t[side] = { ...t[side], status: null, statusTurns: 0 }
+    t.snap(`${nameOf(t, side)}의 ${STATUS_KO[old]}이(가) 풀렸다!`)
+  } else {
+    t[side] = { ...t[side], statusTurns: check.newTurns }
+  }
+  if (check.prevented) {
+    t.snap(`${nameOf(t, side)}은(는) ${PREVENTED_MSG[t[side].status] || '움직일 수 없다!'}`, preventedPhase)
+    return false
+  }
+  return true
+}
+
+// 명중 판정. 명중률이 null 인 기술은 반드시 맞고 난수를 부르지 않는다
+// 최종 명중률 = 기술 명중률 × (공격 쪽 명중률 단계 배율 / 방어 쪽 회피율 단계 배율)
+function rollHit(t, side, moveName) {
+  const moveAcc = MOVE_META[moveName]?.accuracy ?? 100
+  if (moveAcc === null) return true
+  const accMul = getAccEvaMultiplier(t[side].stages?.['명중률'] ?? 0)
+  const evaMul = getAccEvaMultiplier(t[opponent(side)].stages?.['회피율'] ?? 0)
+  const finalAcc = moveAcc * (accMul / evaMul)
+  const missed = t.rng() * 100 >= finalAcc
+  return !missed
+}
+
+// 상태이상 걸기: 효과가 있고 상대에게 상태이상이 없을 때 확률로 건다(잠듦은 1~3턴). 걸었으면 true
+// 난수는 확률 판정 1회 + 잠듦이면 턴 수 1회
+function tryInflictStatus(t, target, eff) {
+  if (!eff || t[target].status) return false
+  if (!(t.rng() < eff.chance)) return false
+  t[target] = { ...t[target], status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(t.rng() * 3) : 0 }
+  t.snap(`${nameOf(t, target)}은(는) ${STATUS_KO[eff.type]}에 걸렸다!`)
+  return true
+}
+
+// 쓰러졌는지 확인. 쓰러졌으면 끝 장면을 남기고 true. 야생이 쓰러지면 승리 보상을 정한다
+function fainted(t, side) {
+  if (t[side].hp <= 0) {
+    if (side === 'wild') {
+      t.snap(`${nameOf(t, 'wild')}이(가) 쓰러졌다!`, 'ended', 'win')
+      t.pointsGained = battleReward(t.wild.level)
+    } else {
+      t.snap(`${nameOf(t, 'player')}이(가) 쓰러졌다...`, 'ended', 'lose')
+    }
+    return true
+  }
+  return false
+}
+
+// 공격·방어 실효 스탯: 물리는 공격/방어, 특수는 특수공격/특수방어
+function attackDefense(attacker, defender, category) {
+  return category === '물리'
+    ? [getEffectiveStat(attacker, '공격'), getEffectiveStat(defender, '방어')]
+    : [getEffectiveStat(attacker, '특수공격'), getEffectiveStat(defender, '특수방어')]
+}
+
+// 플레이어 공격 대미지
+// 1. 상성까지 곱해 한 번 내림  2. 날씨 × 특성(태양의힘) × 지닌 도구 보정  3. 다시 내림, 최소 1
+function playerDamage(attacker, defender, move, typeEff, weather) {
+  const [atkStat, defStat] = attackDefense(attacker, defender, move.category)
+  const weatherMod = getWeatherModifier(move.type, weather)
+  // 태양의힘: 맑은 날씨에 특수기술 위력 1.5배
+  const abilityMod = (attacker.abilityName === '태양의힘' && weather === 'sunny_day' && move.category === '특수') ? 1.5 : 1
+  const baseDmg = Math.floor(rawDamage(attacker.level, move.power, atkStat, defStat) * typeEff)
+  const itemMod = heldItemPowerMod(attacker.heldItem, move)
+  return Math.max(1, Math.floor(baseDmg * weatherMod * abilityMod * itemMod))
+}
+
+// 야생 공격 대미지: 상성 × 날씨를 곱하고 한 번만 내림, 최소 1 (야생은 특성·지닌 도구 보정이 없다)
+function wildDamage(attacker, defender, move, typeEff, weather) {
+  const [atkStat, defStat] = attackDefense(attacker, defender, move.category)
+  const weatherMod = getWeatherModifier(move.type, weather)
+  return Math.max(1, Math.floor(rawDamage(attacker.level, move.power, atkStat, defStat) * typeEff * weatherMod))
+}
+
+// 플레이어 지닌 도구의 공격 뒤 효과 (대미지 직후, 부가 상태이상보다 먼저)
+function playerItemAfterAttack(t, dealt) {
+  // 조개껍질방울: 준 대미지의 1/8 회복
+  if (t.player.heldItem === 'tool_shellbell' && dealt > 0 && t.player.hp < t.player.maxHP) {
+    const heal = Math.max(1, Math.floor(dealt / 8))
+    t.player = { ...t.player, hp: Math.min(t.player.maxHP, t.player.hp + heal) }
+    t.snap(`${nameOf(t, 'player')}은(는) 조개껍질방울로 HP를 조금 회복했다!`)
+  }
+  // 생명의구슬: 공격할 때마다 최대 HP의 1/10 감소
+  if (t.player.heldItem === 'tool_lifejewel') {
+    const recoil = Math.max(1, Math.floor(t.player.maxHP / 10))
+    t.player = { ...t.player, hp: Math.max(0, t.player.hp - recoil) }
+    t.snap(`${nameOf(t, 'player')}은(는) 생명의구슬에 생명력을 조금 빼앗겼다!`)
+  }
+}
+
+// 위력이 있는 공격 기술
+// 1. 상성 확인(무효면 문구만 남기고 false)  2. 대미지와 상성 문구  3. (플레이어) 지닌 도구  4. 부가 상태이상
+// immunePhase: 상성 무효 장면의 phase (볼 실패 턴은 'selecting')
+function applyDamagingMove(t, side, moveName, move, immunePhase = 'animating') {
+  const target = opponent(side)
+  const typeEff = getTypeEffectiveness(move.type, t.species[target].types)
+  if (typeEff === 0) {
+    t.snap('효과가 없다!', immunePhase)
+    return false
+  }
+  const calc = side === 'player' ? playerDamage : wildDamage
+  const dmg = calc(t[side], t[target], move, typeEff, t.weather)
+  if (typeEff > 1)      t.snap('효과는 굉장했다!')
+  else if (typeEff < 1) t.snap('효과가 별로인 것 같다...')
+  const dealt = Math.min(t[target].hp, dmg)
+  t[target] = { ...t[target], hp: Math.max(0, t[target].hp - dmg) }
+  t.snap(null)
+  if (side === 'player') playerItemAfterAttack(t, dealt)
+  tryInflictStatus(t, target, getMoveStatusEffect(moveName))
+  return true
+}
+
+// 변화 기술: 1) 날씨 2) special 3) 능력치 단계 4) 상태이상 순으로 본다. 배틀이 끝나면 true
+function applyStatusMove(t, side, moveName) {
+  const meta = MOVE_META[moveName]
+  const special = meta?.special
+  const target = opponent(side)
+
+  // 1) 날씨 기술: 5턴
+  if (special === 'sunny_day' || special === 'rain_dance') {
+    if (t.weather === special) {
+      t.snap(WEATHER_ALREADY[special])
+    } else {
+      t.weather = special
+      t.weatherTurns = 5
+      t.snap(WEATHER_KO[special].start)
+    }
+    return false
+  }
+  // 2) special 기술
+  if (special === 'roar') {
+    // 플레이어가 쓰면 야생이 도망쳐 배틀이 끝난다. 야생이 쓰면 효과가 없다
+    if (side === 'player') {
+      t.snap('야생 포켓몬이 도망쳤다!', 'ended', 'flee_roar')
+      return true
+    }
+    t.snap('하지만 효과가 없는 것 같다...')
+    return false
+  }
+  if (special === 'synthesis') {
+    // 플레이어: 날씨에 따라 맑음 2/3, 비 1/4, 평상시 1/2 회복 / 야생: 날씨와 상관없이 1/2
+    const healFraction = side === 'wild' ? 0.5 : t.weather === 'sunny_day' ? 2/3 : t.weather ? 0.25 : 0.5
+    const heal = Math.floor(t[side].maxHP * healFraction)
+    t[side] = { ...t[side], hp: Math.min(t[side].maxHP, t[side].hp + heal) }
+    t.snap(`${nameOf(t, side)}은(는) HP를 회복했다!`)
+    return false
+  }
+  if (special === 'rest') {
+    t[side] = { ...t[side], hp: t[side].maxHP, status: 'sleep', statusTurns: 2 }
+    t.snap(`${nameOf(t, side)}은(는) 잠들어서 HP를 회복했다!`)
+    return false
+  }
+  if (special === 'pain_split') {
+    // 두 HP 의 평균으로 맞춘다. 쓰러짐은 상대 → 자신 순으로 본다
+    const avg = Math.floor((t.player.hp + t.wild.hp) / 2)
+    t.player = { ...t.player, hp: Math.max(0, Math.min(t.player.maxHP, avg)) }
+    t.wild = { ...t.wild, hp: Math.max(0, Math.min(t.wild.maxHP, avg)) }
+    t.snap('서로의 HP를 나누었다!')
+    return fainted(t, target) || fainted(t, side)
+  }
+  // 3) 능력치 단계 기술
+  if (meta?.statEffect) {
+    const se = meta.statEffect
+    const who = se.target === 'self' ? side : target
+    const { battler, logs } = applyStatChanges(t[who], se.changes, nameOf(t, who))
+    t[who] = battler
+    for (const log of logs) t.snap(log)
+    return false
+  }
+  // 4) 상태이상 기술
+  const eff = getMoveStatusEffect(moveName)
+  if (!eff) {
+    t.snap('하지만 효과가 없는 것 같다...')
+  } else if (!tryInflictStatus(t, target, eff)) {
+    // 이미 상태이상이 있거나 확률에서 빗나감
+    t.snap(`${nameOf(t, target)}에게는 통하지 않았다!`)
+  }
+  return false
+}
+
+// 명중한 기술의 효과: 고정 대미지 / 공격 / 변화. 배틀이 여기서 끝나면 true (울부짖기, 아픔나누기로 쓰러짐)
+function applyMove(t, side, moveName, move) {
+  if (move.category !== '변화' && move.fixedDamage) {
+    // 고정 대미지(용의분노 40, 나이트헤드 = 레벨): 상성·날씨 무시
+    const target = opponent(side)
+    const fixedDmg = move.fixedDamage === 'level' ? t[side].level : move.fixedDamage
+    t[target] = { ...t[target], hp: Math.max(0, t[target].hp - fixedDmg) }
+    t.snap(null)
+  } else if (move.category !== '변화' && move.power) {
+    applyDamagingMove(t, side, moveName, move)
+  } else if (move.category === '변화') {
+    return applyStatusMove(t, side, moveName)
+  }
+  return false
+}
+
+// 플레이어 행동: 상태이상 확인 → 기술·PP 확인 → PP 1 소모 → 명중 → 효과 → 쓰러짐. 배틀이 끝나면 true
+function playerAction(t, moveName) {
+  if (!canAct(t, 'player')) return false
+  const move = t.player.resolvedMoves?.find(m => m.name === moveName)
+  const currentPP = t.player.movePP?.[moveName] ?? getMaxPP(moveName)
+  if (!move || currentPP <= 0) {
+    t.snap(currentPP <= 0 ? `${moveName}의 PP가 바닥났다!` : '기술을 사용할 수 없다!')
+    return false
+  }
+  t.player = { ...t.player, movePP: { ...t.player.movePP, [moveName]: currentPP - 1 } }
+  t.snap(`${nameOf(t, 'player')}은(는) ${moveName}을(를) 사용했다!`)
+  if (!rollHit(t, 'player', moveName)) {
+    t.snap('빗나갔다!')
+    return false
+  }
+  if (applyMove(t, 'player', moveName, move)) return true
+  // 생명의구슬 반동으로 플레이어가 쓰러질 수도 있다
+  return fainted(t, 'wild') || fainted(t, 'player')
+}
+
+// 야생 행동: (기술 데이터가 없으면 쉰다) 상태이상 확인 → 명중 → 효과 → 쓰러짐. 배틀이 끝나면 true
+function wildAction(t, wildMove) {
+  if (!wildMove.data) return false
+  if (!canAct(t, 'wild')) return false
+  t.snap(`${nameOf(t, 'wild')}은(는) ${wildMove.name}을(를) 사용했다!`)
+  if (!rollHit(t, 'wild', wildMove.name)) {
+    t.snap('빗나갔다!')
+    return false
+  }
+  if (applyMove(t, 'wild', wildMove.name, wildMove.data)) return true
+  return fainted(t, 'player')
+}
+
+// 턴 끝 화상·독 피해. 쓰러지면 true
+function statusDamage(t, side) {
+  const b = t[side]
+  if (b.status !== 'burn' && b.status !== 'poison') return false
+  const dmg = calcStatusDamage(b.status, b.maxHP)
+  t.snap(`${nameOf(t, side)}은(는) ${STATUS_KO[b.status]} 피해를 입었다!`)
+  t[side] = { ...b, hp: Math.max(0, b.hp - dmg) }
+  t.snap(null)
+  return fainted(t, side)
+}
+
+// 턴 끝 처리
+// 1. 화상·독 (wildStatusDamage 면 야생 먼저, 그다음 플레이어)  2. 먹다남은음식  3. 빗속준비  4. 태양의힘
+// 5. 날씨 남은 턴 줄이기  6. 마지막 장면을 'selecting' 으로 (다음 기술 고르기)
+// 누가 쓰러지면 그 자리에서 멈춘다(마지막 장면은 'ended' 그대로)
+// wildStatusDamage: 볼 실패 턴은 야생 화상·독 피해를 주지 않는다
+function endOfTurn(t, { wildStatusDamage }) {
+  if (wildStatusDamage && statusDamage(t, 'wild')) return
+  if (statusDamage(t, 'player')) return
+
+  const fed = leftoversHeal(t.player)
+  if (fed) {
+    t.player = fed
+    t.snap(`${nameOf(t, 'player')}은(는) 먹다남은음식으로 HP를 조금 회복했다!`)
+  }
+  // 빗속준비: 비 날씨에 매 턴 HP 1/16 회복
+  if (t.weather === 'rain_dance' && t.player.abilityName === '빗속준비') {
+    const heal = Math.max(1, Math.floor(t.player.maxHP / 16))
+    t.player = { ...t.player, hp: Math.min(t.player.maxHP, t.player.hp + heal) }
+    t.snap(`${nameOf(t, 'player')}은(는) 빗속준비로 체력을 회복했다!`)
+  }
+  // 태양의힘: 맑은 날씨에 매 턴 HP 1/8 소모
+  if (t.weather === 'sunny_day' && t.player.abilityName === '태양의힘') {
+    const drain = Math.max(1, Math.floor(t.player.maxHP / 8))
+    t.player = { ...t.player, hp: Math.max(0, t.player.hp - drain) }
+    t.snap(`${nameOf(t, 'player')}은(는) 태양의힘으로 체력을 소모했다!`)
+    t.snap(null)
+    if (fainted(t, 'player')) return
+  }
+
+  if (t.weather) {
+    t.weatherTurns--
+    if (t.weatherTurns <= 0) {
+      const msg = WEATHER_KO[t.weather]?.end ?? '날씨가 원래대로 돌아왔다.'
+      t.weather = null
+      t.weatherTurns = 0
+      t.snap(msg)
+    }
+  }
+
+  if (t.frames.length > 0) {
+    t.frames[t.frames.length - 1] = { ...t.frames[t.frames.length - 1], phase: 'selecting' }
+  }
+}
+
+// 한 턴 전체를 처리해 장면 배열을 돌려준다. Returns { frames, pointsGained }
+// 순서: 야생 기술 고르기 → 스피드로 선공 결정(같으면 플레이어) → 두 행동 → 턴 끝 처리
+// rng: 난수 함수(기본 Math.random). 테스트에서 시드 고정 난수를 넘길 수 있다
+export function processTurn(battle, playerMoveName, rng = Math.random) {
   const { wild, player } = battle
   if (!wild || !player) return { frames: [], pointsGained: 0 }
-  const myPokemon   = getPokemon(player.speciesId)
-  const wildPokemon = getPokemon(wild.speciesId)
+  const t = createTurn(battle, rng)
+  const result = () => ({ frames: t.frames, pointsGained: t.pointsGained })
 
-  let curWild         = { ...wild }
-  let curPlayer       = { ...player }
-  let curWeather      = battle.weather ?? null
-  let curWeatherTurns = battle.weatherTurns ?? 0
-  const frames        = []
-  let pointsGained    = 0
+  // 야생 기술은 턴 처음에 정한다 (장면마다 같은 기술이 보이게)
+  const wildMove = pickWildMove(t)
 
-  // Pre-select wild's move for the whole turn so it's consistent across frames
-  const wildMoves = wild.moves ?? []
-  const wildMoveName = wildMoves.length > 0
-    ? wildMoves[Math.floor(Math.random() * wildMoves.length)]
-    : null
-  const wildMoveData = wildMoveName ? wildPokemon.baseMoves.find(m => m.name === wildMoveName) : null
+  // 엽록소: 맑은 날씨에 스피드 2배
+  const playerSpd = getEffectiveStat(t.player, '스피드') * (t.weather === 'sunny_day' && t.player.abilityName === '엽록소' ? 2 : 1)
+  const wildSpd   = getEffectiveStat(t.wild,   '스피드') * (t.weather === 'sunny_day' && t.wild.abilityName   === '엽록소' ? 2 : 1)
+  const order = playerSpd >= wildSpd ? ['player', 'wild'] : ['wild', 'player']
 
-  // Snapshot current state as one frame
-  const snap = (addLog, phase = 'animating', result = null) => {
-    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, weather: curWeather, weatherTurns: curWeatherTurns, phase, result })
+  for (const side of order) {
+    const ended = side === 'player' ? playerAction(t, playerMoveName) : wildAction(t, wildMove)
+    if (ended) return result()
   }
-
-  // ── Player action ──────────────────────────────────────────────
-  const processPlayerAction = () => {
-    const pCheck = checkStatusAction(curPlayer.status, curPlayer.statusTurns)
-    if (pCheck.cleared) {
-      const old = curPlayer.status
-      curPlayer = { ...curPlayer, status: null, statusTurns: 0 }
-      snap(`${myPokemon.speciesName}의 ${STATUS_KO[old]}이(가) 풀렸다!`)
-    } else {
-      curPlayer = { ...curPlayer, statusTurns: pCheck.newTurns }
-    }
-
-    if (pCheck.prevented) {
-      const msg = { sleep: '잠들어 있다!', paralysis: '마비로 움직일 수 없다!', freeze: '꽁꽁 얼어 있다!' }
-      snap(`${myPokemon.speciesName}은(는) ${msg[curPlayer.status] || '움직일 수 없다!'}`)
-      return false
-    }
-
-    const moveData  = player.resolvedMoves?.find(m => m.name === playerMoveName)
-    const currentPP = curPlayer.movePP?.[playerMoveName] ?? getMaxPP(playerMoveName)
-    if (!moveData || currentPP <= 0) {
-      snap(currentPP <= 0 ? `${playerMoveName}의 PP가 바닥났다!` : '기술을 사용할 수 없다!')
-      return false
-    }
-
-    curPlayer = { ...curPlayer, movePP: { ...curPlayer.movePP, [playerMoveName]: currentPP - 1 } }
-    snap(`${myPokemon.speciesName}은(는) ${playerMoveName}을(를) 사용했다!`)
-
-    const moveMeta = MOVE_META[playerMoveName]
-    const moveAcc = moveMeta?.accuracy ?? 100
-    if (moveAcc !== null) {
-      const accMul = getAccEvaMultiplier(curPlayer.stages?.['명중률'] ?? 0)
-      const evaMul = getAccEvaMultiplier(curWild.stages?.['회피율'] ?? 0)
-      const finalAcc = moveAcc * (accMul / evaMul)
-      if (Math.random() * 100 >= finalAcc) {
-        snap('빗나갔다!')
-        return false
-      }
-    }
-
-    if (moveData.category !== '변화' && moveData.fixedDamage) {
-      const fixedDmg = moveData.fixedDamage === 'level' ? curPlayer.level : moveData.fixedDamage
-      curWild = { ...curWild, hp: Math.max(0, curWild.hp - fixedDmg) }
-      snap(null)
-    } else if (moveData.category !== '변화' && moveData.power) {
-      const atkStat = moveData.category === '물리' ? getEffectiveStat(curPlayer, '공격') : getEffectiveStat(curPlayer, '특수공격')
-      const defStat = moveData.category === '물리' ? getEffectiveStat(curWild, '방어')   : getEffectiveStat(curWild, '특수방어')
-      const typeEff = getTypeEffectiveness(moveData.type, wildPokemon.types)
-      if (typeEff === 0) {
-        snap('효과가 없다!')
-      } else {
-        const weatherMod = getWeatherModifier(moveData.type, curWeather)
-        // 태양의힘: 맑은 날씨에 특수기술 위력 1.5배
-        const abilityMod = (curPlayer.abilityName === '태양의힘' && curWeather === 'sunny_day' && moveData.category === '특수') ? 1.5 : 1
-        const levelFactor = Math.floor(2 * curPlayer.level / 5) + 2
-        const baseDmg = Math.floor((levelFactor * moveData.power * atkStat / defStat / 50 + 2) * typeEff)
-        const itemMod = heldItemPowerMod(curPlayer.heldItem, moveData)
-        const dmg = Math.max(1, Math.floor(baseDmg * weatherMod * abilityMod * itemMod))
-        if (typeEff > 1)      snap('효과는 굉장했다!')
-        else if (typeEff < 1) snap('효과가 별로인 것 같다...')
-        const dealt = Math.min(curWild.hp, dmg)
-        curWild = { ...curWild, hp: Math.max(0, curWild.hp - dmg) }
-        snap(null)
-        // 조개껍질방울: 준 대미지의 1/8 회복
-        if (curPlayer.heldItem === 'tool_shellbell' && dealt > 0 && curPlayer.hp < curPlayer.maxHP) {
-          const heal = Math.max(1, Math.floor(dealt / 8))
-          curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
-          snap(`${myPokemon.speciesName}은(는) 조개껍질방울로 HP를 조금 회복했다!`)
-        }
-        // 생명의구슬: 공격할 때마다 최대 HP의 1/10 감소
-        if (curPlayer.heldItem === 'tool_lifejewel') {
-          const recoil = Math.max(1, Math.floor(curPlayer.maxHP / 10))
-          curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - recoil) }
-          snap(`${myPokemon.speciesName}은(는) 생명의구슬에 생명력을 조금 빼앗겼다!`)
-        }
-        const eff = getMoveStatusEffect(playerMoveName)
-        if (eff && !curWild.status && Math.random() < eff.chance) {
-          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-          snap(`야생 ${wildPokemon.speciesName}은(는) ${STATUS_KO[eff.type]}에 걸렸다!`)
-        }
-      }
-    } else if (moveData.category === '변화') {
-      // 1) 날씨 기술
-      if (moveMeta?.special === 'sunny_day') {
-        if (curWeather === 'sunny_day') {
-          snap('날씨는 이미 맑다!')
-        } else {
-          curWeather = 'sunny_day'
-          curWeatherTurns = 5
-          snap(WEATHER_KO.sunny_day.start)
-        }
-      } else if (moveMeta?.special === 'rain_dance') {
-        if (curWeather === 'rain_dance') {
-          snap('이미 비가 내리고 있다!')
-        } else {
-          curWeather = 'rain_dance'
-          curWeatherTurns = 5
-          snap(WEATHER_KO.rain_dance.start)
-        }
-      // 2) special 기술
-      } else if (moveMeta?.special === 'roar') {
-        snap('야생 포켓몬이 도망쳤다!', 'ended', 'flee_roar')
-        return true
-      } else if (moveMeta?.special === 'synthesis') {
-        // 날씨에 따라 회복량 변동: 맑음 2/3, 비 1/4, 평상시 1/2
-        const healFraction = curWeather === 'sunny_day' ? 2/3 : curWeather ? 0.25 : 0.5
-        const heal = Math.floor(curPlayer.maxHP * healFraction)
-        curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
-        snap(`${myPokemon.speciesName}은(는) HP를 회복했다!`)
-      } else if (moveMeta?.special === 'rest') {
-        curPlayer = { ...curPlayer, hp: curPlayer.maxHP, status: 'sleep', statusTurns: 2 }
-        snap(`${myPokemon.speciesName}은(는) 잠들어서 HP를 회복했다!`)
-      } else if (moveMeta?.special === 'pain_split') {
-        const avg = Math.floor((curPlayer.hp + curWild.hp) / 2)
-        curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, avg) }
-        curWild = { ...curWild, hp: Math.max(0, Math.min(curWild.maxHP, avg)) }
-        snap('서로의 HP를 나누었다!')
-        if (curWild.hp <= 0) {
-          snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-          pointsGained = battleReward(curWild.level)
-          return true
-        }
-        if (curPlayer.hp <= 0) {
-          snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-          return true
-        }
-      // 3) statEffect 기술
-      } else if (moveMeta?.statEffect) {
-        const se = moveMeta.statEffect
-        const target = se.target === 'self' ? curPlayer : curWild
-        const targetName = se.target === 'self' ? myPokemon.speciesName : `야생 ${wildPokemon.speciesName}`
-        const { battler: updated, logs } = applyStatChanges(target, se.changes, targetName)
-        if (se.target === 'self') curPlayer = updated; else curWild = updated
-        for (const log of logs) snap(log)
-      // 4) statusEffect 기술
-      } else {
-        const eff = getMoveStatusEffect(playerMoveName)
-        if (eff && curWild.status) {
-          snap(`야생 ${wildPokemon.speciesName}에게는 통하지 않았다!`)
-        } else if (eff && !curWild.status && Math.random() < eff.chance) {
-          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-          snap(`야생 ${wildPokemon.speciesName}은(는) ${STATUS_KO[eff.type]}에 걸렸다!`)
-        } else if (eff && !curWild.status) {
-          snap(`야생 ${wildPokemon.speciesName}에게는 통하지 않았다!`)
-        } else {
-          snap('하지만 효과가 없는 것 같다...')
-        }
-      }
-    }
-
-    if (curWild.hp <= 0) {
-      snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-      pointsGained = battleReward(curWild.level)
-      return true
-    }
-    // 생명의구슬 반동으로 쓰러진 경우
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return true
-    }
-    return false
-  }
-
-  // ── Wild action ────────────────────────────────────────────────
-  const processWildAction = () => {
-    if (!wildMoveData) return false
-
-    const wCheck = checkStatusAction(curWild.status, curWild.statusTurns)
-    if (wCheck.cleared) {
-      const old = curWild.status
-      curWild = { ...curWild, status: null, statusTurns: 0 }
-      snap(`야생 ${wildPokemon.speciesName}의 ${STATUS_KO[old]}이(가) 풀렸다!`)
-    } else {
-      curWild = { ...curWild, statusTurns: wCheck.newTurns }
-    }
-
-    if (wCheck.prevented) {
-      const msg = { sleep: '잠들어 있다!', paralysis: '마비로 움직일 수 없다!', freeze: '꽁꽁 얼어 있다!' }
-      snap(`야생 ${wildPokemon.speciesName}은(는) ${msg[curWild.status] || '움직일 수 없다!'}`)
-      return false
-    }
-
-    snap(`야생 ${wildPokemon.speciesName}은(는) ${wildMoveName}을(를) 사용했다!`)
-
-    const wildMoveMeta = MOVE_META[wildMoveName]
-    const wildMoveAcc = wildMoveMeta?.accuracy ?? 100
-    if (wildMoveAcc !== null) {
-      const accMul = getAccEvaMultiplier(curWild.stages?.['명중률'] ?? 0)
-      const evaMul = getAccEvaMultiplier(curPlayer.stages?.['회피율'] ?? 0)
-      const finalAcc = wildMoveAcc * (accMul / evaMul)
-      if (Math.random() * 100 >= finalAcc) {
-        snap('빗나갔다!')
-        return false
-      }
-    }
-
-    if (wildMoveData.category !== '변화' && wildMoveData.fixedDamage) {
-      const fixedDmg = wildMoveData.fixedDamage === 'level' ? curWild.level : wildMoveData.fixedDamage
-      curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - fixedDmg) }
-      snap(null)
-    } else if (wildMoveData.category !== '변화' && wildMoveData.power) {
-      const atkStat = wildMoveData.category === '물리' ? getEffectiveStat(curWild, '공격')   : getEffectiveStat(curWild, '특수공격')
-      const defStat = wildMoveData.category === '물리' ? getEffectiveStat(curPlayer, '방어') : getEffectiveStat(curPlayer, '특수방어')
-      const typeEff = getTypeEffectiveness(wildMoveData.type, myPokemon.types)
-      if (typeEff === 0) {
-        snap('효과가 없다!')
-      } else {
-        const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
-        const levelFactor = Math.floor(2 * curWild.level / 5) + 2
-        const dmg = Math.max(1, Math.floor((levelFactor * wildMoveData.power * atkStat / defStat / 50 + 2) * typeEff * weatherMod))
-        if (typeEff > 1)      snap('효과는 굉장했다!')
-        else if (typeEff < 1) snap('효과가 별로인 것 같다...')
-        curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
-        snap(null)
-        const wEff = getMoveStatusEffect(wildMoveName)
-        if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-          snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
-        }
-      }
-    } else if (wildMoveData.category === '변화') {
-      // 1) 날씨 기술
-      if (wildMoveMeta?.special === 'sunny_day') {
-        if (curWeather === 'sunny_day') {
-          snap('날씨는 이미 맑다!')
-        } else {
-          curWeather = 'sunny_day'
-          curWeatherTurns = 5
-          snap(WEATHER_KO.sunny_day.start)
-        }
-      } else if (wildMoveMeta?.special === 'rain_dance') {
-        if (curWeather === 'rain_dance') {
-          snap('이미 비가 내리고 있다!')
-        } else {
-          curWeather = 'rain_dance'
-          curWeatherTurns = 5
-          snap(WEATHER_KO.rain_dance.start)
-        }
-      // 2) special 기술
-      } else if (wildMoveMeta?.special === 'roar') {
-        // 야생이 울부짖기를 쓸 경우 배틀 종료 대신 무효 처리
-        snap('하지만 효과가 없는 것 같다...')
-      } else if (wildMoveMeta?.special === 'synthesis') {
-        const heal = Math.floor(curWild.maxHP * 0.5)
-        curWild = { ...curWild, hp: Math.min(curWild.maxHP, curWild.hp + heal) }
-        snap(`야생 ${wildPokemon.speciesName}은(는) HP를 회복했다!`)
-      } else if (wildMoveMeta?.special === 'rest') {
-        curWild = { ...curWild, hp: curWild.maxHP, status: 'sleep', statusTurns: 2 }
-        snap(`야생 ${wildPokemon.speciesName}은(는) 잠들어서 HP를 회복했다!`)
-      } else if (wildMoveMeta?.special === 'pain_split') {
-        const avg = Math.floor((curPlayer.hp + curWild.hp) / 2)
-        curPlayer = { ...curPlayer, hp: Math.max(0, Math.min(curPlayer.maxHP, avg)) }
-        curWild = { ...curWild, hp: Math.max(0, Math.min(curWild.maxHP, avg)) }
-        snap('서로의 HP를 나누었다!')
-        if (curPlayer.hp <= 0) {
-          snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-          return true
-        }
-        if (curWild.hp <= 0) {
-          snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-          pointsGained = battleReward(curWild.level)
-          return true
-        }
-      // 3) statEffect 기술
-      } else if (wildMoveMeta?.statEffect) {
-        const se = wildMoveMeta.statEffect
-        const target = se.target === 'self' ? curWild : curPlayer
-        const targetName = se.target === 'self' ? `야생 ${wildPokemon.speciesName}` : myPokemon.speciesName
-        const { battler: updated, logs } = applyStatChanges(target, se.changes, targetName)
-        if (se.target === 'self') curWild = updated; else curPlayer = updated
-        for (const log of logs) snap(log)
-      // 4) statusEffect 기술
-      } else {
-        const wEff = getMoveStatusEffect(wildMoveName)
-        if (wEff && curPlayer.status) {
-          snap(`${myPokemon.speciesName}에게는 통하지 않았다!`)
-        } else if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-          snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
-        } else if (wEff && !curPlayer.status) {
-          snap(`${myPokemon.speciesName}에게는 통하지 않았다!`)
-        } else if (!wEff) {
-          snap('하지만 효과가 없는 것 같다...')
-        }
-      }
-    }
-
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return true
-    }
-    return false
-  }
-
-  // ── Speed ordering (엽록소: 맑은 날씨에 스피드 2배) ────────────────
-  const playerSpd = getEffectiveStat(curPlayer, '스피드') * (curWeather === 'sunny_day' && curPlayer.abilityName === '엽록소' ? 2 : 1)
-  const wildSpd   = getEffectiveStat(curWild,   '스피드') * (curWeather === 'sunny_day' && curWild.abilityName   === '엽록소' ? 2 : 1)
-  const playerFirst = playerSpd >= wildSpd
-
-  if (playerFirst) {
-    if (processPlayerAction()) return { frames, pointsGained }
-    if (processWildAction())   return { frames, pointsGained }
-  } else {
-    if (processWildAction())   return { frames, pointsGained }
-    if (processPlayerAction()) return { frames, pointsGained }
-  }
-
-  // ── End-of-turn burn/poison damage ─────────────────────────────
-  if (curWild.status === 'burn' || curWild.status === 'poison') {
-    const dmg = calcStatusDamage(curWild.status, curWild.maxHP)
-    snap(`야생 ${wildPokemon.speciesName}은(는) ${STATUS_KO[curWild.status]} 피해를 입었다!`)
-    curWild = { ...curWild, hp: Math.max(0, curWild.hp - dmg) }
-    snap(null)
-    if (curWild.hp <= 0) {
-      snap(`야생 ${wildPokemon.speciesName}이(가) 쓰러졌다!`, 'ended', 'win')
-      pointsGained = battleReward(curWild.level)
-      return { frames, pointsGained }
-    }
-  }
-
-  if (curPlayer.status === 'burn' || curPlayer.status === 'poison') {
-    const dmg = calcStatusDamage(curPlayer.status, curPlayer.maxHP)
-    snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[curPlayer.status]} 피해를 입었다!`)
-    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
-    snap(null)
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return { frames, pointsGained }
-    }
-  }
-
-  // ── End-of-turn held item ──────────────────────────────────────
-  const fed = leftoversHeal(curPlayer)
-  if (fed) {
-    curPlayer = fed
-    snap(`${myPokemon.speciesName}은(는) 먹다남은음식으로 HP를 조금 회복했다!`)
-  }
-
-  // ── End-of-turn ability effects ────────────────────────────────
-  // 빗속준비: 비 날씨에 매 턴 HP 1/16 회복
-  if (curWeather === 'rain_dance' && curPlayer.abilityName === '빗속준비') {
-    const heal = Math.max(1, Math.floor(curPlayer.maxHP / 16))
-    curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
-    snap(`${myPokemon.speciesName}은(는) 빗속준비로 체력을 회복했다!`)
-  }
-
-  // 태양의힘: 맑은 날씨에 매 턴 HP 1/8 소모
-  if (curWeather === 'sunny_day' && curPlayer.abilityName === '태양의힘') {
-    const drain = Math.max(1, Math.floor(curPlayer.maxHP / 8))
-    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - drain) }
-    snap(`${myPokemon.speciesName}은(는) 태양의힘으로 체력을 소모했다!`)
-    snap(null)
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return { frames, pointsGained }
-    }
-  }
-
-  // ── End-of-turn weather countdown ─────────────────────────────
-  if (curWeather) {
-    curWeatherTurns--
-    if (curWeatherTurns <= 0) {
-      const msg = WEATHER_KO[curWeather]?.end ?? '날씨가 원래대로 돌아왔다.'
-      curWeather = null
-      curWeatherTurns = 0
-      snap(msg)
-    }
-  }
-
-  // ── Turn complete: mark last frame as selecting ─────────────────
-  if (frames.length > 0) {
-    frames[frames.length - 1] = { ...frames[frames.length - 1], phase: 'selecting' }
-  }
-  return { frames, pointsGained }
+  endOfTurn(t, { wildStatusDamage: true })
+  return result()
 }
 
 // ── Catch rate calculation ──────────────────────────────────────
@@ -697,149 +656,35 @@ export function calcCatchRate(wildHP, wildMaxHP, ballModifier, speciesCatchRate 
 }
 
 // ── Wild-only turn (after failed ball throw) ────────────────────
-// 볼 투척 실패 시 야생 포켓몬만 반격하는 턴 (플레이어 공격 없음)
-export function processWildOnlyTurn(battle) {
-  const { wild, player } = battle
-  const wildPokemon = getPokemon(wild.speciesId)
-  const myPokemon   = getPokemon(player.speciesId)
-  if (!wildPokemon || !myPokemon) return { frames: [], pointsGained: 0 }
-
-  let curWild         = { ...wild }
-  let curPlayer       = { ...player }
-  let curWeather      = battle.weather ?? null
-  let curWeatherTurns = battle.weatherTurns ?? 0
-  const frames        = []
-
-  const wildMoves2 = wild.moves ?? []
-  const wildMoveName = wildMoves2.length > 0
-    ? wildMoves2[Math.floor(Math.random() * wildMoves2.length)]
-    : null
-  const wildMoveData = wildMoveName ? wildPokemon.baseMoves?.find(m => m.name === wildMoveName) : null
-
-  const snap = (addLog, phase = 'animating', result = null) => {
-    frames.push({ addLog, wild: { ...curWild }, player: { ...curPlayer }, weather: curWeather, weatherTurns: curWeatherTurns, phase, result })
+// 볼 투척 실패 시 야생 포켓몬만 반격하는 턴 (플레이어 공격 없음). rng 는 processTurn 과 같다
+// 일반 턴의 야생 행동보다 간단하다: 공격 기술은 같지만, 변화 기술은 상태이상만 걸고
+// 고정 대미지 기술은 아무 일도 없다. 턴 끝 처리에 야생 화상·독 피해가 없다.
+// 못 움직임·빗나감·상성 무효 장면은 바로 'selecting'(볼 연출 뒤 다시 고르기)이다.
+export function processWildOnlyTurn(battle, rng = Math.random) {
+  const t = createTurn(battle, rng)
+  if (!t.species.wild || !t.species.player) return { frames: [], pointsGained: 0 }
+  const result = () => ({ frames: t.frames, pointsGained: 0 })
+  const wildMove = pickWildMove(t)
+  if (!wildMove.data) {
+    t.snap(null, 'selecting')
+    return result()
   }
 
-  if (!wildMoveData) {
-    snap(null, 'selecting')
-    return { frames, pointsGained: 0 }
+  if (!canAct(t, 'wild', 'selecting')) return result()
+  t.snap(`${nameOf(t, 'wild')}은(는) ${wildMove.name}을(를) 사용했다!`)
+  if (!rollHit(t, 'wild', wildMove.name)) {
+    t.snap('빗나갔다!', 'selecting')
+    return result()
   }
 
-  // Wild status check
-  const wCheck = checkStatusAction(curWild.status, curWild.statusTurns)
-  if (wCheck.cleared) {
-    const old = curWild.status
-    curWild = { ...curWild, status: null, statusTurns: 0 }
-    snap(`야생 ${wildPokemon.speciesName}의 ${STATUS_KO[old]}이(가) 풀렸다!`)
-  } else {
-    curWild = { ...curWild, statusTurns: wCheck.newTurns }
+  const move = wildMove.data
+  if (move.category !== '변화' && move.power) {
+    const hit = applyDamagingMove(t, 'wild', wildMove.name, move, 'selecting')
+    if (hit && fainted(t, 'player')) return result()
+  } else if (move.category === '변화') {
+    tryInflictStatus(t, 'player', getMoveStatusEffect(wildMove.name))
   }
 
-  if (wCheck.prevented) {
-    const msg = { sleep: '잠들어 있다!', paralysis: '마비로 움직일 수 없다!', freeze: '꽁꽁 얼어 있다!' }
-    snap(`야생 ${wildPokemon.speciesName}은(는) ${msg[curWild.status] || '움직일 수 없다!'}`, 'selecting')
-    return { frames, pointsGained: 0 }
-  }
-
-  snap(`야생 ${wildPokemon.speciesName}은(는) ${wildMoveName}을(를) 사용했다!`)
-
-  const wildMoveMeta = MOVE_META[wildMoveName]
-  const wildMoveAcc = wildMoveMeta?.accuracy ?? 100
-  if (wildMoveAcc !== null) {
-    const accMul = getAccEvaMultiplier(curWild.stages?.['명중률'] ?? 0)
-    const evaMul = getAccEvaMultiplier(curPlayer.stages?.['회피율'] ?? 0)
-    const finalAcc = wildMoveAcc * (accMul / evaMul)
-    if (Math.random() * 100 >= finalAcc) {
-      snap('빗나갔다!', 'selecting')
-      return { frames, pointsGained: 0 }
-    }
-  }
-
-  if (wildMoveData.category !== '변화' && wildMoveData.power) {
-    const atkStat = wildMoveData.category === '물리' ? getEffectiveStat(curWild, '공격')   : getEffectiveStat(curWild, '특수공격')
-    const defStat = wildMoveData.category === '물리' ? getEffectiveStat(curPlayer, '방어') : getEffectiveStat(curPlayer, '특수방어')
-    const typeEff = getTypeEffectiveness(wildMoveData.type, myPokemon.types)
-    if (typeEff === 0) {
-      snap('효과가 없다!', 'selecting')
-    } else {
-      const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
-      const levelFactor = Math.floor(2 * curWild.level / 5) + 2
-      const dmg = Math.max(1, Math.floor((levelFactor * wildMoveData.power * atkStat / defStat / 50 + 2) * typeEff * weatherMod))
-      if (typeEff > 1)      snap('효과는 굉장했다!')
-      else if (typeEff < 1) snap('효과가 별로인 것 같다...')
-      curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
-      snap(null)
-      const wEff = getMoveStatusEffect(wildMoveName)
-      if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-        curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-        snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
-      }
-      if (curPlayer.hp <= 0) {
-        snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-        return { frames, pointsGained: 0 }
-      }
-    }
-  } else if (wildMoveData.category === '변화') {
-    // 변화 기술은 간단 처리
-    const wEff = getMoveStatusEffect(wildMoveName)
-    if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-      curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
-      snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
-    }
-  }
-
-  // End-of-turn status damage
-  if (curPlayer.status === 'burn' || curPlayer.status === 'poison') {
-    const dmg = calcStatusDamage(curPlayer.status, curPlayer.maxHP)
-    snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[curPlayer.status]} 피해를 입었다!`)
-    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
-    snap(null)
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return { frames, pointsGained: 0 }
-    }
-  }
-
-  // 먹다남은음식 HP 회복
-  const fed = leftoversHeal(curPlayer)
-  if (fed) {
-    curPlayer = fed
-    snap(`${myPokemon.speciesName}은(는) 먹다남은음식으로 HP를 조금 회복했다!`)
-  }
-
-  // 빗속준비 HP 회복
-  if (curWeather === 'rain_dance' && curPlayer.abilityName === '빗속준비') {
-    const heal = Math.max(1, Math.floor(curPlayer.maxHP / 16))
-    curPlayer = { ...curPlayer, hp: Math.min(curPlayer.maxHP, curPlayer.hp + heal) }
-    snap(`${myPokemon.speciesName}은(는) 빗속준비로 체력을 회복했다!`)
-  }
-
-  // 태양의힘 HP 소모
-  if (curWeather === 'sunny_day' && curPlayer.abilityName === '태양의힘') {
-    const drain = Math.max(1, Math.floor(curPlayer.maxHP / 8))
-    curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - drain) }
-    snap(`${myPokemon.speciesName}은(는) 태양의힘으로 체력을 소모했다!`)
-    snap(null)
-    if (curPlayer.hp <= 0) {
-      snap(`${myPokemon.speciesName}이(가) 쓰러졌다...`, 'ended', 'lose')
-      return { frames, pointsGained: 0 }
-    }
-  }
-
-  // Weather countdown
-  if (curWeather) {
-    curWeatherTurns--
-    if (curWeatherTurns <= 0) {
-      const msg = WEATHER_KO[curWeather]?.end ?? '날씨가 원래대로 돌아왔다.'
-      curWeather = null
-      curWeatherTurns = 0
-      snap(msg)
-    }
-  }
-
-  // Mark last frame as selecting
-  if (frames.length > 0) {
-    frames[frames.length - 1] = { ...frames[frames.length - 1], phase: 'selecting' }
-  }
-  return { frames, pointsGained: 0 }
+  endOfTurn(t, { wildStatusDamage: false })
+  return result()
 }
