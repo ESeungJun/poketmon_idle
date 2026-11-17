@@ -170,18 +170,18 @@ function calcStatusDamage(status, maxHP) {
   return 0
 }
 
-// Returns { prevented, newTurns, cleared }
-function checkStatusAction(status, statusTurns) {
+// Returns { prevented, newTurns, cleared }. rng: 0 이상 1 미만 난수 함수
+function checkStatusAction(status, statusTurns, rng) {
   if (!status) return { prevented: false, newTurns: statusTurns, cleared: false }
   if (status === 'paralysis') {
-    return { prevented: Math.random() < 0.25, newTurns: statusTurns, cleared: false }
+    return { prevented: rng() < 0.25, newTurns: statusTurns, cleared: false }
   }
   if (status === 'sleep') {
     if (statusTurns <= 0) return { prevented: false, newTurns: 0, cleared: true }
     return { prevented: true, newTurns: statusTurns - 1, cleared: false }
   }
   if (status === 'freeze') {
-    const thaw = Math.random() < 0.2
+    const thaw = rng() < 0.2
     return { prevented: !thaw, newTurns: 0, cleared: thaw }
   }
   return { prevented: false, newTurns: statusTurns, cleared: false }
@@ -281,8 +281,9 @@ export function buildPlayerBattler(petSpeciesId, petStats, petEVs, focusXp, shop
 //   addLog: string → append to log box; null → silent HP-bar update only
 //   phase: 'animating' | 'selecting' | 'ended'
 // Speed determines who attacks first (ties go to player).
+// rng: 난수 함수(기본 Math.random). 테스트에서 시드 고정 난수를 넘길 수 있다
 // Returns { frames, pointsGained }
-export function processTurn(battle, playerMoveName) {
+export function processTurn(battle, playerMoveName, rng = Math.random) {
   const { wild, player } = battle
   if (!wild || !player) return { frames: [], pointsGained: 0 }
   const myPokemon   = getPokemon(player.speciesId)
@@ -298,7 +299,7 @@ export function processTurn(battle, playerMoveName) {
   // Pre-select wild's move for the whole turn so it's consistent across frames
   const wildMoves = wild.moves ?? []
   const wildMoveName = wildMoves.length > 0
-    ? wildMoves[Math.floor(Math.random() * wildMoves.length)]
+    ? wildMoves[Math.floor(rng() * wildMoves.length)]
     : null
   const wildMoveData = wildMoveName ? wildPokemon.baseMoves.find(m => m.name === wildMoveName) : null
 
@@ -309,7 +310,7 @@ export function processTurn(battle, playerMoveName) {
 
   // ── Player action ──────────────────────────────────────────────
   const processPlayerAction = () => {
-    const pCheck = checkStatusAction(curPlayer.status, curPlayer.statusTurns)
+    const pCheck = checkStatusAction(curPlayer.status, curPlayer.statusTurns, rng)
     if (pCheck.cleared) {
       const old = curPlayer.status
       curPlayer = { ...curPlayer, status: null, statusTurns: 0 }
@@ -340,7 +341,7 @@ export function processTurn(battle, playerMoveName) {
       const accMul = getAccEvaMultiplier(curPlayer.stages?.['명중률'] ?? 0)
       const evaMul = getAccEvaMultiplier(curWild.stages?.['회피율'] ?? 0)
       const finalAcc = moveAcc * (accMul / evaMul)
-      if (Math.random() * 100 >= finalAcc) {
+      if (rng() * 100 >= finalAcc) {
         snap('빗나갔다!')
         return false
       }
@@ -382,8 +383,8 @@ export function processTurn(battle, playerMoveName) {
           snap(`${myPokemon.speciesName}은(는) 생명의구슬에 생명력을 조금 빼앗겼다!`)
         }
         const eff = getMoveStatusEffect(playerMoveName)
-        if (eff && !curWild.status && Math.random() < eff.chance) {
-          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+        if (eff && !curWild.status && rng() < eff.chance) {
+          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
           snap(`야생 ${wildPokemon.speciesName}은(는) ${STATUS_KO[eff.type]}에 걸렸다!`)
         }
       }
@@ -445,8 +446,8 @@ export function processTurn(battle, playerMoveName) {
         const eff = getMoveStatusEffect(playerMoveName)
         if (eff && curWild.status) {
           snap(`야생 ${wildPokemon.speciesName}에게는 통하지 않았다!`)
-        } else if (eff && !curWild.status && Math.random() < eff.chance) {
-          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+        } else if (eff && !curWild.status && rng() < eff.chance) {
+          curWild = { ...curWild, status: eff.type, statusTurns: eff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
           snap(`야생 ${wildPokemon.speciesName}은(는) ${STATUS_KO[eff.type]}에 걸렸다!`)
         } else if (eff && !curWild.status) {
           snap(`야생 ${wildPokemon.speciesName}에게는 통하지 않았다!`)
@@ -473,7 +474,7 @@ export function processTurn(battle, playerMoveName) {
   const processWildAction = () => {
     if (!wildMoveData) return false
 
-    const wCheck = checkStatusAction(curWild.status, curWild.statusTurns)
+    const wCheck = checkStatusAction(curWild.status, curWild.statusTurns, rng)
     if (wCheck.cleared) {
       const old = curWild.status
       curWild = { ...curWild, status: null, statusTurns: 0 }
@@ -496,7 +497,7 @@ export function processTurn(battle, playerMoveName) {
       const accMul = getAccEvaMultiplier(curWild.stages?.['명중률'] ?? 0)
       const evaMul = getAccEvaMultiplier(curPlayer.stages?.['회피율'] ?? 0)
       const finalAcc = wildMoveAcc * (accMul / evaMul)
-      if (Math.random() * 100 >= finalAcc) {
+      if (rng() * 100 >= finalAcc) {
         snap('빗나갔다!')
         return false
       }
@@ -521,8 +522,8 @@ export function processTurn(battle, playerMoveName) {
         curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
         snap(null)
         const wEff = getMoveStatusEffect(wildMoveName)
-        if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+        if (wEff && !curPlayer.status && rng() < wEff.chance) {
+          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
           snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
         }
       }
@@ -582,8 +583,8 @@ export function processTurn(battle, playerMoveName) {
         const wEff = getMoveStatusEffect(wildMoveName)
         if (wEff && curPlayer.status) {
           snap(`${myPokemon.speciesName}에게는 통하지 않았다!`)
-        } else if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+        } else if (wEff && !curPlayer.status && rng() < wEff.chance) {
+          curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
           snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
         } else if (wEff && !curPlayer.status) {
           snap(`${myPokemon.speciesName}에게는 통하지 않았다!`)
@@ -697,8 +698,8 @@ export function calcCatchRate(wildHP, wildMaxHP, ballModifier, speciesCatchRate 
 }
 
 // ── Wild-only turn (after failed ball throw) ────────────────────
-// 볼 투척 실패 시 야생 포켓몬만 반격하는 턴 (플레이어 공격 없음)
-export function processWildOnlyTurn(battle) {
+// 볼 투척 실패 시 야생 포켓몬만 반격하는 턴 (플레이어 공격 없음). rng 는 processTurn 과 같다
+export function processWildOnlyTurn(battle, rng = Math.random) {
   const { wild, player } = battle
   const wildPokemon = getPokemon(wild.speciesId)
   const myPokemon   = getPokemon(player.speciesId)
@@ -712,7 +713,7 @@ export function processWildOnlyTurn(battle) {
 
   const wildMoves2 = wild.moves ?? []
   const wildMoveName = wildMoves2.length > 0
-    ? wildMoves2[Math.floor(Math.random() * wildMoves2.length)]
+    ? wildMoves2[Math.floor(rng() * wildMoves2.length)]
     : null
   const wildMoveData = wildMoveName ? wildPokemon.baseMoves?.find(m => m.name === wildMoveName) : null
 
@@ -726,7 +727,7 @@ export function processWildOnlyTurn(battle) {
   }
 
   // Wild status check
-  const wCheck = checkStatusAction(curWild.status, curWild.statusTurns)
+  const wCheck = checkStatusAction(curWild.status, curWild.statusTurns, rng)
   if (wCheck.cleared) {
     const old = curWild.status
     curWild = { ...curWild, status: null, statusTurns: 0 }
@@ -749,7 +750,7 @@ export function processWildOnlyTurn(battle) {
     const accMul = getAccEvaMultiplier(curWild.stages?.['명중률'] ?? 0)
     const evaMul = getAccEvaMultiplier(curPlayer.stages?.['회피율'] ?? 0)
     const finalAcc = wildMoveAcc * (accMul / evaMul)
-    if (Math.random() * 100 >= finalAcc) {
+    if (rng() * 100 >= finalAcc) {
       snap('빗나갔다!', 'selecting')
       return { frames, pointsGained: 0 }
     }
@@ -770,8 +771,8 @@ export function processWildOnlyTurn(battle) {
       curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
       snap(null)
       const wEff = getMoveStatusEffect(wildMoveName)
-      if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-        curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+      if (wEff && !curPlayer.status && rng() < wEff.chance) {
+        curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
         snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
       }
       if (curPlayer.hp <= 0) {
@@ -782,8 +783,8 @@ export function processWildOnlyTurn(battle) {
   } else if (wildMoveData.category === '변화') {
     // 변화 기술은 간단 처리
     const wEff = getMoveStatusEffect(wildMoveName)
-    if (wEff && !curPlayer.status && Math.random() < wEff.chance) {
-      curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(Math.random() * 3) : 0 }
+    if (wEff && !curPlayer.status && rng() < wEff.chance) {
+      curPlayer = { ...curPlayer, status: wEff.type, statusTurns: wEff.type === 'sleep' ? 1 + Math.floor(rng() * 3) : 0 }
       snap(`${myPokemon.speciesName}은(는) ${STATUS_KO[wEff.type]}에 걸렸다!`)
     }
   }

@@ -302,3 +302,22 @@ describe('특성 테스트: processWildOnlyTurn', () => {
     expect(processWildOnlyTurn({ ...b, wild: { ...b.wild, speciesId: '없는종' } })).toEqual({ frames: [], pointsGained: 0 })
   })
 })
+
+describe('난수 주입', () => {
+  it('rng 를 넘기면 Math.random 을 부르지 않고, 같은 난수면 결과도 같다', () => {
+    mockRandom()
+    for (let s = 1; s <= 60; s++) {
+      useRandom(seeded(s))
+      const species = SPECIES[s % SPECIES.length]
+      const move = POKEMON_DB[species].baseMoves[s % POKEMON_DB[species].baseMoves.length].name
+      const b = deepFreeze(makeBattle(seeded(s * 17), species, move))
+      useRandom(seeded(s * 23))
+      const viaMath = processTurn(b, move)
+      const viaMathWild = processWildOnlyTurn(b)
+      useRandom(() => { throw new Error('Math.random 을 부르면 안 된다') })
+      const r = seeded(s * 23)
+      expect(processTurn(b, move, r)).toEqual(viaMath)
+      expect(processWildOnlyTurn(b, r)).toEqual(viaMathWild)
+    }
+  })
+})
