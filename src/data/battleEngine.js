@@ -154,13 +154,19 @@ function leftoversHeal(battler) {
 
 const INITIAL_STAGES = { '공격': 0, '방어': 0, '특수공격': 0, '특수방어': 0, '스피드': 0, '명중률': 0, '회피율': 0 }
 
-// Damage = ((2×level/5+2) × power × atk/def / 50 + 2) × typeEffect
-// 본가 포켓몬 데미지 공식 간소화 버전 — 레벨이 높을수록 데미지 증가
+// 대미지 공식의 유일한 정의. 상성·보정을 곱하기 전의 값(내림 전)을 돌려준다
+// (2×level/5+2) × power × atk/def / 50 + 2 — 본가 포켓몬 대미지 공식 간소화 버전, 레벨이 높을수록 세다
+// 내림·최소 1 처리는 부르는 쪽마다 시점이 달라서(아래 calcDamage, 턴 처리의 공격) 여기서 하지 않는다
+function rawDamage(level, power, atkStat, defStat) {
+  const levelFactor = Math.floor(2 * level / 5) + 2
+  return levelFactor * power * atkStat / defStat / 50 + 2
+}
+
+// Damage = floor(rawDamage × typeEffect), 최소 1
 export function calcDamage(movePower, atkStat, defStat, moveType, defenderTypes, level = 1) {
   if (!movePower) return 0
   const typeEff = getTypeEffectiveness(moveType, defenderTypes)
-  const levelFactor = Math.floor(2 * level / 5) + 2
-  return Math.max(1, Math.floor((levelFactor * movePower * atkStat / defStat / 50 + 2) * typeEff))
+  return Math.max(1, Math.floor(rawDamage(level, movePower, atkStat, defStat) * typeEff))
 }
 
 // HP damage from burn/poison at turn start
@@ -361,8 +367,7 @@ export function processTurn(battle, playerMoveName, rng = Math.random) {
         const weatherMod = getWeatherModifier(moveData.type, curWeather)
         // 태양의힘: 맑은 날씨에 특수기술 위력 1.5배
         const abilityMod = (curPlayer.abilityName === '태양의힘' && curWeather === 'sunny_day' && moveData.category === '특수') ? 1.5 : 1
-        const levelFactor = Math.floor(2 * curPlayer.level / 5) + 2
-        const baseDmg = Math.floor((levelFactor * moveData.power * atkStat / defStat / 50 + 2) * typeEff)
+        const baseDmg = Math.floor(rawDamage(curPlayer.level, moveData.power, atkStat, defStat) * typeEff)
         const itemMod = heldItemPowerMod(curPlayer.heldItem, moveData)
         const dmg = Math.max(1, Math.floor(baseDmg * weatherMod * abilityMod * itemMod))
         if (typeEff > 1)      snap('효과는 굉장했다!')
@@ -515,8 +520,7 @@ export function processTurn(battle, playerMoveName, rng = Math.random) {
         snap('효과가 없다!')
       } else {
         const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
-        const levelFactor = Math.floor(2 * curWild.level / 5) + 2
-        const dmg = Math.max(1, Math.floor((levelFactor * wildMoveData.power * atkStat / defStat / 50 + 2) * typeEff * weatherMod))
+        const dmg = Math.max(1, Math.floor(rawDamage(curWild.level, wildMoveData.power, atkStat, defStat) * typeEff * weatherMod))
         if (typeEff > 1)      snap('효과는 굉장했다!')
         else if (typeEff < 1) snap('효과가 별로인 것 같다...')
         curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
@@ -764,8 +768,7 @@ export function processWildOnlyTurn(battle, rng = Math.random) {
       snap('효과가 없다!', 'selecting')
     } else {
       const weatherMod = getWeatherModifier(wildMoveData.type, curWeather)
-      const levelFactor = Math.floor(2 * curWild.level / 5) + 2
-      const dmg = Math.max(1, Math.floor((levelFactor * wildMoveData.power * atkStat / defStat / 50 + 2) * typeEff * weatherMod))
+      const dmg = Math.max(1, Math.floor(rawDamage(curWild.level, wildMoveData.power, atkStat, defStat) * typeEff * weatherMod))
       if (typeEff > 1)      snap('효과는 굉장했다!')
       else if (typeEff < 1) snap('효과가 별로인 것 같다...')
       curPlayer = { ...curPlayer, hp: Math.max(0, curPlayer.hp - dmg) }
