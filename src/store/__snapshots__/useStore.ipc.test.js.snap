@@ -1,0 +1,1928 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > addPoints 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "points": 530,
+        "totalPointsEarned": 430,
+      },
+    ],
+    [
+      "set",
+      [
+        "lastActiveTime",
+        "petState",
+        "points",
+        "totalPointsEarned",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "petState": "happy",
+        "points": 530,
+        "totalPointsEarned": 430,
+      },
+    ],
+    [
+      "sync",
+      {
+        "petState": "idle",
+      },
+    ],
+    [
+      "set",
+      [
+        "petState",
+      ],
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > addPointsQuiet 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "points": 530,
+        "totalPointsEarned": 430,
+      },
+    ],
+    [
+      "set",
+      [
+        "lastActiveTime",
+        "points",
+        "totalPointsEarned",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "points": 530,
+        "totalPointsEarned": 430,
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > applyVitamin 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      480,
+    ],
+    [
+      "sync",
+      {
+        "points": 480,
+      },
+    ],
+    [
+      "set",
+      [
+        "petEVs",
+      ],
+    ],
+    [
+      "save",
+      "petEVs",
+      {
+        "HP": 0,
+        "공격": 10,
+        "방어": 0,
+        "스피드": 0,
+        "특수공격": 0,
+        "특수방어": 0,
+      },
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > buyBall 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      470,
+    ],
+    [
+      "sync",
+      {
+        "points": 470,
+      },
+    ],
+    [
+      "set",
+      [
+        "ballInventory",
+      ],
+    ],
+    [
+      "save",
+      "ballInventory",
+      {
+        "ball_hyperball": 0,
+        "ball_pokeball": 2,
+        "ball_superball": 1,
+      },
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > buyTM 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      400,
+    ],
+    [
+      "sync",
+      {
+        "points": 400,
+      },
+    ],
+    [
+      "set",
+      [
+        "ownedTMs",
+      ],
+    ],
+    [
+      "save",
+      "ownedTMs",
+      [
+        "tm11",
+      ],
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > confirmEvolution 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petSpeciesId",
+        "petState",
+        "petStats",
+        "preEvolvingState",
+        "seenSpecies",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "petSpeciesId": "charmeleon",
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "연막",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+            "울음소리",
+            "연막",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmeleon",
+        },
+        "seenSpecies": [
+          "charmeleon",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "petSpeciesId": "charmeleon",
+        "petState": "happy",
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "연막",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+            "울음소리",
+            "연막",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmeleon",
+        },
+        "seenSpecies": [
+          "charmeleon",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "petState": "idle",
+      },
+    ],
+    [
+      "set",
+      [
+        "petState",
+      ],
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > equipTool 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "equippedTool",
+      ],
+    ],
+    [
+      "save",
+      "equippedTool",
+      "tool_leftovers",
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > gainFocusXp 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "focusXp": 1030,
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "용의분노",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+            "용의분노",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "set",
+      [
+        "focusXp",
+        "petState",
+        "petStats",
+        "preEvolvingState",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "focusXp": 1030,
+        "petState": "evolving",
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "용의분노",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+            "용의분노",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+        "preEvolvingState": "idle",
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > healAtCenter 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      480,
+    ],
+    [
+      "sync",
+      {
+        "points": 480,
+      },
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": null,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": null,
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > purchaseItem 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      450,
+    ],
+    [
+      "sync",
+      {
+        "points": 450,
+      },
+    ],
+    [
+      "set",
+      [
+        "purchasedItems",
+      ],
+    ],
+    [
+      "save",
+      "purchasedItems",
+      [
+        "tool_leftovers",
+        "evostone_thunder",
+        "tool_shellbell",
+      ],
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > purchaseItemOwned 1`] = `
+{
+  "log": [],
+  "ret": false,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > releaseFromBox 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "caughtPokemon",
+      ],
+    ],
+    [
+      "save",
+      "caughtPokemon",
+      [],
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > selectStarter 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petSpeciesId",
+        "petStats",
+        "seenSpecies",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "petSpeciesId": "bulbasaur",
+        "petStats": null,
+        "seenSpecies": [
+          "bulbasaur",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "petSpeciesId": "bulbasaur",
+        "seenSpecies": [
+          "bulbasaur",
+        ],
+      },
+    ],
+    [
+      "notifyStarter",
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > setPetName 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petName",
+        "petStats",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "petName": "불꼬리",
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "nickname": "불꼬리",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "sync",
+      {
+        "petName": "불꼬리",
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "nickname": "불꼬리",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > setPetSpecies 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petSpeciesId",
+        "petStats",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "petSpeciesId": "squirtle",
+        "petStats": null,
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > setPetState 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petState",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "petState": "evolving",
+        "preEvolvingState": "idle",
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > setPetStats 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": null,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": null,
+        "moves": [
+          "할퀴기",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > spendPoints 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "points",
+      ],
+    ],
+    [
+      "save",
+      "points",
+      460,
+    ],
+    [
+      "sync",
+      {
+        "points": 460,
+      },
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > spendPointsShort 1`] = `
+{
+  "log": [],
+  "ret": false,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > startWildBattleNoStats 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "태양의힘",
+        "currentHP": null,
+        "ivs": {
+          "HP": 19,
+          "공격": 14,
+          "방어": 27,
+          "스피드": 16,
+          "특수공격": 21,
+          "특수방어": 5,
+        },
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+          "연막",
+        ],
+        "movePP": null,
+        "moves": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+          "연막",
+        ],
+        "natureName": "온순한",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "태양의힘",
+          "currentHP": null,
+          "ivs": {
+            "HP": 19,
+            "공격": 14,
+            "방어": 27,
+            "스피드": 16,
+            "특수공격": 21,
+            "특수방어": 5,
+          },
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "연막",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "연막",
+          ],
+          "natureName": "온순한",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "saveMany",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "eevee",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "eevee",
+        ],
+      },
+    ],
+    [
+      "set",
+      [
+        "encounterTickets",
+        "seenSpecies",
+        "wildBattle",
+      ],
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > swapMove 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": null,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": null,
+        "moves": [
+          "할퀴기",
+          "울음소리",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "울음소리",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > swapPartner 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "caughtPokemon",
+        "petEVs",
+        "petSpeciesId",
+        "petStats",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "caughtPokemon": [
+          {
+            "abilityName": "맹화",
+            "caughtAt": 1794873600000,
+            "currentHP": null,
+            "dexNum": 4,
+            "evs": {
+              "HP": 0,
+              "공격": 0,
+              "방어": 0,
+              "스피드": 0,
+              "특수공격": 0,
+              "특수방어": 0,
+            },
+            "ivs": {},
+            "learnedPool": [
+              "할퀴기",
+              "울음소리",
+              "불꽃세례",
+            ],
+            "level": 15,
+            "movePP": null,
+            "moves": [
+              "할퀴기",
+              "불꽃세례",
+            ],
+            "natureName": "개구쟁이",
+            "nickname": null,
+            "speciesId": "charmander",
+          },
+        ],
+        "petEVs": {},
+        "petName": null,
+        "petSpeciesId": "pidgey",
+        "petStats": {
+          "abilityName": null,
+          "caughtAt": 1234,
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "몸통박치기",
+          ],
+          "movePP": null,
+          "moves": [
+            "몸통박치기",
+          ],
+          "natureName": "온순한",
+          "nickname": null,
+          "speciesId": "pidgey",
+        },
+      },
+    ],
+    [
+      "sync",
+      {
+        "petEVs": {},
+        "petName": null,
+        "petSpeciesId": "pidgey",
+        "petStats": {
+          "abilityName": null,
+          "caughtAt": 1234,
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "몸통박치기",
+          ],
+          "movePP": null,
+          "moves": [
+            "몸통박치기",
+          ],
+          "natureName": "온순한",
+          "nickname": null,
+          "speciesId": "pidgey",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > useEvoStone 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petState",
+        "preEvolvingState",
+        "purchasedItems",
+      ],
+    ],
+    [
+      "save",
+      "purchasedItems",
+      [
+        "tool_leftovers",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "petState": "evolving",
+        "purchasedItems": [
+          "tool_leftovers",
+        ],
+      },
+    ],
+  ],
+  "ret": true,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > useTM 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": null,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+          "쾌청",
+        ],
+        "movePP": null,
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": null,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+            "쾌청",
+          ],
+          "movePP": null,
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": null,
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > 도망치기 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "set",
+      [
+        "encounterTickets",
+        "seenSpecies",
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 21,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 25,
+          "할퀴기": 34,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 21,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 25,
+            "할퀴기": 34,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 21,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 25,
+          "할퀴기": 34,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 21,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 25,
+            "할퀴기": 34,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": "flee",
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > 배틀 승리 (보상 포인트) 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "set",
+      [
+        "encounterTickets",
+        "seenSpecies",
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 21,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 24,
+          "할퀴기": 35,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 21,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 24,
+            "할퀴기": 35,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "saveMany",
+      {
+        "points": 532,
+        "totalPointsEarned": 432,
+      },
+    ],
+    [
+      "set",
+      [
+        "lastActiveTime",
+        "petState",
+        "points",
+        "totalPointsEarned",
+      ],
+    ],
+    [
+      "sync",
+      {
+        "petState": "happy",
+        "points": 532,
+        "totalPointsEarned": 432,
+      },
+    ],
+    [
+      "sync",
+      {
+        "petState": "idle",
+      },
+    ],
+    [
+      "set",
+      [
+        "petState",
+      ],
+    ],
+  ],
+  "ret": [
+    "win",
+    532,
+  ],
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > 배틀 한 판(기술 → 장면 끝까지) 1`] = `
+{
+  "log": [
+    [
+      "saveMany",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "set",
+      [
+        "encounterTickets",
+        "seenSpecies",
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 21,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 24,
+          "할퀴기": 35,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 21,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 24,
+            "할퀴기": 35,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 6,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 23,
+          "할퀴기": 35,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 6,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 23,
+            "할퀴기": 35,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 0,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 23,
+          "할퀴기": 35,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 0,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 23,
+            "할퀴기": 35,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+  ],
+  "ret": "lose",
+}
+`;
+
+exports[`특성 테스트: 액션별 저장·동기화 순서 > 볼 던지기 (잡을 때까지) 1`] = `
+{
+  "log": [
+    [
+      "set",
+      [
+        "ballInventory",
+      ],
+    ],
+    [
+      "saveMany",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "sync",
+      {
+        "encounterTickets": 2,
+        "seenSpecies": [
+          "gastly",
+        ],
+      },
+    ],
+    [
+      "set",
+      [
+        "encounterTickets",
+        "seenSpecies",
+        "wildBattle",
+      ],
+    ],
+    [
+      "save",
+      "ballInventory",
+      {
+        "ball_hyperball": 9,
+        "ball_pokeball": 0,
+        "ball_superball": 0,
+      },
+    ],
+    [
+      "set",
+      [
+        "ballInventory",
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "wildBattle",
+      ],
+    ],
+    [
+      "set",
+      [
+        "petStats",
+      ],
+    ],
+    [
+      "save",
+      "petStats",
+      {
+        "abilityName": "맹화",
+        "currentHP": 36,
+        "ivs": {},
+        "learnedPool": [
+          "할퀴기",
+          "울음소리",
+          "불꽃세례",
+        ],
+        "movePP": {
+          "불꽃세례": 25,
+          "할퀴기": 35,
+        },
+        "moves": [
+          "할퀴기",
+          "불꽃세례",
+        ],
+        "natureName": "개구쟁이",
+        "speciesId": "charmander",
+      },
+    ],
+    [
+      "sync",
+      {
+        "petStats": {
+          "abilityName": "맹화",
+          "currentHP": 36,
+          "ivs": {},
+          "learnedPool": [
+            "할퀴기",
+            "울음소리",
+            "불꽃세례",
+          ],
+          "movePP": {
+            "불꽃세례": 25,
+            "할퀴기": 35,
+          },
+          "moves": [
+            "할퀴기",
+            "불꽃세례",
+          ],
+          "natureName": "개구쟁이",
+          "speciesId": "charmander",
+        },
+      },
+    ],
+    [
+      "set",
+      [
+        "caughtPokemon",
+      ],
+    ],
+    [
+      "save",
+      "caughtPokemon",
+      [
+        {
+          "caughtAt": 1234,
+          "dexNum": 16,
+          "evs": {},
+          "ivs": {},
+          "learnedPool": [
+            "몸통박치기",
+          ],
+          "level": 3,
+          "moves": [
+            "몸통박치기",
+          ],
+          "natureName": "온순한",
+          "speciesId": "pidgey",
+        },
+        {
+          "abilityName": "부유",
+          "caughtAt": 1794873600000,
+          "currentHP": null,
+          "dexNum": 92,
+          "evs": {
+            "HP": 0,
+            "공격": 0,
+            "방어": 0,
+            "스피드": 0,
+            "특수공격": 0,
+            "특수방어": 0,
+          },
+          "ivs": {
+            "HP": 13,
+            "공격": 10,
+            "방어": 2,
+            "스피드": 9,
+            "특수공격": 8,
+            "특수방어": 4,
+          },
+          "learnedPool": [
+            "나이트헤드",
+            "최면술",
+            "맹독",
+          ],
+          "level": 15,
+          "movePP": null,
+          "moves": [
+            "나이트헤드",
+            "최면술",
+            "맹독",
+          ],
+          "natureName": "온후한",
+          "speciesId": "gastly",
+        },
+      ],
+    ],
+  ],
+  "ret": "caught",
+}
+`;
