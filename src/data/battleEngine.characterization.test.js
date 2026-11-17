@@ -45,7 +45,9 @@ function deepFreeze(o) {
 function stable(v) {
   if (Array.isArray(v)) return `[${v.map(stable).join(',')}]`
   if (v && typeof v === 'object') return `{${Object.keys(v).sort().map(k => `${JSON.stringify(k)}:${stable(v[k])}`).join(',')}}`
-  return JSON.stringify(v ?? null)
+  // undefined 는 null 과 다르게 표시한다. 따옴표 없는 표식이라 어떤 JSON 값과도 겹치지 않는다
+  if (v === undefined) return '<undef>'
+  return JSON.stringify(v)
 }
 const hash = (v) => createHash('sha1').update(stable(v)).digest('hex').slice(0, 12)
 
@@ -316,8 +318,8 @@ describe('난수 주입', () => {
       const viaMathWild = processWildOnlyTurn(b)
       useRandom(() => { throw new Error('Math.random 을 부르면 안 된다') })
       const r = seeded(s * 23)
-      expect(processTurn(b, move, r)).toEqual(viaMath)
-      expect(processWildOnlyTurn(b, r)).toEqual(viaMathWild)
+      expect(processTurn(b, move, r)).toStrictEqual(viaMath)
+      expect(processWildOnlyTurn(b, r)).toStrictEqual(viaMathWild)
     }
   })
 })

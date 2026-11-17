@@ -661,12 +661,8 @@ export function calcCatchRate(wildHP, wildMaxHP, ballModifier, speciesCatchRate 
 // 고정 대미지 기술은 아무 일도 없다. 턴 끝 처리에 야생 화상·독 피해가 없다.
 // 못 움직임·빗나감·상성 무효 장면은 바로 'selecting'(볼 연출 뒤 다시 고르기)이다.
 export function processWildOnlyTurn(battle, rng = Math.random) {
-  const { wild, player } = battle
-  const wildPokemon = getPokemon(wild.speciesId)
-  const myPokemon   = getPokemon(player.speciesId)
-  if (!wildPokemon || !myPokemon) return { frames: [], pointsGained: 0 }
-
   const t = createTurn(battle, rng)
+  if (!t.species.wild || !t.species.player) return { frames: [], pointsGained: 0 }
   const result = () => ({ frames: t.frames, pointsGained: 0 })
   const wildMove = pickWildMove(t)
   if (!wildMove.data) {

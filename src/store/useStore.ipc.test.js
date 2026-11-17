@@ -1,6 +1,7 @@
 // 스토어 저장·동기화 특성 테스트 (#65 리팩토링 전 동작 고정)
 // 액션마다 "상태 바꾸기(set) · 디스크 저장(setStoreAsync / setStoreMany) · 다른 창 알림(sendStateUpdate)"이
 // 어떤 순서로, 어떤 값으로 일어나는지 기록해 스냅샷으로 남긴다. 스냅샷은 리팩토링 전 코드로 만들었다.
+// 이 스냅샷은 시드를 고정한 배틀 난수 결과에도 묶여 있다. 그래서 배틀 규칙을 바꾸면 `-u` 로 같이 다시 만들어야 한다.
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
 
 const log = []
