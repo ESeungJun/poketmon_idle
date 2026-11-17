@@ -425,7 +425,7 @@ function playerItemAfterAttack(t, dealt) {
 // 위력이 있는 공격 기술
 // 1. 상성 확인(무효면 문구만 남기고 false)  2. 대미지와 상성 문구  3. (플레이어) 지닌 도구  4. 부가 상태이상
 // immunePhase: 상성 무효 장면의 phase (볼 실패 턴은 'selecting')
-function useDamagingMove(t, side, moveName, move, immunePhase = 'animating') {
+function applyDamagingMove(t, side, moveName, move, immunePhase = 'animating') {
   const target = opponent(side)
   const typeEff = getTypeEffectiveness(move.type, t.species[target].types)
   if (typeEff === 0) {
@@ -445,7 +445,7 @@ function useDamagingMove(t, side, moveName, move, immunePhase = 'animating') {
 }
 
 // 변화 기술: 1) 날씨 2) special 3) 능력치 단계 4) 상태이상 순으로 본다. 배틀이 끝나면 true
-function useStatusMove(t, side, moveName) {
+function applyStatusMove(t, side, moveName) {
   const meta = MOVE_META[moveName]
   const special = meta?.special
   const target = opponent(side)
@@ -521,9 +521,9 @@ function applyMove(t, side, moveName, move) {
     t[target] = { ...t[target], hp: Math.max(0, t[target].hp - fixedDmg) }
     t.snap(null)
   } else if (move.category !== '변화' && move.power) {
-    useDamagingMove(t, side, moveName, move)
+    applyDamagingMove(t, side, moveName, move)
   } else if (move.category === '변화') {
-    return useStatusMove(t, side, moveName)
+    return applyStatusMove(t, side, moveName)
   }
   return false
 }
@@ -679,7 +679,7 @@ export function processWildOnlyTurn(battle, rng = Math.random) {
 
   const move = wildMove.data
   if (move.category !== '변화' && move.power) {
-    const hit = useDamagingMove(t, 'wild', wildMove.name, move, 'selecting')
+    const hit = applyDamagingMove(t, 'wild', wildMove.name, move, 'selecting')
     if (hit && fainted(t, 'player')) return result()
   } else if (move.category === '변화') {
     tryInflictStatus(t, 'player', getMoveStatusEffect(wildMove.name))
