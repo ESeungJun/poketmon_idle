@@ -75,6 +75,40 @@ function saveMany(values) {
   })
 }
 
+// 상태를 바꾸고(set) 디스크에 저장한다. sync 면 다른 창에도 같은 값을 보낸다 (set → 저장 → 동기화 순서)
+// 키가 하나면 setStoreAsync, 여럿이면 setStoreMany 로 한 번에 쓴다
+function persist(set, patch, { sync = false } = {}) {
+  set(patch)
+  const keys = Object.keys(patch)
+  if (keys.length === 1) saveToStore(keys[0], patch[keys[0]])
+  else saveMany(patch)
+  if (sync && window.electronAPI) window.electronAPI.sendStateUpdate(patch)
+}
+
+// 배틀이 끝날 때 펫의 남은 HP·PP 를 petStats 에 적는다
+function withBattleResult(petStats, battler) {
+  return {
+    ...petStats,
+    currentHP: battler.hp,
+    movePP: { ...petStats.movePP, ...battler.movePP },
+  }
+}
+
+// happy 를 2초 보여 준 뒤 원래 상태로 돌아간다 (다른 창에도 알림)
+// 그사이 집중이 끝났거나 시작됐을 수 있으니 그때의 세션으로 정한다
+function scheduleHappyEnd(set) {
+  setTimeout(() => {
+    set(s => {
+      if (s.petState === 'happy') {
+        const nextState = s.focusSession?.endsAt != null ? 'sleeping' : 'idle'
+        if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: nextState })
+        return { petState: nextState }
+      }
+      return {}
+    })
+  }, 2000)
+}
+
 const useStore = create((set, get) => ({
   ...DEFAULT_STATE,
   initialized: false,
@@ -117,21 +151,7 @@ const useStore = create((set, get) => ({
     }
 
     // happy 상태 2초 후 이전 상태로 복귀
-    if (happy) {
-      setTimeout(() => {
-        set(s => {
-          if (s.petState === 'happy') {
-            // 그사이 집중이 끝났거나 시작됐을 수 있으니 지금 세션으로 정한다
-            const nextState = s.focusSession?.endsAt != null ? 'sleeping' : 'idle'
-            if (window.electronAPI) {
-              window.electronAPI.sendStateUpdate({ petState: nextState })
-            }
-            return { petState: nextState }
-          }
-          return {}
-        })
-      }, 2000)
-    }
+    if (happy) scheduleHappyEnd(set)
   },
 
   // 레벨 경험치 추가 + 레벨업/진화 체크. 개발자 모드 전용 (평소에는 집중 타이머만 경험치를 준다)
@@ -192,20 +212,14 @@ const useStore = create((set, get) => ({
   spendPoints: (amount) => {
     const { points } = get()
     if (points < amount) return false
-    const newPoints = points - amount
-    set({ points: newPoints })
-    saveToStore('points', newPoints)
-    if (window.electronAPI) {
-      window.electronAPI.sendStateUpdate({ points: newPoints })
-    }
+    persist(set, { points: points - amount }, { sync: true })
     return true
   },
 
   // 스타터 선택 완료: petStats를 null로 초기화해 PokemonStats에서 새로 생성하게 함
   selectStarter: (speciesId) => {
     const seenSpecies = [...new Set([...get().seenSpecies, speciesId])]
-    set({ petSpeciesId: speciesId, petStats: null, seenSpecies })
-    saveMany({ petSpeciesId: speciesId, petStats: null, seenSpecies })
+    persist(set, { petSpeciesId: speciesId, petStats: null, seenSpecies })
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: speciesId, seenSpecies })
       window.electronAPI.notifyStarterSelected()  // main에 알려 펫 창 표시
@@ -246,26 +260,14 @@ const useStore = create((set, get) => ({
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petState: 'happy', petStats: newPetStats, seenSpecies })
     }
-    setTimeout(() => {
-      set(s => {
-        if (s.petState === 'happy') {
-          // 진화하는 사이 집중이 끝났을 수 있으니 지금 세션으로 정한다
-          const nextState = s.focusSession?.endsAt != null ? 'sleeping' : 'idle'
-          if (window.electronAPI) window.electronAPI.sendStateUpdate({ petState: nextState })
-          return { petState: nextState }
-        }
-        return {}
-      })
-    }, 2000)
+    scheduleHappyEnd(set)
   },
 
   purchaseItem: (itemId, cost) => {
     const { spendPoints, purchasedItems } = get()
     if (purchasedItems.includes(itemId)) return false
     if (!spendPoints(cost)) return false
-    const newPurchased = [...purchasedItems, itemId]
-    set({ purchasedItems: newPurchased })
-    saveToStore('purchasedItems', newPurchased)
+    persist(set, { purchasedItems: [...purchasedItems, itemId] })
     return true
   },
 
@@ -310,25 +312,19 @@ const useStore = create((set, get) => ({
   },
 
   setPetSpecies: (speciesId) => {
-    set({ petSpeciesId: speciesId, petStats: null })
-    saveMany({ petSpeciesId: speciesId, petStats: null })
+    persist(set, { petSpeciesId: speciesId, petStats: null })
   },
 
   // petStats 형식: { speciesId, ivs, natureName, moves, learnedPool, abilityName }
   setPetStats: (stats) => {
-    set({ petStats: stats })
-    saveToStore('petStats', stats)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: stats })
+    persist(set, { petStats: stats }, { sync: true })
   },
 
   // 닉네임을 petStats.nickname에 저장 (개별 포켓몬에 귀속)
   setPetName: (name) => {
     const { petStats } = get()
     if (!petStats) return
-    const newStats = { ...petStats, nickname: name || null }
-    set({ petStats: newStats, petName: name })
-    saveMany({ petStats: newStats, petName: name })
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats, petName: name })
+    persist(set, { petStats: { ...petStats, nickname: name || null }, petName: name }, { sync: true })
   },
 
   // 비타민 사용: 해당 스탯 EV를 10씩 증가 (단일 스탯 max 252, 총합 max 510)
@@ -339,9 +335,7 @@ const useStore = create((set, get) => ({
     if (cur >= 252 || total >= 510) return false
     const add = Math.min(10, 252 - cur, 510 - total)
     if (!spendPoints(cost)) return false
-    const newEVs = { ...petEVs, [stat]: cur + add }
-    set({ petEVs: newEVs })
-    saveToStore('petEVs', newEVs)
+    persist(set, { petEVs: { ...petEVs, [stat]: cur + add } })
     return true
   },
 
@@ -349,18 +343,14 @@ const useStore = create((set, get) => ({
   equipTool: (toolId) => {
     const { equippedTool, purchasedItems } = get()
     if (!purchasedItems.includes(toolId)) return
-    const newTool = equippedTool === toolId ? null : toolId
-    set({ equippedTool: newTool })
-    saveToStore('equippedTool', newTool)
+    persist(set, { equippedTool: equippedTool === toolId ? null : toolId })
   },
 
   buyTM: (tmId, cost) => {
     const { ownedTMs, spendPoints } = get()
     if (ownedTMs.includes(tmId)) return false
     if (!spendPoints(cost)) return false
-    const newOwned = [...ownedTMs, tmId]
-    set({ ownedTMs: newOwned })
-    saveToStore('ownedTMs', newOwned)
+    persist(set, { ownedTMs: [...ownedTMs, tmId] })
     return true
   },
 
@@ -369,9 +359,7 @@ const useStore = create((set, get) => ({
   buyBall: (ballId, cost) => {
     const { spendPoints, ballInventory } = get()
     if (!spendPoints(cost)) return false
-    const newInventory = { ...ballInventory, [ballId]: (ballInventory[ballId] || 0) + 1 }
-    set({ ballInventory: newInventory })
-    saveToStore('ballInventory', newInventory)
+    persist(set, { ballInventory: { ...ballInventory, [ballId]: (ballInventory[ballId] || 0) + 1 } })
     return true
   },
 
@@ -483,15 +471,8 @@ const useStore = create((set, get) => ({
     const newCaught = [...caughtPokemon]
     newCaught[boxIndex] = currentToBox
 
-    set({
-      petSpeciesId: newSpeciesId,
-      petStats: newPetStats,
-      petName: newNickname,
-      petEVs: newEVs,
-      caughtPokemon: newCaught,
-    })
     // 종·스탯·보관함이 어긋난 채로 남지 않게 한 번에 쓴다
-    saveMany({ petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs, caughtPokemon: newCaught })
+    persist(set, { petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs, caughtPokemon: newCaught })
     if (window.electronAPI) {
       window.electronAPI.sendStateUpdate({ petSpeciesId: newSpeciesId, petStats: newPetStats, petName: newNickname, petEVs: newEVs })
     }
@@ -500,9 +481,7 @@ const useStore = create((set, get) => ({
   releaseFromBox: (boxIndex) => {
     const { caughtPokemon } = get()
     if (boxIndex < 0 || boxIndex >= caughtPokemon.length) return
-    const newCaught = caughtPokemon.filter((_, i) => i !== boxIndex)
-    set({ caughtPokemon: newCaught })
-    saveToStore('caughtPokemon', newCaught)
+    persist(set, { caughtPokemon: caughtPokemon.filter((_, i) => i !== boxIndex) })
   },
 
   // TM 사용: learnedPool에 기술명 추가 (moves 슬롯 교체는 swapMove로 별도 처리)
@@ -511,10 +490,7 @@ const useStore = create((set, get) => ({
     if (!petStats) return
     const pool = petStats.learnedPool || petStats.moves || []
     if (pool.includes(moveName)) return
-    const newStats = { ...petStats, learnedPool: [...pool, moveName] }
-    set({ petStats: newStats })
-    saveToStore('petStats', newStats)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
+    persist(set, { petStats: { ...petStats, learnedPool: [...pool, moveName] } }, { sync: true })
   },
 
   // 활성 기술 슬롯(0~3)의 기술을 learnedPool에서 선택한 기술로 교체
@@ -523,10 +499,7 @@ const useStore = create((set, get) => ({
     if (!petStats) return
     const newMoves = [...petStats.moves]
     newMoves[activeIdx] = newMoveName
-    const newStats = { ...petStats, moves: newMoves }
-    set({ petStats: newStats })
-    saveToStore('petStats', newStats)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: newStats })
+    persist(set, { petStats: { ...petStats, moves: newMoves } }, { sync: true })
   },
 
   // ── Wild Battle ─────────────────────────────────────────────────
@@ -547,9 +520,7 @@ const useStore = create((set, get) => ({
       const pokemon = getPokemon(petSpeciesId)
       if (!pokemon) return
       petStats = generatePetStats(pokemon, playerLevel)
-      set({ petStats })
-      saveToStore('petStats', petStats)
-      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats })
+      persist(set, { petStats }, { sync: true })
     }
     const encounter = pickWildEncounter(playerLevel)
     if (!encounter) {
@@ -632,14 +603,7 @@ const useStore = create((set, get) => ({
       // Save HP/PP to petStats
       const { petStats } = get()
       if (petStats && frame.player) {
-        const updatedPetStats = {
-          ...petStats,
-          currentHP: frame.player.hp,
-          movePP: { ...petStats.movePP, ...frame.player.movePP },
-        }
-        set({ petStats: updatedPetStats })
-        saveToStore('petStats', updatedPetStats)
-        if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+        persist(set, { petStats: withBattleResult(petStats, frame.player) }, { sync: true })
       }
       if (pendingPointsGained > 0) get().addPoints(pendingPointsGained)
 
@@ -662,9 +626,7 @@ const useStore = create((set, get) => ({
             movePP: null,
             caughtAt: Date.now(),
           }
-          const newCaught = [...caughtPokemon, caughtData]
-          set({ caughtPokemon: newCaught })
-          saveToStore('caughtPokemon', newCaught)
+          persist(set, { caughtPokemon: [...caughtPokemon, caughtData] })
         }
       }
     }
@@ -677,14 +639,7 @@ const useStore = create((set, get) => ({
       wildBattle: { ...wildBattle, phase: 'ended', result: 'flee', logLines: [...(wildBattle.logLines || []), '도망쳤다!'] },
     })
     if (petStats && wildBattle.player) {
-      const updatedPetStats = {
-        ...petStats,
-        currentHP: wildBattle.player.hp,
-        movePP: { ...petStats.movePP, ...wildBattle.player.movePP },
-      }
-      set({ petStats: updatedPetStats })
-      saveToStore('petStats', updatedPetStats)
-      if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+      persist(set, { petStats: withBattleResult(petStats, wildBattle.player) }, { sync: true })
     }
   },
 
@@ -696,10 +651,7 @@ const useStore = create((set, get) => ({
     const { petStats, spendPoints } = get()
     if (!petStats) return
     if (!spendPoints(20)) return
-    const updatedPetStats = { ...petStats, currentHP: null, movePP: null }
-    set({ petStats: updatedPetStats })
-    saveToStore('petStats', updatedPetStats)
-    if (window.electronAPI) window.electronAPI.sendStateUpdate({ petStats: updatedPetStats })
+    persist(set, { petStats: { ...petStats, currentHP: null, movePP: null } }, { sync: true })
   },
 
   resetAllData: async () => {
